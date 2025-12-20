@@ -1,0 +1,121 @@
+version: "3.8"
+
+services:
+  # Production server (signaling only)
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - HOST=0.0.0.0
+      - CONDUIT_KEY=conduit
+      - ALLOW_DISCOVERY=true
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # Production server with Admin API enabled
+  server-admin:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server-admin
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - HOST=0.0.0.0
+      - CONDUIT_KEY=conduit
+      - ALLOW_DISCOVERY=false
+      - ADMIN_ENABLED=true
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-changeme}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    profiles:
+      - admin
+
+  # Standalone Admin UI dashboard
+  admin-ui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.admin-ui
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NUXT_PUBLIC_ADMIN_API_URL=http://server-admin:9000/admin/v1
+      - NUXT_PUBLIC_ADMIN_WS_URL=ws://server-admin:9000/admin/v1/ws
+    depends_on:
+      - server-admin
+    restart: unless-stopped
+    profiles:
+      - admin
+
+  # Development server with hot reload
+  dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "9000:9000"
+      - "3000:3000"
+    volumes:
+      - ../packages:/app/packages
+      - ../e2e:/app/e2e
+      - /app/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/client/node_modules
+      - /app/packages/server/node_modules
+      - /app/packages/admin/node_modules
+      - /app/packages/admin-ui/node_modules
+    environment:
+      - NODE_ENV=development
+    command: bun run dev
+
+  # E2E test runner
+  e2e:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      - CONDUIT_SERVER_URL=http://server:9000
+      - CI=true
+    volumes:
+      - ../e2e:/app/e2e
+      - ../packages:/app/packages
+      - /app/node_modules
+    command: bun run test:e2e
+    profiles:
+      - test
+
+  # Fixture server for E2E tests
+  fixtures:
+    image: halverneus/static-file-server:latest
+    ports:
+      - "3000:8080"
+    volumes:
+      - ../e2e/fixtures:/web
+    environment:
+      - PORT=8080
+      - FOLDER=/web
+    profiles:
+      - test
+
+networks:
+  default:
+    name: conduit-network

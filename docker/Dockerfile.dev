@@ -1,0 +1,57 @@
+# Development Dockerfile with all tools
+FROM oven/bun:1.3
+
+WORKDIR /app
+
+# Install system dependencies for Playwright
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libwayland-client0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package.json bun.lock* ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/client/package.json packages/client/
+COPY packages/server/package.json packages/server/
+COPY packages/admin/package.json packages/admin/
+COPY packages/admin-ui/package.json packages/admin-ui/
+COPY e2e/package.json e2e/
+
+# Install all dependencies
+RUN bun install
+
+# Install Playwright browsers
+RUN bunx playwright install chromium firefox
+
+# Copy source files
+COPY . .
+
+# Build all packages
+RUN bun run build
+
+# Expose ports (9000: server, 3000: admin-ui dev)
+EXPOSE 9000 3000
+
+# Default command
+CMD ["bun", "run", "dev"]
