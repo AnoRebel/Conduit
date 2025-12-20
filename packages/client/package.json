@@ -1,0 +1,78 @@
+{
+  "name": "conduit",
+  "version": "1.0.0",
+  "description": "Conduit - WebRTC peer-to-peer data, video, and audio connections",
+  "type": "module",
+  "main": "./dist/conduit.cjs",
+  "module": "./dist/conduit.js",
+  "types": "./dist/index.d.ts",
+  "browser": "./dist/conduit.umd.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/conduit.js",
+      "require": "./dist/conduit.cjs"
+    },
+    "./peerjs-compat": {
+      "types": "./dist/peerjs-compat.d.ts",
+      "import": "./dist/peerjs-compat.js",
+      "require": "./dist/peerjs-compat.cjs"
+    },
+    "./msgpack": {
+      "types": "./dist/msgpack.d.ts",
+      "import": "./dist/msgpack.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "./src/global.ts"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "webrtc",
+    "p2p",
+    "peer-to-peer",
+    "datachannel",
+    "video",
+    "audio",
+    "streaming",
+    "conduit"
+  ],
+  "author": "Conduit Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnoRebel/conduit.git",
+    "directory": "packages/client"
+  },
+  "dependencies": {
+    "@conduit/shared": "workspace:*",
+    "@msgpack/msgpack": "^3.1.2",
+    "eventemitter3": "^5.0.1",
+    "peerjs-js-binarypack": "^2.1.0",
+    "webrtc-adapter": "^9.0.3"
+  },
+  "optionalDependencies": {
+    "web-streams-polyfill": "^4.2.0"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.0.11",
+    "terser": "^5.44.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.0.16"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

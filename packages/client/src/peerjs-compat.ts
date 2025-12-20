@@ -1,0 +1,51 @@
+/**
+ * PeerJS Compatibility Layer
+ *
+ * This module provides drop-in compatibility for projects migrating from PeerJS to Conduit.
+ *
+ * Usage:
+ * Replace your PeerJS import:
+ *   import { Peer } from 'peerjs';
+ *
+ * With:
+ *   import { Peer } from 'conduit/peerjs-compat';
+ *
+ * Or simply update your import to use the new names:
+ *   import { Conduit, ConduitError, ConduitErrorType } from 'conduit';
+ */
+
+// Re-export Conduit as Peer for backwards compatibility
+export { Conduit as Peer, type ConduitEvents as PeerEvents, type ConduitOptions as PeerOptions } from "./conduit.js";
+
+// Re-export ConduitError as PeerError
+export { ConduitError as PeerError } from "./conduitError.js";
+
+// Re-export ConduitErrorType as PeerErrorType
+export { ConduitErrorType as PeerErrorType } from "@conduit/shared";
+
+// Re-export everything else
+export {
+	AutoConnection,
+	type AutoConnectionEvents,
+	type AutoConnectionOptions,
+} from "./dataconnection/AutoConnection.js";
+export {
+	DataConnection,
+	type DataConnectionEvents,
+	type DataConnectionOptions,
+} from "./dataconnection/DataConnection.js";
+export {
+	WebSocketConnection,
+	type WebSocketConnectionEvents,
+	type WebSocketConnectionOptions,
+} from "./dataconnection/WebSocketConnection.js";
+export { LogLevel, logger } from "./logger.js";
+export {
+	MediaConnection,
+	type MediaConnectionEvents,
+	type MediaConnectionOptions,
+} from "./mediaconnection.js";
+export { type BrowserSupport, supports } from "./supports.js";
+export { util } from "./util.js";
+export { type CallOptions, type ConnectOptions } from "./conduit.js";
+export { ConnectionType, MessageType, SerializationType, TransportType, type ServerMessage } from "@conduit/shared";
