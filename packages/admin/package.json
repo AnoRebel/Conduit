@@ -1,0 +1,84 @@
+{
+  "name": "@conduit/admin",
+  "version": "1.0.0",
+  "description": "Admin API and monitoring tools for Conduit servers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapters/node": {
+      "types": "./dist/adapters/node.d.ts",
+      "import": "./dist/adapters/node.js"
+    },
+    "./adapters/express": {
+      "types": "./dist/adapters/express.d.ts",
+      "import": "./dist/adapters/express.js"
+    },
+    "./adapters/hono": {
+      "types": "./dist/adapters/hono.d.ts",
+      "import": "./dist/adapters/hono.js"
+    },
+    "./adapters/fastify": {
+      "types": "./dist/adapters/fastify.d.ts",
+      "import": "./dist/adapters/fastify.js"
+    },
+    "./standalone": {
+      "types": "./dist/standalone/index.d.ts",
+      "import": "./dist/standalone/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "conduit",
+    "admin",
+    "monitoring",
+    "dashboard",
+    "webrtc",
+    "signaling"
+  ],
+  "author": "Conduit Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnoRebel/conduit.git",
+    "directory": "packages/admin"
+  },
+  "dependencies": {
+    "@conduit/shared": "workspace:*",
+    "jsonwebtoken": "^9.0.3",
+    "pino": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.18.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16",
+    "ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "@conduit/server": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@conduit/server": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
