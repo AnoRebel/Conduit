@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conduit Test - Bob</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; }
+    .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+    .connected { background: #d4edda; color: #155724; }
+    .disconnected { background: #f8d7da; color: #721c24; }
+    .pending { background: #fff3cd; color: #856404; }
+    #log { background: #f5f5f5; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+    input { padding: 8px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Bob (Conduit B)</h1>
+
+  <div id="status" class="status pending">Initializing...</div>
+
+  <div>
+    <label>My ID: <input type="text" id="myId" value="bob" /></label>
+    <button id="connect-server">Connect to Server</button>
+  </div>
+
+  <div>
+    <label>Remote ID: <input type="text" id="remoteId" value="alice" /></label>
+    <button id="connect-remote">Connect</button>
+    <button id="call-remote">Call</button>
+  </div>
+
+  <div>
+    <label>Message: <input type="text" id="message" value="Hello from Bob!" /></label>
+    <button id="send">Send</button>
+  </div>
+
+  <div>
+    <label>Transport:
+      <select id="transport">
+        <option value="auto">Auto (fallback)</option>
+        <option value="webrtc">WebRTC only</option>
+        <option value="websocket">WebSocket only</option>
+      </select>
+    </label>
+  </div>
+
+  <h3>Log</h3>
+  <div id="log"></div>
+
+  <h3>Media</h3>
+  <video id="localVideo" autoplay muted playsinline width="200"></video>
+  <video id="remoteVideo" autoplay playsinline width="200"></video>
+
+  <script type="module">
+    // Will be loaded from built conduit
+    import { Conduit } from '/conduit.mjs';
+
+    const log = (msg) => {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      logEl.innerHTML += `[${time}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(msg);
+    };
+
+    const setStatus = (status, className) => {
+      const el = document.getElementById('status');
+      el.textContent = status;
+      el.className = `status ${className}`;
+    };
+
+    let conduit = null;
+    let conn = null;
+    let call = null;
+
+    window.testData = {
+      conduit: null,
+      conn: null,
+      call: null,
+      receivedMessages: [],
+      events: [],
+    };
+
+    document.getElementById('connect-server').addEventListener('click', () => {
+      const myId = document.getElementById('myId').value;
+
+      conduit = new Conduit(myId, {
+        host: 'localhost',
+        port: 9000,
+        path: '/',
+        debug: 3,
+      });
+
+      window.testData.conduit = conduit;
+
+      conduit.on('open', (id) => {
+        log(`Connected to server with ID: ${id}`);
+        setStatus(`Connected as ${id}`, 'connected');
+        window.testData.events.push({ type: 'open', id });
+      });
+
+      conduit.on('connection', (dataConn) => {
+        log(`Incoming connection from: ${dataConn.peer}`);
+        conn = dataConn;
+        window.testData.conn = conn;
+        setupDataConnection(conn);
+        window.testData.events.push({ type: 'connection', peer: dataConn.peer });
+      });
+
+      conduit.on('call', (mediaConn) => {
+        log(`Incoming call from: ${mediaConn.peer}`);
+        call = mediaConn;
+        window.testData.call = call;
+
+        // Answer with local stream
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+          .then((stream) => {
+            document.getElementById('localVideo').srcObject = stream;
+            mediaConn.answer(stream);
+            setupMediaConnection(mediaConn);
+          })
+          .catch((err) => log(`Error getting media: ${err}`));
+
+        window.testData.events.push({ type: 'call', peer: mediaConn.peer });
+      });
+
+      conduit.on('disconnected', () => {
+        log('Disconnected from server');
+        setStatus('Disconnected', 'disconnected');
+        window.testData.events.push({ type: 'disconnected' });
+      });
+
+      conduit.on('close', () => {
+        log('Conduit closed');
+        setStatus('Closed', 'disconnected');
+        window.testData.events.push({ type: 'close' });
+      });
+
+      conduit.on('error', (err) => {
+        log(`Error: ${err.type} - ${err.message}`);
+        window.testData.events.push({ type: 'error', error: err });
+      });
+    });
+
+    document.getElementById('connect-remote').addEventListener('click', () => {
+      if (!conduit) {
+        log('Connect to server first!');
+        return;
+      }
+
+      const remoteId = document.getElementById('remoteId').value;
+      const transport = document.getElementById('transport').value;
+
+      log(`Connecting to ${remoteId} via ${transport}...`);
+
+      conn = conduit.connect(remoteId, {
+        transport: transport,
+        reliable: true,
+      });
+
+      window.testData.conn = conn;
+      setupDataConnection(conn);
+    });
+
+    document.getElementById('call-remote').addEventListener('click', async () => {
+      if (!conduit) {
+        log('Connect to server first!');
+        return;
+      }
+
+      const remoteId = document.getElementById('remoteId').value;
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('localVideo').srcObject = stream;
+
+        log(`Calling ${remoteId}...`);
+        call = conduit.call(remoteId, stream);
+        window.testData.call = call;
+        setupMediaConnection(call);
+      } catch (err) {
+        log(`Error getting media: ${err}`);
+      }
+    });
+
+    document.getElementById('send').addEventListener('click', () => {
+      if (!conn || !conn.open) {
+        log('No open connection!');
+        return;
+      }
+
+      const message = document.getElementById('message').value;
+      conn.send(message);
+      log(`Sent: ${message}`);
+    });
+
+    function setupDataConnection(dataConn) {
+      dataConn.on('open', () => {
+        log(`Data connection open with ${dataConn.peer}`);
+        window.testData.events.push({ type: 'data-open', peer: dataConn.peer });
+      });
+
+      dataConn.on('data', (data) => {
+        log(`Received: ${JSON.stringify(data)}`);
+        window.testData.receivedMessages.push(data);
+        window.testData.events.push({ type: 'data', data });
+      });
+
+      dataConn.on('close', () => {
+        log(`Data connection closed with ${dataConn.peer}`);
+        window.testData.events.push({ type: 'data-close', peer: dataConn.peer });
+      });
+
+      dataConn.on('error', (err) => {
+        log(`Data connection error: ${err}`);
+        window.testData.events.push({ type: 'data-error', error: err });
+      });
+
+      // Listen for fallback event (auto transport)
+      dataConn.on('fallback', (reason) => {
+        log(`Fell back to WebSocket: ${reason}`);
+        window.testData.events.push({ type: 'fallback', reason });
+      });
+    }
+
+    function setupMediaConnection(mediaConn) {
+      mediaConn.on('stream', (remoteStream) => {
+        log('Received remote stream');
+        document.getElementById('remoteVideo').srcObject = remoteStream;
+        window.testData.events.push({ type: 'stream' });
+      });
+
+      mediaConn.on('close', () => {
+        log('Media connection closed');
+        window.testData.events.push({ type: 'media-close' });
+      });
+
+      mediaConn.on('error', (err) => {
+        log(`Media connection error: ${err}`);
+        window.testData.events.push({ type: 'media-error', error: err });
+      });
+    }
+
+    log('Page loaded. Click "Connect to Server" to start.');
+  </script>
+</body>
+</html>
