@@ -1,0 +1,102 @@
+{
+  "name": "@conduit/server",
+  "version": "1.0.0",
+  "description": "Conduit server - WebRTC signaling server for peer-to-peer connections",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "conduit": "./bin/conduit.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapters/node": {
+      "types": "./dist/adapters/node.d.ts",
+      "import": "./dist/adapters/node.js"
+    },
+    "./adapters/bun": {
+      "types": "./dist/adapters/bun.d.ts",
+      "import": "./dist/adapters/bun.js"
+    },
+    "./adapters/hono": {
+      "types": "./dist/adapters/hono.d.ts",
+      "import": "./dist/adapters/hono.js"
+    },
+    "./adapters/express": {
+      "types": "./dist/adapters/express.d.ts",
+      "import": "./dist/adapters/express.js"
+    },
+    "./adapters/fastify": {
+      "types": "./dist/adapters/fastify.d.ts",
+      "import": "./dist/adapters/fastify.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "start": "node ./bin/conduit.js"
+  },
+  "keywords": [
+    "conduit",
+    "webrtc",
+    "signaling",
+    "server",
+    "p2p",
+    "peer-to-peer",
+    "websocket"
+  ],
+  "author": "Conduit Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnoRebel/conduit.git",
+    "directory": "packages/server"
+  },
+  "bugs": {
+    "url": "https://github.com/AnoRebel/conduit/issues"
+  },
+  "homepage": "https://github.com/AnoRebel/conduit",
+  "dependencies": {
+    "@conduit/shared": "workspace:*",
+    "@inquirer/prompts": "^8.1.0",
+    "commander": "^14.0.2",
+    "pino": "^9.6.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "peerDependencies": {
+    "express": "^4.21.0 || ^5.0.0",
+    "hono": "^4.6.0",
+    "fastify": "^5.2.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
