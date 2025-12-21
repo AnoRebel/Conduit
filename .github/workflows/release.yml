@@ -7,6 +7,7 @@ on:
       - "releases/**"
     tags:
       - "v*"
+      - "@conduit/*"
 
 permissions:
   contents: write
@@ -46,28 +47,44 @@ jobs:
           cd packages/shared && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
           cd ../client && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
           cd ../server && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ../admin && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ../admin-ui && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
 
       - name: Setup npm auth
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
 
-      - name: Publish @peerjs/shared
+      - name: Publish @conduit/shared
         run: |
           cd packages/shared
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish peerjs (client)
+      - name: Publish conduit (client)
         run: |
           cd packages/client
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish peer (server)
+      - name: Publish @conduit/server
         run: |
           cd packages/server
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @conduit/admin
+        run: |
+          cd packages/admin
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @conduit/admin-ui
+        run: |
+          cd packages/admin-ui
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -113,7 +130,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push server
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -121,10 +138,25 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            peerjs/peerjs-server:${{ steps.version.outputs.VERSION }}
-            peerjs/peerjs-server:latest
+            conduit/server:${{ steps.version.outputs.VERSION }}
+            conduit/server:latest
             ghcr.io/${{ github.repository }}/server:${{ steps.version.outputs.VERSION }}
             ghcr.io/${{ github.repository }}/server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push admin-ui
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.admin-ui
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            conduit/admin-ui:${{ steps.version.outputs.VERSION }}
+            conduit/admin-ui:latest
+            ghcr.io/${{ github.repository }}/admin-ui:${{ steps.version.outputs.VERSION }}
+            ghcr.io/${{ github.repository }}/admin-ui:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -143,10 +175,14 @@ jobs:
           echo "## Release v${{ steps.version.outputs.VERSION }} Published!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### NPM Packages" >> $GITHUB_STEP_SUMMARY
-          echo "- [@peerjs/shared](https://www.npmjs.com/package/@peerjs/shared)" >> $GITHUB_STEP_SUMMARY
-          echo "- [peerjs](https://www.npmjs.com/package/peerjs) (client)" >> $GITHUB_STEP_SUMMARY
-          echo "- [peer](https://www.npmjs.com/package/peer) (server)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/shared](https://www.npmjs.com/package/@conduit/shared)" >> $GITHUB_STEP_SUMMARY
+          echo "- [conduit](https://www.npmjs.com/package/conduit) (client)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/server](https://www.npmjs.com/package/@conduit/server)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/admin](https://www.npmjs.com/package/@conduit/admin)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/admin-ui](https://www.npmjs.com/package/@conduit/admin-ui)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Docker Images" >> $GITHUB_STEP_SUMMARY
-          echo "- \`peerjs/peerjs-server:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`conduit/server:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`conduit/admin-ui:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ github.repository }}/server:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ github.repository }}/admin-ui:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY

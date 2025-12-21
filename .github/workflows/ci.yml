@@ -156,6 +156,16 @@ jobs:
           context: .
           file: docker/Dockerfile.server
           push: false
-          tags: peerjs/peerjs-server:test
+          tags: conduit/server:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build admin-ui image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.admin-ui
+          push: false
+          tags: conduit/admin-ui:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
