@@ -1,9 +1,9 @@
+import { MessageType } from "@conduit/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createConfig, defaultConfig } from "../src/config.js";
 import { Client } from "../src/core/client.js";
 import { MessageQueue } from "../src/core/messageQueue.js";
 import { Realm } from "../src/core/realm.js";
-import { createConfig, defaultConfig } from "../src/config.js";
-import { MessageType } from "@conduit/shared";
 
 describe("Realm", () => {
 	let realm: Realm;
@@ -225,7 +225,6 @@ describe("MessageQueue", () => {
 		const messages = queue.getMessages("peer1");
 		expect(messages).toHaveLength(3);
 	});
-
 });
 
 describe("Config", () => {

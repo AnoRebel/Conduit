@@ -21,7 +21,9 @@ export function useAdminWebSocket() {
 	const callbacks = {
 		onMetrics: new Set<(metrics: MetricsSnapshot) => void>(),
 		onClientConnected: new Set<(data: { id: string; timestamp: number }) => void>(),
-		onClientDisconnected: new Set<(data: { id: string; reason: string; timestamp: number }) => void>(),
+		onClientDisconnected: new Set<
+			(data: { id: string; reason: string; timestamp: number }) => void
+		>(),
 		onError: new Set<(data: { type: string; message: string; timestamp: number }) => void>(),
 	};
 
@@ -51,18 +53,13 @@ export function useAdminWebSocket() {
 				JSON.stringify({
 					type: "subscribe",
 					data: {
-						events: [
-							"metrics:update",
-							"client:connected",
-							"client:disconnected",
-							"error:occurred",
-						],
+						events: ["metrics:update", "client:connected", "client:disconnected", "error:occurred"],
 					},
-				}),
+				})
 			);
 		};
 
-		ws.value.onmessage = (event) => {
+		ws.value.onmessage = event => {
 			try {
 				const message = JSON.parse(event.data) as AdminWSMessage;
 				lastMessage.value = message;
@@ -70,39 +67,39 @@ export function useAdminWebSocket() {
 				switch (message.type) {
 					case "metrics:update":
 						lastMetrics.value = message.data as MetricsSnapshot;
-						callbacks.onMetrics.forEach((cb) =>
-							cb(message.data as MetricsSnapshot),
-						);
+						callbacks.onMetrics.forEach(cb => {
+							cb(message.data as MetricsSnapshot);
+						});
 						break;
 
 					case "client:connected":
-						callbacks.onClientConnected.forEach((cb) =>
-							cb(message.data as { id: string; timestamp: number }),
-						);
+						callbacks.onClientConnected.forEach(cb => {
+							cb(message.data as { id: string; timestamp: number });
+						});
 						break;
 
 					case "client:disconnected":
-						callbacks.onClientDisconnected.forEach((cb) =>
+						callbacks.onClientDisconnected.forEach(cb => {
 							cb(
 								message.data as {
 									id: string;
 									reason: string;
 									timestamp: number;
-								},
-							),
-						);
+								}
+							);
+						});
 						break;
 
 					case "error:occurred":
-						callbacks.onError.forEach((cb) =>
+						callbacks.onError.forEach(cb => {
 							cb(
 								message.data as {
 									type: string;
 									message: string;
 									timestamp: number;
-								},
-							),
-						);
+								}
+							);
+						});
 						break;
 				}
 			} catch {
@@ -152,23 +149,19 @@ export function useAdminWebSocket() {
 		return () => callbacks.onMetrics.delete(callback);
 	}
 
-	function onClientConnected(
-		callback: (data: { id: string; timestamp: number }) => void,
-	) {
+	function onClientConnected(callback: (data: { id: string; timestamp: number }) => void) {
 		callbacks.onClientConnected.add(callback);
 		return () => callbacks.onClientConnected.delete(callback);
 	}
 
 	function onClientDisconnected(
-		callback: (data: { id: string; reason: string; timestamp: number }) => void,
+		callback: (data: { id: string; reason: string; timestamp: number }) => void
 	) {
 		callbacks.onClientDisconnected.add(callback);
 		return () => callbacks.onClientDisconnected.delete(callback);
 	}
 
-	function onError(
-		callback: (data: { type: string; message: string; timestamp: number }) => void,
-	) {
+	function onError(callback: (data: { type: string; message: string; timestamp: number }) => void) {
 		callbacks.onError.add(callback);
 		return () => callbacks.onError.delete(callback);
 	}

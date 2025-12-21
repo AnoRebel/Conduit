@@ -1,8 +1,8 @@
 import type { IMessage } from "@conduit/shared";
 import type { InstrumentableServerCore } from "../metrics/instrumentation.js";
-import type { BanManager } from "./bans.js";
-import type { AuditLogger } from "./audit.js";
 import type { RateLimitConfig } from "../types.js";
+import type { AuditLogger } from "./audit.js";
+import type { BanManager } from "./bans.js";
 
 /**
  * Extended server core interface with additional methods we need
@@ -97,18 +97,14 @@ export function createAdminActions(options: AdminActionsOptions): AdminActions {
 		return true;
 	}
 
-	function banClient(
-		clientId: string,
-		reason: string | undefined,
-		userId: string,
-	): boolean {
+	function banClient(clientId: string, reason: string | undefined, userId: string): boolean {
 		const entry = banManager.banClient(clientId, reason);
 
 		auditLogger.log("ban_client", userId, { clientId, reason });
 
 		// Also disconnect if currently connected
 		const client = serverCore.realm.getClient(clientId);
-		if (client && client.socket) {
+		if (client?.socket) {
 			client.socket.close();
 			serverCore.realm.removeClient(clientId);
 		}
@@ -158,7 +154,7 @@ export function createAdminActions(options: AdminActionsOptions): AdminActions {
 		let sent = 0;
 		for (const clientId of clientIds) {
 			const client = serverCore.realm.getClient(clientId);
-			if (client && client.socket) {
+			if (client?.socket) {
 				try {
 					client.send(message);
 					sent++;
@@ -179,11 +175,7 @@ export function createAdminActions(options: AdminActionsOptions): AdminActions {
 		// The server core would need to expose a method to update rate limits.
 	}
 
-	function toggleFeature(
-		feature: "discovery" | "relay",
-		enabled: boolean,
-		userId: string,
-	): void {
+	function toggleFeature(feature: "discovery" | "relay", enabled: boolean, userId: string): void {
 		auditLogger.log("toggle_feature", userId, { feature, enabled });
 
 		// Note: Feature toggling would need server core support

@@ -1,11 +1,11 @@
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,
+	error,
 	type Route,
 	type RouteContext,
 	type RouteResponse,
 	unauthorized,
-	error,
 } from "../routes/index.js";
 
 /**
@@ -41,7 +41,7 @@ export type ExpressNext = (err?: unknown) => void;
 export type ExpressMiddleware = (
 	req: ExpressRequest,
 	res: ExpressResponse,
-	next: ExpressNext,
+	next: ExpressNext
 ) => void | Promise<void>;
 
 export interface ExpressAdminServerOptions {
@@ -52,13 +52,13 @@ export interface ExpressAdminServerOptions {
  * Create an Express middleware for the admin API
  */
 export function createExpressAdminMiddleware(
-	options: ExpressAdminServerOptions,
+	options: ExpressAdminServerOptions
 ): ExpressMiddleware {
 	const { admin } = options;
 	const routes = createRoutes();
 
 	// Compile route patterns
-	const compiledRoutes = routes.map((route) => ({
+	const compiledRoutes = routes.map(route => ({
 		...route,
 		pattern: compilePattern(route.path),
 	}));
@@ -138,7 +138,7 @@ function compilePattern(path: string): { regex: RegExp; paramNames: string[] } {
 function findRoute(
 	routes: CompiledRoute[],
 	method: string,
-	path: string,
+	path: string
 ): { route: CompiledRoute; params: Record<string, string> } | null {
 	for (const route of routes) {
 		if (route.method !== method) {

@@ -1,10 +1,10 @@
 import type {
-	ServerStatus,
-	MetricsSnapshot,
-	ClientInfo,
-	ClientDetails,
-	BanEntry,
 	AuditEntry,
+	BanEntry,
+	ClientDetails,
+	ClientInfo,
+	MetricsSnapshot,
+	ServerStatus,
 } from "~/types";
 
 export function useAdminApi() {
@@ -30,10 +30,7 @@ export function useAdminApi() {
 		}
 	}
 
-	async function fetchApi<T>(
-		endpoint: string,
-		options: RequestInit = {},
-	): Promise<T> {
+	async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
 			...(options.headers as Record<string, string>),
@@ -70,9 +67,7 @@ export function useAdminApi() {
 		return fetchApi<MetricsSnapshot>("/metrics");
 	}
 
-	async function getMetricsHistory(
-		duration = "1h",
-	): Promise<{ snapshots: MetricsSnapshot[] }> {
+	async function getMetricsHistory(duration = "1h"): Promise<{ snapshots: MetricsSnapshot[] }> {
 		return fetchApi(`/metrics/history?duration=${duration}`);
 	}
 
@@ -85,9 +80,7 @@ export function useAdminApi() {
 		return fetchApi(`/clients/${encodeURIComponent(id)}`);
 	}
 
-	async function disconnectClient(
-		id: string,
-	): Promise<{ success: boolean; message: string }> {
+	async function disconnectClient(id: string): Promise<{ success: boolean; message: string }> {
 		return fetchApi(`/clients/${encodeURIComponent(id)}`, { method: "DELETE" });
 	}
 
@@ -105,7 +98,7 @@ export function useAdminApi() {
 
 	async function banClient(
 		id: string,
-		reason?: string,
+		reason?: string
 	): Promise<{ success: boolean; ban: BanEntry }> {
 		return fetchApi(`/bans/client/${encodeURIComponent(id)}`, {
 			method: "POST",
@@ -119,10 +112,7 @@ export function useAdminApi() {
 		});
 	}
 
-	async function banIP(
-		ip: string,
-		reason?: string,
-	): Promise<{ success: boolean; ban: BanEntry }> {
+	async function banIP(ip: string, reason?: string): Promise<{ success: boolean; ban: BanEntry }> {
 		return fetchApi(`/bans/ip/${encodeURIComponent(ip)}`, {
 			method: "POST",
 			body: JSON.stringify({ reason }),
@@ -134,9 +124,7 @@ export function useAdminApi() {
 	}
 
 	// Audit endpoints
-	async function getAuditLog(
-		limit = 100,
-	): Promise<{ entries: AuditEntry[]; total: number }> {
+	async function getAuditLog(limit = 100): Promise<{ entries: AuditEntry[]; total: number }> {
 		return fetchApi(`/audit?limit=${limit}`);
 	}
 
@@ -159,7 +147,7 @@ export function useAdminApi() {
 	// Broadcast
 	async function broadcast(
 		type: string,
-		payload?: unknown,
+		payload?: unknown
 	): Promise<{ success: boolean; recipientCount: number }> {
 		return fetchApi("/broadcast", {
 			method: "POST",

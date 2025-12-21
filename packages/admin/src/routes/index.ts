@@ -1,5 +1,5 @@
-import type { AdminCore } from "../core/index.js";
 import type { AuthResult } from "../auth/index.js";
+import type { AdminCore } from "../core/index.js";
 
 export interface RouteContext {
 	admin: AdminCore;
@@ -49,13 +49,13 @@ export function forbidden(message = "Forbidden"): RouteResponse {
 	return error(message, 403);
 }
 
+import { auditRoutes } from "./audit.js";
+import { bansRoutes } from "./bans.js";
+import { clientRoutes } from "./clients.js";
+import { configRoutes } from "./config.js";
+import { metricsRoutes } from "./metrics.js";
 // Import route handlers
 import { statusRoutes } from "./status.js";
-import { clientRoutes } from "./clients.js";
-import { metricsRoutes } from "./metrics.js";
-import { bansRoutes } from "./bans.js";
-import { auditRoutes } from "./audit.js";
-import { configRoutes } from "./config.js";
 
 export function createRoutes(): Route[] {
 	return [
@@ -68,9 +68,9 @@ export function createRoutes(): Route[] {
 	];
 }
 
-export { statusRoutes } from "./status.js";
-export { clientRoutes } from "./clients.js";
-export { metricsRoutes } from "./metrics.js";
-export { bansRoutes } from "./bans.js";
 export { auditRoutes } from "./audit.js";
+export { bansRoutes } from "./bans.js";
+export { clientRoutes } from "./clients.js";
 export { configRoutes } from "./config.js";
+export { metricsRoutes } from "./metrics.js";
+export { statusRoutes } from "./status.js";

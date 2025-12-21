@@ -14,7 +14,9 @@
       "!**/coverage",
       "!**/.turbo",
       "!**/*.min.js",
-      "!**/packages/client/src/version.ts"
+      "!**/packages/client/src/version.ts",
+      "!**/*.vue",
+      "!**/packages/admin-ui/**/*.css"
     ]
   },
   "formatter": {

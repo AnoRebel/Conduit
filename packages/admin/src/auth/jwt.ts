@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-import type { AuthResult } from "./index.js";
 import type { JWTPayload } from "../types.js";
+import type { AuthResult } from "./index.js";
 
 export class JWTAuth {
 	private readonly _secret: string;

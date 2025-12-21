@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { UserX, Ban, RefreshCw, Search } from "lucide-vue-next";
+import { Ban, RefreshCw, Search, UserX } from "lucide-vue-next";
 
 const store = useAdminStore();
 const searchQuery = ref("");
@@ -12,9 +12,7 @@ onMounted(() => {
 const filteredClients = computed(() => {
 	if (!searchQuery.value) return store.clients;
 	const query = searchQuery.value.toLowerCase();
-	return store.clients.filter((client) =>
-		client.id.toLowerCase().includes(query),
-	);
+	return store.clients.filter(client => client.id.toLowerCase().includes(query));
 });
 
 async function handleDisconnect(id: string) {

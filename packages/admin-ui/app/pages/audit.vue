@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RefreshCw, Filter } from "lucide-vue-next";
+import { Filter, RefreshCw } from "lucide-vue-next";
 
 const store = useAdminStore();
 const selectedAction = ref("");
@@ -22,9 +22,7 @@ onMounted(() => {
 
 const filteredEntries = computed(() => {
 	if (!selectedAction.value) return store.auditLog;
-	return store.auditLog.filter(
-		(entry) => entry.action === selectedAction.value,
-	);
+	return store.auditLog.filter(entry => entry.action === selectedAction.value);
 });
 
 function formatTime(timestamp: number) {
@@ -34,7 +32,7 @@ function formatTime(timestamp: number) {
 function formatAction(action: string) {
 	return action
 		.split("_")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.map(word => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(" ");
 }
 

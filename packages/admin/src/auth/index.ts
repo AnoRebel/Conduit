@@ -1,8 +1,8 @@
 import type { AuthConfig } from "../config.js";
 import type { AuthSession } from "../types.js";
 import { ApiKeyAuth } from "./apiKey.js";
-import { JWTAuth } from "./jwt.js";
 import { BasicAuth } from "./basic.js";
+import { JWTAuth } from "./jwt.js";
 import { SessionManager } from "./session.js";
 
 export interface AuthResult {
@@ -40,9 +40,7 @@ export interface AuthManager {
 
 export function createAuthManager(config: AuthConfig): AuthManager {
 	const apiKeyAuth = new ApiKeyAuth(config.apiKey);
-	const jwtAuth = config.jwtSecret
-		? new JWTAuth(config.jwtSecret, config.jwtExpiresIn)
-		: null;
+	const jwtAuth = config.jwtSecret ? new JWTAuth(config.jwtSecret, config.jwtExpiresIn) : null;
 	const basicAuth = config.basicCredentials
 		? new BasicAuth(config.basicCredentials.username, config.basicCredentials.password)
 		: null;
@@ -86,11 +84,9 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 		return jwtAuth.generate(userId, role);
 	}
 
-	function authenticateRequest(
-		headers: Record<string, string | string[] | undefined>
-	): AuthResult {
+	function authenticateRequest(headers: Record<string, string | string[] | undefined>): AuthResult {
 		// Try Authorization header
-		const authHeader = headers["authorization"] || headers["Authorization"];
+		const authHeader = headers.authorization || headers.Authorization;
 		const authValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
 
 		if (authValue) {
@@ -119,12 +115,12 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 		}
 
 		// Try session cookie
-		const cookieHeader = headers["cookie"] || headers["Cookie"];
+		const cookieHeader = headers.cookie || headers.Cookie;
 		const cookieValue = Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader;
 
 		if (cookieValue) {
 			const sessionMatch = cookieValue.match(/admin_session=([^;]+)/);
-			if (sessionMatch && sessionMatch[1]) {
+			if (sessionMatch?.[1]) {
 				const result = validateSession(sessionMatch[1]);
 				if (result.valid) return result;
 			}
@@ -146,6 +142,6 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 }
 
 export { ApiKeyAuth } from "./apiKey.js";
-export { JWTAuth } from "./jwt.js";
 export { BasicAuth } from "./basic.js";
+export { JWTAuth } from "./jwt.js";
 export { SessionManager } from "./session.js";

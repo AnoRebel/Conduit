@@ -1,13 +1,13 @@
-import type { ServerConnection, MetricsSnapshot } from "../types.js";
 import type { AdminConfig } from "../config.js";
-import { createAdminConfig, type AdminConfigOptions } from "../config.js";
-import { createRemoteServer, type RemoteServer } from "./connection.js";
+import { type AdminConfigOptions, createAdminConfig } from "../config.js";
+import type { MetricsSnapshot, ServerConnection } from "../types.js";
 import {
-	aggregateMetrics,
-	aggregateStatus,
 	type AggregatedMetrics,
 	type AggregatedStatus,
+	aggregateMetrics,
+	aggregateStatus,
 } from "./aggregator.js";
+import { createRemoteServer, type RemoteServer } from "./connection.js";
 
 export interface StandaloneAdmin {
 	readonly config: AdminConfig;
@@ -40,19 +40,13 @@ export interface StandaloneAdminOptions {
 /**
  * Create a standalone admin that can connect to multiple Conduit servers
  */
-export function createStandaloneAdmin(
-	options: StandaloneAdminOptions = {},
-): StandaloneAdmin {
+export function createStandaloneAdmin(options: StandaloneAdminOptions = {}): StandaloneAdmin {
 	const config = createAdminConfig(options.config);
 	const servers = new Map<string, RemoteServer>();
 
 	// Event callbacks
-	const metricsCallbacks = new Set<
-		(serverId: string, metrics: MetricsSnapshot) => void
-	>();
-	const statusCallbacks = new Set<
-		(serverId: string, status: RemoteServer["status"]) => void
-	>();
+	const metricsCallbacks = new Set<(serverId: string, metrics: MetricsSnapshot) => void>();
+	const statusCallbacks = new Set<(serverId: string, status: RemoteServer["status"]) => void>();
 
 	// Polling interval for servers without WebSocket
 	let pollingInterval: ReturnType<typeof setInterval> | null = null;
@@ -64,7 +58,7 @@ export function createStandaloneAdmin(
 
 		const server = createRemoteServer({
 			config: connection,
-			onStatusChange: (_s) => {
+			onStatusChange: _s => {
 				for (const callback of statusCallbacks) {
 					callback(connection.id, _s.status);
 				}
@@ -97,10 +91,10 @@ export function createStandaloneAdmin(
 	}
 
 	async function connectAll(): Promise<void> {
-		const promises = Array.from(servers.values()).map((server) =>
-			server.connect().catch((err) => {
+		const promises = Array.from(servers.values()).map(server =>
+			server.connect().catch(err => {
 				console.error(`Failed to connect to ${server.config.id}:`, err.message);
-			}),
+			})
 		);
 
 		await Promise.all(promises);
@@ -165,14 +159,14 @@ export function createStandaloneAdmin(
 	}
 
 	function onMetricsUpdate(
-		callback: (serverId: string, metrics: MetricsSnapshot) => void,
+		callback: (serverId: string, metrics: MetricsSnapshot) => void
 	): () => void {
 		metricsCallbacks.add(callback);
 		return () => metricsCallbacks.delete(callback);
 	}
 
 	function onStatusChange(
-		callback: (serverId: string, status: RemoteServer["status"]) => void,
+		callback: (serverId: string, status: RemoteServer["status"]) => void
 	): () => void {
 		statusCallbacks.add(callback);
 		return () => statusCallbacks.delete(callback);
@@ -201,10 +195,10 @@ export function createStandaloneAdmin(
 	};
 }
 
-export { createRemoteServer, type RemoteServer, type RemoteServerOptions } from "./connection.js";
 export {
-	aggregateMetrics,
-	aggregateStatus,
 	type AggregatedMetrics,
 	type AggregatedStatus,
+	aggregateMetrics,
+	aggregateStatus,
 } from "./aggregator.js";
+export { createRemoteServer, type RemoteServer, type RemoteServerOptions } from "./connection.js";

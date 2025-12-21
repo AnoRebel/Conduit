@@ -1,5 +1,5 @@
-import type { AuthResult } from "./index.js";
 import { timingSafeEqual } from "node:crypto";
+import type { AuthResult } from "./index.js";
 
 export class ApiKeyAuth {
 	private readonly _apiKey: string | undefined;

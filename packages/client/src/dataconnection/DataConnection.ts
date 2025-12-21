@@ -1,9 +1,14 @@
-import { ConnectionType, MessageType, SerializationType, type ServerMessage } from "@conduit/shared";
+import {
+	ConnectionType,
+	MessageType,
+	SerializationType,
+	type ServerMessage,
+} from "@conduit/shared";
 import { EventEmitter } from "eventemitter3";
 import type { BaseConnectionOptions } from "../baseconnection.js";
 import type { Conduit } from "../conduit.js";
 import { logger } from "../logger.js";
-import { Negotiator, type NegotiableConnection } from "../negotiator.js";
+import { type NegotiableConnection, Negotiator } from "../negotiator.js";
 
 export interface DataConnectionEvents {
 	open: () => void;

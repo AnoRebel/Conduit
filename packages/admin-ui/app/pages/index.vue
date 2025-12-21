@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-	Users,
-	MessageSquare,
-	Activity,
-	HardDrive,
-	TrendingUp,
-	Clock,
-} from "lucide-vue-next";
+import { Activity, Clock, HardDrive, MessageSquare, TrendingUp, Users } from "lucide-vue-next";
 
 const store = useAdminStore();
 const api = useAdminApi();
@@ -44,10 +37,7 @@ const memoryUsage = computed(() => {
 
 const memoryPercent = computed(() => {
 	if (!store.metrics?.memory) return 0;
-	return (
-		(store.metrics.memory.heapUsed / store.metrics.memory.heapTotal) *
-		100
-	).toFixed(1);
+	return ((store.metrics.memory.heapUsed / store.metrics.memory.heapTotal) * 100).toFixed(1);
 });
 </script>
 

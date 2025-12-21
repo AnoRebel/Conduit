@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import type { AuthResult } from "./index.js";
 import type { AuthSession } from "../types.js";
+import type { AuthResult } from "./index.js";
 
 export class SessionManager {
 	private readonly _sessions = new Map<string, AuthSession>();

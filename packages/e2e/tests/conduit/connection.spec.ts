@@ -20,9 +20,7 @@ test.describe("Conduit Connection", () => {
 		expect(status).toContain("test-alice");
 	});
 
-	test("should establish data connection between two conduits", async ({
-		browser,
-	}) => {
+	test("should establish data connection between two conduits", async ({ browser }) => {
 		// Create two browser contexts (simulating two users)
 		const aliceContext = await browser.newContext();
 		const bobContext = await browser.newContext();

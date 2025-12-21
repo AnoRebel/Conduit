@@ -1,5 +1,5 @@
-import type { AuthResult } from "./index.js";
 import { timingSafeEqual } from "node:crypto";
+import type { AuthResult } from "./index.js";
 
 export class BasicAuth {
 	private readonly _username: string;

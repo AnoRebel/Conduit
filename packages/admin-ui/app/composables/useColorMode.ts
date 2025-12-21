@@ -1,8 +1,5 @@
 export function useColorMode() {
-	const preference = useState<"light" | "dark" | "system">(
-		"colorMode",
-		() => "system",
-	);
+	const preference = useState<"light" | "dark" | "system">("colorMode", () => "system");
 	const value = useState<"light" | "dark">("colorModeValue", () => "light");
 
 	function updateDOM(mode: "light" | "dark") {
@@ -13,9 +10,7 @@ export function useColorMode() {
 
 	function getSystemPreference(): "light" | "dark" {
 		if (import.meta.client) {
-			return window.matchMedia("(prefers-color-scheme: dark)").matches
-				? "dark"
-				: "light";
+			return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 		}
 		return "light";
 	}
@@ -40,11 +35,7 @@ export function useColorMode() {
 	// Initialize on client
 	onMounted(() => {
 		// Load saved preference
-		const saved = localStorage.getItem("theme") as
-			| "light"
-			| "dark"
-			| "system"
-			| null;
+		const saved = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
 		if (saved) {
 			preference.value = saved;
 		}

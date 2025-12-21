@@ -70,7 +70,7 @@ export interface AdminEventMessage<T extends AdminEventType = AdminEventType> {
  */
 export function createEvent<T extends AdminEventType>(
 	type: T,
-	data: ServerToClientEvents[T],
+	data: ServerToClientEvents[T]
 ): AdminEventMessage<T> {
 	return { type, data };
 }
@@ -80,7 +80,7 @@ export function createEvent<T extends AdminEventType>(
  */
 export function serializeEvent<T extends AdminEventType>(
 	type: T,
-	data: ServerToClientEvents[T],
+	data: ServerToClientEvents[T]
 ): string {
 	return JSON.stringify(createEvent(type, data));
 }
@@ -89,7 +89,7 @@ export function serializeEvent<T extends AdminEventType>(
  * Parse an incoming client message
  */
 export function parseClientMessage(
-	data: string,
+	data: string
 ): { type: keyof ClientToServerEvents; payload: unknown } | null {
 	try {
 		const parsed = JSON.parse(data);

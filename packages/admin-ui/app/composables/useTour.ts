@@ -28,8 +28,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "server-status",
 			title: "Server Status",
-			content:
-				"View real-time server status including uptime, version, and connection health.",
+			content: "View real-time server status including uptime, version, and connection health.",
 			target: "server-status-card",
 			direction: "bottom",
 			showAction: true,
@@ -37,8 +36,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "active-clients",
 			title: "Active Clients",
-			content:
-				"Monitor the number of currently connected clients at a glance.",
+			content: "Monitor the number of currently connected clients at a glance.",
 			target: "active-clients-card",
 			direction: "bottom",
 			showAction: true,
@@ -54,8 +52,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "quick-actions",
 			title: "Quick Actions",
-			content:
-				"Perform common admin actions like disconnecting all clients or resetting metrics.",
+			content: "Perform common admin actions like disconnecting all clients or resetting metrics.",
 			target: "quick-actions",
 			direction: "left",
 			showAction: true,
@@ -71,8 +68,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "tour-button",
 			title: "Need Help?",
-			content:
-				"Click this button anytime to restart the tour for the current page.",
+			content: "Click this button anytime to restart the tour for the current page.",
 			target: "tour-help-button",
 			direction: "bottom",
 			showAction: true,
@@ -110,8 +106,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "client-actions",
 			title: "Client Actions",
-			content:
-				"Disconnect individual clients or ban them if needed. Use with caution!",
+			content: "Disconnect individual clients or ban them if needed. Use with caution!",
 			target: "client-actions",
 			direction: "left",
 			showAction: true,
@@ -132,8 +127,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "throughput-chart",
 			title: "Throughput",
-			content:
-				"Track messages per second over time. Higher values indicate more server activity.",
+			content: "Track messages per second over time. Higher values indicate more server activity.",
 			target: "throughput-chart",
 			direction: "bottom",
 			showAction: true,
@@ -149,8 +143,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "error-stats",
 			title: "Error Statistics",
-			content:
-				"Monitor errors by type. Click to see detailed error information.",
+			content: "Monitor errors by type. Click to see detailed error information.",
 			target: "error-stats",
 			direction: "left",
 			showAction: true,
@@ -171,8 +164,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "audit-filters",
 			title: "Filter Actions",
-			content:
-				"Filter the audit log by action type to find specific events quickly.",
+			content: "Filter the audit log by action type to find specific events quickly.",
 			target: "audit-filters",
 			direction: "bottom",
 			showAction: true,
@@ -180,8 +172,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "audit-list",
 			title: "Action History",
-			content:
-				"View detailed information about each action including who performed it and when.",
+			content: "View detailed information about each action including who performed it and when.",
 			target: "audit-list",
 			direction: "top",
 			showAction: true,
@@ -193,8 +184,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "settings-header",
 			title: "Settings",
-			content:
-				"Configure your admin dashboard preferences and connection settings.",
+			content: "Configure your admin dashboard preferences and connection settings.",
 			target: "settings-header",
 			direction: "bottom",
 			showAction: true,
@@ -202,8 +192,7 @@ const tourSteps: PageTourSteps = {
 		{
 			id: "api-settings",
 			title: "API Configuration",
-			content:
-				"Configure the Admin API endpoint URL and authentication settings.",
+			content: "Configure the Admin API endpoint URL and authentication settings.",
 			target: "api-settings",
 			direction: "bottom",
 			showAction: true,
@@ -229,10 +218,7 @@ export function useTour() {
 		currentStepIndex: Ref<number>;
 	} | null>(null);
 
-	const hasSeenTour = useLocalStorage<Record<string, boolean>>(
-		"conduit-admin-tours-seen",
-		{},
-	);
+	const hasSeenTour = useLocalStorage<Record<string, boolean>>("conduit-admin-tours-seen", {});
 
 	const currentPath = computed(() => {
 		// Normalize path - handle dynamic routes

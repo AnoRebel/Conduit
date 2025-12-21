@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { Line } from "vue-chartjs";
 import {
-	Chart as ChartJS,
 	CategoryScale,
+	Chart as ChartJS,
+	Filler,
+	Legend,
 	LinearScale,
-	PointElement,
 	LineElement,
+	PointElement,
 	Title,
 	Tooltip,
-	Legend,
-	Filler,
 } from "chart.js";
 import { RefreshCw } from "lucide-vue-next";
+import { Line } from "vue-chartjs";
 
 ChartJS.register(
 	CategoryScale,
@@ -21,7 +21,7 @@ ChartJS.register(
 	Title,
 	Tooltip,
 	Legend,
-	Filler,
+	Filler
 );
 
 const store = useAdminStore();
@@ -38,15 +38,13 @@ onMounted(async () => {
 	await store.fetchMetricsHistory(selectedDuration.value);
 });
 
-watch(selectedDuration, async (duration) => {
+watch(selectedDuration, async duration => {
 	await store.fetchMetricsHistory(duration);
 });
 
 const throughputData = computed(() => {
-	const labels = store.metricsHistory.map((m) =>
-		new Date(m.timestamp).toLocaleTimeString(),
-	);
-	const data = store.metricsHistory.map((m) => m.messages.throughputPerSecond);
+	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
+	const data = store.metricsHistory.map(m => m.messages.throughputPerSecond);
 
 	return {
 		labels,
@@ -64,10 +62,8 @@ const throughputData = computed(() => {
 });
 
 const connectionsData = computed(() => {
-	const labels = store.metricsHistory.map((m) =>
-		new Date(m.timestamp).toLocaleTimeString(),
-	);
-	const data = store.metricsHistory.map((m) => m.clients.connected);
+	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
+	const data = store.metricsHistory.map(m => m.clients.connected);
 
 	return {
 		labels,
@@ -85,12 +81,8 @@ const connectionsData = computed(() => {
 });
 
 const memoryData = computed(() => {
-	const labels = store.metricsHistory.map((m) =>
-		new Date(m.timestamp).toLocaleTimeString(),
-	);
-	const data = store.metricsHistory.map(
-		(m) => m.memory.heapUsed / 1024 / 1024,
-	);
+	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
+	const data = store.metricsHistory.map(m => m.memory.heapUsed / 1024 / 1024);
 
 	return {
 		labels,

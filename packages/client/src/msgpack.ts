@@ -12,8 +12,8 @@
  * ```
  */
 
-import { decode, encode } from "@msgpack/msgpack";
 import { SerializationType } from "@conduit/shared";
+import { decode, encode } from "@msgpack/msgpack";
 
 // Type for the serializer registry (internal to Conduit)
 interface Serializer {

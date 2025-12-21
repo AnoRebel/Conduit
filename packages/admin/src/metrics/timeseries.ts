@@ -76,9 +76,7 @@ export class CircularTimeSeries {
 	 * Get points within a time range
 	 */
 	getRange(startTime: number, endTime: number): TimeSeriesPoint[] {
-		return this.getAll().filter(
-			(p) => p.timestamp >= startTime && p.timestamp <= endTime,
-		);
+		return this.getAll().filter(p => p.timestamp >= startTime && p.timestamp <= endTime);
 	}
 
 	/**

@@ -1,12 +1,12 @@
-import type { WebSocket, RawData } from "ws";
 import type { IncomingMessage } from "node:http";
+import type { RawData, WebSocket } from "ws";
 import type { AdminCore } from "../core/index.js";
 import type { MetricsSnapshot } from "../types.js";
 import {
 	type AdminEventType,
+	parseClientMessage,
 	type ServerToClientEvents,
 	serializeEvent,
-	parseClientMessage,
 } from "./events.js";
 
 export interface AdminWSClient {
@@ -19,14 +19,8 @@ export interface AdminWSClient {
 
 export interface AdminWSServer {
 	handleConnection(socket: WebSocket, request: IncomingMessage): void;
-	broadcast<T extends AdminEventType>(
-		type: T,
-		data: ServerToClientEvents[T],
-	): number;
-	broadcastToSubscribers<T extends AdminEventType>(
-		type: T,
-		data: ServerToClientEvents[T],
-	): number;
+	broadcast<T extends AdminEventType>(type: T, data: ServerToClientEvents[T]): number;
+	broadcastToSubscribers<T extends AdminEventType>(type: T, data: ServerToClientEvents[T]): number;
 	getClients(): AdminWSClient[];
 	getClientCount(): number;
 	close(): void;
@@ -64,10 +58,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 		const clientId = `ws_${++clientIdCounter}_${Date.now()}`;
 
 		// Authenticate via query string or headers
-		const url = new URL(
-			request.url ?? "/",
-			`http://${request.headers.host ?? "localhost"}`,
-		);
+		const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
 		const token =
 			url.searchParams.get("token") ??
 			url.searchParams.get("apiKey") ??
@@ -112,7 +103,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 					clientId,
 					subscriptions: Array.from(client.subscriptions),
 				},
-			}),
+			})
 		);
 
 		// Handle messages
@@ -126,7 +117,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 		});
 
 		// Handle errors
-		socket.on("error", (_err) => {
+		socket.on("error", _err => {
 			console.error(`WebSocket error for client ${clientId}:`);
 			clients.delete(clientId);
 		});
@@ -153,7 +144,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 					JSON.stringify({
 						type: "subscribed",
 						data: { events: Array.from(client.subscriptions) },
-					}),
+					})
 				);
 				break;
 			}
@@ -170,7 +161,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 					JSON.stringify({
 						type: "unsubscribed",
 						data: { events: Array.from(client.subscriptions) },
-					}),
+					})
 				);
 				break;
 			}
@@ -182,10 +173,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 		}
 	}
 
-	function broadcast<T extends AdminEventType>(
-		type: T,
-		data: ServerToClientEvents[T],
-	): number {
+	function broadcast<T extends AdminEventType>(type: T, data: ServerToClientEvents[T]): number {
 		const message = serializeEvent(type, data);
 		let count = 0;
 
@@ -206,7 +194,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 
 	function broadcastToSubscribers<T extends AdminEventType>(
 		type: T,
-		data: ServerToClientEvents[T],
+		data: ServerToClientEvents[T]
 	): number {
 		const message = serializeEvent(type, data);
 		let count = 0;
@@ -330,11 +318,11 @@ function isValidEventType(event: string): event is AdminEventType {
 }
 
 export {
-	type AdminEventType,
-	type ServerToClientEvents,
-	type ClientToServerEvents,
 	type AdminEventMessage,
+	type AdminEventType,
+	type ClientToServerEvents,
 	createEvent,
-	serializeEvent,
 	parseClientMessage,
+	type ServerToClientEvents,
+	serializeEvent,
 } from "./events.js";

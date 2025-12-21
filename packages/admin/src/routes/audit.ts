@@ -1,39 +1,35 @@
+import type { AuditEntry } from "../types.js";
 import type { Route } from "./index.js";
-import { json, error } from "./index.js";
+import { error, json } from "./index.js";
 
 export const auditRoutes: Route[] = [
 	{
 		method: "GET",
 		path: "/audit",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const { limit, user, action, start, end } = ctx.query;
 
-			let entries;
+			let entries: AuditEntry[];
 
 			if (user) {
-				entries = ctx.admin.audit.getEntriesByUser(
-					user,
-					limit ? parseInt(limit, 10) : undefined,
-				);
+				entries = ctx.admin.audit.getEntriesByUser(user, limit ? parseInt(limit, 10) : undefined);
 			} else if (action) {
 				entries = ctx.admin.audit.getEntriesByAction(
 					action as Parameters<typeof ctx.admin.audit.getEntriesByAction>[0],
-					limit ? parseInt(limit, 10) : undefined,
+					limit ? parseInt(limit, 10) : undefined
 				);
 			} else if (start && end) {
 				const startTime = parseInt(start, 10);
 				const endTime = parseInt(end, 10);
 
-				if (isNaN(startTime) || isNaN(endTime)) {
+				if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
 					return error("Invalid start or end timestamp");
 				}
 
 				entries = ctx.admin.audit.getEntriesInRange(startTime, endTime);
 			} else {
-				entries = ctx.admin.audit.getEntries(
-					limit ? parseInt(limit, 10) : 100,
-				);
+				entries = ctx.admin.audit.getEntries(limit ? parseInt(limit, 10) : 100);
 			}
 
 			return json({
@@ -46,7 +42,7 @@ export const auditRoutes: Route[] = [
 		method: "DELETE",
 		path: "/audit",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const userId = ctx.auth.userId ?? "unknown";
 			const count = ctx.admin.audit.size;
 

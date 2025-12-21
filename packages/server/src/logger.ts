@@ -1,4 +1,4 @@
-import pino, { type Logger as PinoLogger, type LoggerOptions } from "pino";
+import pino, { type LoggerOptions, type Logger as PinoLogger } from "pino";
 
 export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
 
@@ -92,7 +92,7 @@ export function wrapLogger(pinoLogger: PinoLogger): ILogger {
 		info: (msg, ...args) => pinoLogger.info(args.length ? { data: args } : {}, msg),
 		debug: (msg, ...args) => pinoLogger.debug(args.length ? { data: args } : {}, msg),
 		trace: (msg, ...args) => pinoLogger.trace(args.length ? { data: args } : {}, msg),
-		child: (bindings) => wrapLogger(pinoLogger.child(bindings)),
+		child: bindings => wrapLogger(pinoLogger.child(bindings)),
 	};
 }
 

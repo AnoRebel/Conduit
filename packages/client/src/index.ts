@@ -9,10 +9,19 @@ export {
 	ConduitErrorType,
 	ConnectionType,
 	MessageType,
-	type ServerMessage,
 	SerializationType,
+	type ServerMessage,
 	TransportType,
 } from "@conduit/shared";
+// Main exports
+export {
+	type CallOptions,
+	Conduit,
+	type ConduitEvents,
+	type ConduitOptions,
+	type ConnectOptions,
+} from "./conduit.js";
+export { ConduitError } from "./conduitError.js";
 export {
 	AutoConnection,
 	type AutoConnectionEvents,
@@ -35,14 +44,5 @@ export {
 	type MediaConnectionEvents,
 	type MediaConnectionOptions,
 } from "./mediaconnection.js";
-// Main exports
-export {
-	type CallOptions,
-	Conduit,
-	type ConduitEvents,
-	type ConduitOptions,
-	type ConnectOptions,
-} from "./conduit.js";
-export { ConduitError } from "./conduitError.js";
 export { type BrowserSupport, supports } from "./supports.js";
 export { util } from "./util.js";

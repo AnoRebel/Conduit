@@ -1,12 +1,12 @@
 import type { Route } from "./index.js";
-import { json, notFound, error } from "./index.js";
+import { error, json, notFound } from "./index.js";
 
 export const bansRoutes: Route[] = [
 	{
 		method: "GET",
 		path: "/bans",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const bans = ctx.admin.getBans();
 			return json({
 				bans,
@@ -18,7 +18,7 @@ export const bansRoutes: Route[] = [
 		method: "GET",
 		path: "/bans/clients",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const bans = ctx.admin.bans.getClientBans();
 			return json({
 				bans,
@@ -30,7 +30,7 @@ export const bansRoutes: Route[] = [
 		method: "GET",
 		path: "/bans/ips",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const bans = ctx.admin.bans.getIPBans();
 			return json({
 				bans,
@@ -42,7 +42,7 @@ export const bansRoutes: Route[] = [
 		method: "POST",
 		path: "/bans/client/:id",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const id = ctx.params.id ?? "";
 			const userId = ctx.auth.userId ?? "unknown";
 			const body = ctx.body as { reason?: string } | undefined;
@@ -69,7 +69,7 @@ export const bansRoutes: Route[] = [
 		method: "DELETE",
 		path: "/bans/client/:id",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const id = ctx.params.id ?? "";
 			const userId = ctx.auth.userId ?? "unknown";
 
@@ -93,7 +93,7 @@ export const bansRoutes: Route[] = [
 		method: "POST",
 		path: "/bans/ip/:ip",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const ip = ctx.params.ip ?? "";
 			const userId = ctx.auth.userId ?? "unknown";
 			const body = ctx.body as { reason?: string } | undefined;
@@ -120,7 +120,7 @@ export const bansRoutes: Route[] = [
 		method: "DELETE",
 		path: "/bans/ip/:ip",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const ip = ctx.params.ip ?? "";
 			const userId = ctx.auth.userId ?? "unknown";
 
@@ -144,7 +144,7 @@ export const bansRoutes: Route[] = [
 		method: "DELETE",
 		path: "/bans",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const userId = ctx.auth.userId ?? "unknown";
 			const count = ctx.admin.getBans().length;
 

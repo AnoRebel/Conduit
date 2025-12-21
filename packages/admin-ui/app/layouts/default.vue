@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import {
-	LayoutDashboard,
-	Users,
 	BarChart3,
-	Settings,
 	FileText,
-	Moon,
-	Sun,
+	LayoutDashboard,
 	Menu,
+	Moon,
+	Settings,
+	Sun,
+	Users,
 } from "lucide-vue-next";
 
 const colorMode = useColorMode();
@@ -31,13 +31,8 @@ function toggleSidebar() {
 }
 
 // Tour guide setup
-const {
-	currentSteps,
-	hasTourForCurrentPage,
-	hasSeenCurrentTour,
-	markTourAsSeen,
-	setTourManager,
-} = useTour();
+const { currentSteps, hasTourForCurrentPage, hasSeenCurrentTour, markTourAsSeen, setTourManager } =
+	useTour();
 
 const tourManagerRef = ref<{
 	startTourGuide: () => void;
@@ -48,7 +43,7 @@ const tourManagerRef = ref<{
 } | null>(null);
 
 // Set tour manager reference when component mounts
-watch(tourManagerRef, (manager) => {
+watch(tourManagerRef, manager => {
 	if (manager) {
 		setTourManager(manager);
 	}
@@ -62,16 +57,12 @@ watch(
 		await nextTick();
 		// Small delay to ensure DOM is ready
 		setTimeout(() => {
-			if (
-				hasTourForCurrentPage.value &&
-				!hasSeenCurrentTour.value &&
-				tourManagerRef.value
-			) {
+			if (hasTourForCurrentPage.value && !hasSeenCurrentTour.value && tourManagerRef.value) {
 				tourManagerRef.value.startTourGuide();
 			}
 		}, 500);
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function onTourComplete() {

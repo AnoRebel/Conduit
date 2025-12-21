@@ -1,7 +1,7 @@
 import type { MessageType, ServerMessage } from "@conduit/shared";
 import { EventEmitter } from "eventemitter3";
-import { logger } from "./logger.js";
 import type { ConduitOptions } from "./conduit.js";
+import { logger } from "./logger.js";
 import { util } from "./util.js";
 
 export interface SocketEvents {

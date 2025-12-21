@@ -16,9 +16,9 @@
 
 import type { ServerConfig } from "../config.js";
 import {
+	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
 	createConduitServerCore,
-	type ConduitServerCore,
 } from "../core/index.js";
 
 // Hono types

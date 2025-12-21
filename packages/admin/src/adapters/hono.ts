@@ -1,11 +1,11 @@
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,
+	error,
 	type Route,
 	type RouteContext,
 	type RouteResponse,
 	unauthorized,
-	error,
 } from "../routes/index.js";
 
 /**
@@ -35,7 +35,7 @@ export type HonoNext = () => Promise<void>;
  */
 export type HonoMiddleware = (
 	ctx: HonoContext,
-	next: HonoNext,
+	next: HonoNext
 ) => Response | Promise<Response | void>;
 
 export interface HonoAdminServerOptions {
@@ -45,14 +45,12 @@ export interface HonoAdminServerOptions {
 /**
  * Create a Hono middleware for the admin API
  */
-export function createHonoAdminMiddleware(
-	options: HonoAdminServerOptions,
-): HonoMiddleware {
+export function createHonoAdminMiddleware(options: HonoAdminServerOptions): HonoMiddleware {
 	const { admin } = options;
 	const routes = createRoutes();
 
 	// Compile route patterns
-	const compiledRoutes = routes.map((route) => ({
+	const compiledRoutes = routes.map(route => ({
 		...route,
 		pattern: compilePattern(route.path),
 	}));
@@ -104,7 +102,7 @@ export function createHonoAdminMiddleware(
 		}
 
 		// Parse body for POST/PUT/PATCH
-		let body: unknown = undefined;
+		let body: unknown;
 		if (["POST", "PUT", "PATCH"].includes(method)) {
 			try {
 				body = await ctx.req.json();
@@ -166,7 +164,7 @@ function compilePattern(path: string): { regex: RegExp; paramNames: string[] } {
 function findRoute(
 	routes: CompiledRoute[],
 	method: string,
-	path: string,
+	path: string
 ): { route: CompiledRoute; params: Record<string, string> } | null {
 	for (const route of routes) {
 		if (route.method !== method) {

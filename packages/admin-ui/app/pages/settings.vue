@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Save, RefreshCw, Trash2, Key } from "lucide-vue-next";
+import { Key, RefreshCw, Save, Trash2 } from "lucide-vue-next";
 
 const api = useAdminApi();
 const store = useAdminStore();
@@ -39,8 +39,7 @@ async function saveRateLimits() {
 		});
 		saveMessage.value = "Rate limits updated successfully";
 	} catch (e) {
-		saveMessage.value =
-			e instanceof Error ? e.message : "Failed to save settings";
+		saveMessage.value = e instanceof Error ? e.message : "Failed to save settings";
 	} finally {
 		isSaving.value = false;
 	}

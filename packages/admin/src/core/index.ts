@@ -1,31 +1,24 @@
 import type { IMessage } from "@conduit/shared";
+import { type AuthManager, createAuthManager } from "../auth/index.js";
 import type { AdminConfig } from "../config.js";
-import type {
-	ServerStatus,
-	ClientInfo,
-	ClientDetails,
-	MetricsSnapshot,
-	BanEntry,
-	AuditEntry,
-	RateLimitConfig,
-} from "../types.js";
+import { createMetricsCollector, type MetricsCollector } from "../metrics/collector.js";
 import {
-	createMetricsCollector,
-	type MetricsCollector,
-} from "../metrics/collector.js";
-import {
+	type InstrumentableServerCore,
 	instrumentServerCore,
 	syncRealmToMetrics,
-	type InstrumentableServerCore,
 } from "../metrics/instrumentation.js";
-import { createAuthManager, type AuthManager } from "../auth/index.js";
-import { createBanManager, type BanManager } from "./bans.js";
-import { createAuditLogger, type AuditLogger } from "./audit.js";
-import {
-	createAdminActions,
-	type AdminActions,
-	type ActionableServerCore,
-} from "./actions.js";
+import type {
+	AuditEntry,
+	BanEntry,
+	ClientDetails,
+	ClientInfo,
+	MetricsSnapshot,
+	RateLimitConfig,
+	ServerStatus,
+} from "../types.js";
+import { type ActionableServerCore, type AdminActions, createAdminActions } from "./actions.js";
+import { type AuditLogger, createAuditLogger } from "./audit.js";
+import { type BanManager, createBanManager } from "./bans.js";
 
 export interface AdminCore {
 	readonly metrics: MetricsCollector;
@@ -116,8 +109,8 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		const clientIds = serverCore.realm.getClientIds();
 		const now = Date.now();
 
-		return clientIds.map((id) => {
-			const client = serverCore!.realm.getClient(id);
+		return clientIds.map(id => {
+			const client = serverCore?.realm.getClient(id);
 			return {
 				id,
 				connected: !!client,
@@ -198,11 +191,7 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		return actions.clearClientQueue(clientId, userId);
 	}
 
-	function banClient(
-		clientId: string,
-		reason: string | undefined,
-		userId: string,
-	): boolean {
+	function banClient(clientId: string, reason: string | undefined, userId: string): boolean {
 		if (!actions) {
 			// Can still ban even without server attached
 			bans.banClient(clientId, reason);
@@ -250,21 +239,14 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		return actions.broadcastMessage(message, userId);
 	}
 
-	function updateRateLimits(
-		rateLimitConfig: Partial<RateLimitConfig>,
-		userId: string,
-	): void {
+	function updateRateLimits(rateLimitConfig: Partial<RateLimitConfig>, userId: string): void {
 		if (!actions) {
 			return;
 		}
 		actions.updateRateLimits(rateLimitConfig, userId);
 	}
 
-	function toggleFeature(
-		feature: "discovery" | "relay",
-		enabled: boolean,
-		userId: string,
-	): void {
+	function toggleFeature(feature: "discovery" | "relay", enabled: boolean, userId: string): void {
 		if (!actions) {
 			return;
 		}
@@ -283,13 +265,13 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 
 		// Instrument the server
 		uninstrument = instrumentServerCore(core, metrics, {
-			onConnectionOpened: (_clientId) => {
+			onConnectionOpened: _clientId => {
 				// Could emit WebSocket event here
 			},
-			onConnectionClosed: (_clientId) => {
+			onConnectionClosed: _clientId => {
 				// Could emit WebSocket event here
 			},
-			onError: (_type) => {
+			onError: _type => {
 				// Could emit WebSocket event here
 			},
 		});
@@ -368,11 +350,11 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 	};
 }
 
-export { createBanManager, type BanManager } from "./bans.js";
-export { createAuditLogger, type AuditLogger, type AuditLoggerOptions } from "./audit.js";
 export {
-	createAdminActions,
-	type AdminActions,
-	type ActionableServerCore,
 	type ActionableClient,
+	type ActionableServerCore,
+	type AdminActions,
+	createAdminActions,
 } from "./actions.js";
+export { type AuditLogger, type AuditLoggerOptions, createAuditLogger } from "./audit.js";
+export { type BanManager, createBanManager } from "./bans.js";

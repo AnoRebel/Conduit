@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("WebSocket Fallback Transport", () => {
-	test("should connect using WebSocket transport directly", async ({
-		browser,
-	}) => {
+	test("should connect using WebSocket transport directly", async ({ browser }) => {
 		const aliceContext = await browser.newContext();
 		const bobContext = await browser.newContext();
 
@@ -53,9 +51,7 @@ test.describe("WebSocket Fallback Transport", () => {
 		}
 	});
 
-	test("should connect using WebRTC transport directly", async ({
-		browser,
-	}) => {
+	test("should connect using WebRTC transport directly", async ({ browser }) => {
 		const aliceContext = await browser.newContext();
 		const bobContext = await browser.newContext();
 

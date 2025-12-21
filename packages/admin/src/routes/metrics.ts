@@ -1,12 +1,12 @@
 import type { Route } from "./index.js";
-import { json, error } from "./index.js";
+import { error, json } from "./index.js";
 
 export const metricsRoutes: Route[] = [
 	{
 		method: "GET",
 		path: "/metrics",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const snapshot = ctx.admin.getMetricsSnapshot();
 			return json(snapshot);
 		},
@@ -15,7 +15,7 @@ export const metricsRoutes: Route[] = [
 		method: "GET",
 		path: "/metrics/history",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const { start, end, duration } = ctx.query;
 
 			let startTime: number;
@@ -25,9 +25,7 @@ export const metricsRoutes: Route[] = [
 				// Parse duration like "1h", "30m", "24h"
 				const match = duration.match(/^(\d+)(m|h|d)$/);
 				if (!match || !match[1] || !match[2]) {
-					return error(
-						"Invalid duration format. Use format like '30m', '1h', '24h'",
-					);
+					return error("Invalid duration format. Use format like '30m', '1h', '24h'");
 				}
 
 				const value = parseInt(match[1], 10);
@@ -50,7 +48,7 @@ export const metricsRoutes: Route[] = [
 				startTime = parseInt(start, 10);
 				endTime = parseInt(end, 10);
 
-				if (isNaN(startTime) || isNaN(endTime)) {
+				if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
 					return error("Invalid start or end timestamp");
 				}
 			} else {
@@ -73,7 +71,7 @@ export const metricsRoutes: Route[] = [
 		method: "GET",
 		path: "/metrics/throughput",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const stats = ctx.admin.metrics.throughput.getStats();
 			const recent = ctx.admin.metrics.throughput.getRecent(60);
 
@@ -89,7 +87,7 @@ export const metricsRoutes: Route[] = [
 		method: "GET",
 		path: "/metrics/latency",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const stats = ctx.admin.metrics.latency.getStats();
 			const recent = ctx.admin.metrics.latency.getRecent(60);
 
@@ -105,7 +103,7 @@ export const metricsRoutes: Route[] = [
 		method: "GET",
 		path: "/metrics/errors",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const snapshot = ctx.admin.getMetricsSnapshot();
 
 			return json({
@@ -118,7 +116,7 @@ export const metricsRoutes: Route[] = [
 		method: "POST",
 		path: "/metrics/reset",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const userId = ctx.auth.userId ?? "unknown";
 
 			ctx.admin.metrics.reset();

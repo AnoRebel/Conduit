@@ -60,11 +60,11 @@ export function createBanManager(): BanManager {
 	}
 
 	function getClientBans(): BanEntry[] {
-		return getBans().filter((b) => b.type === "client");
+		return getBans().filter(b => b.type === "client");
 	}
 
 	function getIPBans(): BanEntry[] {
-		return getBans().filter((b) => b.type === "ip");
+		return getBans().filter(b => b.type === "ip");
 	}
 
 	function getBan(id: string): BanEntry | undefined {

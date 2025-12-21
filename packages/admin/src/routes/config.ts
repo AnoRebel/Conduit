@@ -1,13 +1,13 @@
-import type { Route } from "./index.js";
-import { json, error } from "./index.js";
 import type { RateLimitConfig } from "../types.js";
+import type { Route } from "./index.js";
+import { error, json } from "./index.js";
 
 export const configRoutes: Route[] = [
 	{
 		method: "GET",
 		path: "/config",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			// Return non-sensitive config
 			const config = ctx.admin.config;
 
@@ -32,7 +32,7 @@ export const configRoutes: Route[] = [
 		method: "PATCH",
 		path: "/config/rate-limit",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const userId = ctx.auth.userId ?? "unknown";
 			const body = ctx.body as Partial<RateLimitConfig> | undefined;
 
@@ -68,7 +68,7 @@ export const configRoutes: Route[] = [
 		method: "PATCH",
 		path: "/config/features",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const userId = ctx.auth.userId ?? "unknown";
 			const body = ctx.body as { feature: string; enabled: boolean } | undefined;
 
@@ -104,7 +104,7 @@ export const configRoutes: Route[] = [
 		method: "POST",
 		path: "/broadcast",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const userId = ctx.auth.userId ?? "unknown";
 			const body = ctx.body as { type: string; payload?: unknown } | undefined;
 
@@ -121,7 +121,7 @@ export const configRoutes: Route[] = [
 			const message = { type, payload };
 			const count = ctx.admin.broadcastMessage(
 				message as Parameters<typeof ctx.admin.broadcastMessage>[0],
-				userId,
+				userId
 			);
 
 			return json({

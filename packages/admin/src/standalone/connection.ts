@@ -1,4 +1,4 @@
-import type { ServerConnection, ServerStatus, MetricsSnapshot } from "../types.js";
+import type { MetricsSnapshot, ServerConnection, ServerStatus } from "../types.js";
 
 export interface RemoteServer {
 	readonly config: ServerConnection;
@@ -88,11 +88,11 @@ export function createRemoteServer(options: RemoteServerOptions): RemoteServer {
 				JSON.stringify({
 					type: "subscribe",
 					data: { events: ["metrics:update", "client:connected", "client:disconnected"] },
-				}),
+				})
 			);
 		};
 
-		ws.onmessage = (event) => {
+		ws.onmessage = event => {
 			try {
 				const message = JSON.parse(event.data as string);
 				if (message.type === "metrics:update") {
@@ -185,10 +185,7 @@ export function createRemoteServer(options: RemoteServerOptions): RemoteServer {
 		return data;
 	}
 
-	async function executeAction(
-		action: string,
-		params: Record<string, unknown>,
-	): Promise<unknown> {
+	async function executeAction(action: string, params: Record<string, unknown>): Promise<unknown> {
 		const httpUrl = config.url.replace(/^ws/, "http");
 		const response = await fetch(`${httpUrl}/${action}`, {
 			method: "POST",

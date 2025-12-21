@@ -1,20 +1,20 @@
 import { type IMessage, MessageType } from "@conduit/shared";
 import type { RawData, WebSocket } from "ws";
 import { createConfig, type ServerConfig } from "../config.js";
-import { createLogger, wrapLogger, type ILogger } from "../logger.js";
+import { createLogger, type ILogger, wrapLogger } from "../logger.js";
 import { Client, type IClient } from "./client.js";
 import { DefaultMessageHandler, type MessageHandler } from "./messageHandler/index.js";
+import { type IRateLimiter, RateLimiter } from "./rateLimiter.js";
 import { type IRealm, Realm } from "./realm.js";
 import { CheckBrokenConnections } from "./services/checkBrokenConnections.js";
 import { MessagesExpire } from "./services/messagesExpire.js";
 import {
-	validateId,
-	validateToken,
-	validateMessage,
-	safeJsonParse,
 	MAX_MESSAGE_SIZE,
+	safeJsonParse,
+	validateId,
+	validateMessage,
+	validateToken,
 } from "./validation.js";
-import { RateLimiter, type IRateLimiter } from "./rateLimiter.js";
 
 export interface ConduitServerCore {
 	readonly realm: IRealm;
@@ -36,7 +36,9 @@ export interface CreateConduitServerCoreOptions {
 	onClientDisconnect?: (clientId: string) => void;
 }
 
-export function createConduitServerCore(options: CreateConduitServerCoreOptions = {}): ConduitServerCore {
+export function createConduitServerCore(
+	options: CreateConduitServerCoreOptions = {}
+): ConduitServerCore {
 	const config = createConfig(options.config);
 
 	// Initialize structured logger
@@ -50,7 +52,7 @@ export function createConduitServerCore(options: CreateConduitServerCoreOptions 
 	const messageHandler = options.messageHandler ?? new DefaultMessageHandler(realm, config);
 
 	const checkBrokenConnections = new CheckBrokenConnections(realm, config, {
-		onClose: (clientId) => {
+		onClose: clientId => {
 			// Clean up rate limiter when client is removed
 			rateLimiter.removeClient(clientId);
 			options.onClientDisconnect?.(clientId);

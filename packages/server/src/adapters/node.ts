@@ -1,14 +1,14 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { parse as parseUrl } from "node:url";
-import { type WebSocket, WebSocketServer } from "ws";
 import { MessageType } from "@conduit/shared";
+import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
-import type { ILogger } from "../logger.js";
 import {
+	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
 	createConduitServerCore,
-	type ConduitServerCore,
 } from "../core/index.js";
+import type { ILogger } from "../logger.js";
 
 export interface NodeAdapterOptions extends CreateConduitServerCoreOptions {
 	server?: Server;
@@ -214,7 +214,7 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 			}
 
 			wss.close();
-			server.close((err) => {
+			server.close(err => {
 				if (err) {
 					logger.error("Error during server shutdown", err.message);
 				} else {

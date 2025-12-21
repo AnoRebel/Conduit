@@ -1,11 +1,11 @@
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,
+	error,
 	type Route,
 	type RouteContext,
 	type RouteResponse,
 	unauthorized,
-	error,
 } from "../routes/index.js";
 
 /**
@@ -37,11 +37,7 @@ export type FastifyDone = (err?: Error) => void;
 /**
  * Fastify-compatible hook handler
  */
-export type FastifyHook = (
-	request: FastifyRequest,
-	reply: FastifyReply,
-	done: FastifyDone,
-) => void;
+export type FastifyHook = (request: FastifyRequest, reply: FastifyReply, done: FastifyDone) => void;
 
 /**
  * Fastify-compatible plugin
@@ -49,7 +45,7 @@ export type FastifyHook = (
 export type FastifyPlugin = (
 	fastify: FastifyInstance,
 	opts: FastifyPluginOptions,
-	done: FastifyDone,
+	done: FastifyDone
 ) => void;
 
 export interface FastifyInstance {
@@ -63,7 +59,7 @@ export interface FastifyInstance {
 
 export type FastifyRouteHandler = (
 	request: FastifyRequest,
-	reply: FastifyReply,
+	reply: FastifyReply
 ) => void | Promise<void>;
 
 export interface FastifyPluginOptions {
@@ -77,9 +73,7 @@ export interface FastifyAdminServerOptions {
 /**
  * Create a Fastify plugin for the admin API
  */
-export function createFastifyAdminPlugin(
-	options: FastifyAdminServerOptions,
-): FastifyPlugin {
+export function createFastifyAdminPlugin(options: FastifyAdminServerOptions): FastifyPlugin {
 	const { admin } = options;
 	const routes = createRoutes();
 
@@ -87,12 +81,7 @@ export function createFastifyAdminPlugin(
 		// Register routes
 		for (const route of routes) {
 			const handler = createRouteHandler(admin, route);
-			const method = route.method.toLowerCase() as
-				| "get"
-				| "post"
-				| "put"
-				| "patch"
-				| "delete";
+			const method = route.method.toLowerCase() as "get" | "post" | "put" | "patch" | "delete";
 
 			// Convert :param to Fastify's :param format (same format, just register)
 			fastify[method](route.path, handler);
@@ -102,10 +91,7 @@ export function createFastifyAdminPlugin(
 	};
 }
 
-function createRouteHandler(
-	admin: AdminCore,
-	route: Route,
-): FastifyRouteHandler {
+function createRouteHandler(admin: AdminCore, route: Route): FastifyRouteHandler {
 	return async (request, reply) => {
 		// Handle authentication
 		let authResult = { valid: false, error: "Not authenticated" } as ReturnType<

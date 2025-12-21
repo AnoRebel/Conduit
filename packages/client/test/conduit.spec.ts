@@ -1,6 +1,6 @@
-import { ConduitErrorType, SerializationType, TransportType, MessageType } from "@conduit/shared";
+import { ConduitErrorType, MessageType, SerializationType, TransportType } from "@conduit/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LogLevel, logger, Conduit, ConduitError, util } from "../src/index.js";
+import { Conduit, ConduitError, LogLevel, logger, util } from "../src/index.js";
 
 // Mock WebSocket
 class MockWebSocket {

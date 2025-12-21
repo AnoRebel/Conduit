@@ -14,15 +14,25 @@
  *   import { Conduit, ConduitError, ConduitErrorType } from 'conduit';
  */
 
+// Re-export ConduitErrorType as PeerErrorType
+export {
+	ConduitErrorType as PeerErrorType,
+	ConnectionType,
+	MessageType,
+	SerializationType,
+	type ServerMessage,
+	TransportType,
+} from "@conduit/shared";
 // Re-export Conduit as Peer for backwards compatibility
-export { Conduit as Peer, type ConduitEvents as PeerEvents, type ConduitOptions as PeerOptions } from "./conduit.js";
-
+export {
+	type CallOptions,
+	Conduit as Peer,
+	type ConduitEvents as PeerEvents,
+	type ConduitOptions as PeerOptions,
+	type ConnectOptions,
+} from "./conduit.js";
 // Re-export ConduitError as PeerError
 export { ConduitError as PeerError } from "./conduitError.js";
-
-// Re-export ConduitErrorType as PeerErrorType
-export { ConduitErrorType as PeerErrorType } from "@conduit/shared";
-
 // Re-export everything else
 export {
 	AutoConnection,
@@ -47,5 +57,3 @@ export {
 } from "./mediaconnection.js";
 export { type BrowserSupport, supports } from "./supports.js";
 export { util } from "./util.js";
-export { type CallOptions, type ConnectOptions } from "./conduit.js";
-export { ConnectionType, MessageType, SerializationType, TransportType, type ServerMessage } from "@conduit/shared";

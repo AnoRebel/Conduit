@@ -1,12 +1,12 @@
 import type { Route } from "./index.js";
-import { json, notFound, error } from "./index.js";
+import { error, json, notFound } from "./index.js";
 
 export const clientRoutes: Route[] = [
 	{
 		method: "GET",
 		path: "/clients",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const clients = ctx.admin.getClientList();
 			return json({
 				clients,
@@ -18,7 +18,7 @@ export const clientRoutes: Route[] = [
 		method: "GET",
 		path: "/clients/:id",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const id = ctx.params.id ?? "";
 
 			if (!id) {
@@ -38,7 +38,7 @@ export const clientRoutes: Route[] = [
 		method: "DELETE",
 		path: "/clients/:id",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const id = ctx.params.id ?? "";
 			const userId = ctx.auth.userId ?? "unknown";
 
@@ -59,7 +59,7 @@ export const clientRoutes: Route[] = [
 		method: "DELETE",
 		path: "/clients",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const userId = ctx.auth.userId ?? "unknown";
 			const count = ctx.admin.disconnectAllClients(userId);
 
@@ -74,7 +74,7 @@ export const clientRoutes: Route[] = [
 		method: "DELETE",
 		path: "/clients/:id/queue",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const id = ctx.params.id ?? "";
 			const userId = ctx.auth.userId ?? "unknown";
 

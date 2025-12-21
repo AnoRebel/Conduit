@@ -11,14 +11,8 @@ export interface SSEClient {
 export interface SSEServer {
 	addClient(response: ServerResponse, subscriptions?: AdminEventType[]): SSEClient;
 	removeClient(clientId: string): boolean;
-	broadcast<T extends AdminEventType>(
-		type: T,
-		data: ServerToClientEvents[T],
-	): number;
-	broadcastToSubscribers<T extends AdminEventType>(
-		type: T,
-		data: ServerToClientEvents[T],
-	): number;
+	broadcast<T extends AdminEventType>(type: T, data: ServerToClientEvents[T]): number;
+	broadcastToSubscribers<T extends AdminEventType>(type: T, data: ServerToClientEvents[T]): number;
 	getClients(): SSEClient[];
 	getClientCount(): number;
 	close(): void;
@@ -48,7 +42,7 @@ export function createSSEServer(options: SSEServerOptions): SSEServer {
 
 	function addClient(
 		response: ServerResponse,
-		subscriptions: AdminEventType[] = ["metrics:update"],
+		subscriptions: AdminEventType[] = ["metrics:update"]
 	): SSEClient {
 		const clientId = `sse_${++clientIdCounter}_${Date.now()}`;
 
@@ -105,10 +99,7 @@ export function createSSEServer(options: SSEServerOptions): SSEServer {
 		}
 	}
 
-	function broadcast<T extends AdminEventType>(
-		type: T,
-		data: ServerToClientEvents[T],
-	): number {
+	function broadcast<T extends AdminEventType>(type: T, data: ServerToClientEvents[T]): number {
 		let count = 0;
 
 		for (const client of clients.values()) {
@@ -122,7 +113,7 @@ export function createSSEServer(options: SSEServerOptions): SSEServer {
 
 	function broadcastToSubscribers<T extends AdminEventType>(
 		type: T,
-		data: ServerToClientEvents[T],
+		data: ServerToClientEvents[T]
 	): number {
 		let count = 0;
 

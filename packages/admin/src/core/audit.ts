@@ -1,4 +1,4 @@
-import type { AuditEntry, AuditAction } from "../types.js";
+import type { AuditAction, AuditEntry } from "../types.js";
 
 export interface AuditLogger {
 	log(action: AuditAction, userId: string, details?: Record<string, unknown>): AuditEntry;
@@ -21,11 +21,7 @@ export function createAuditLogger(options: AuditLoggerOptions = {}): AuditLogger
 
 	const entries: AuditEntry[] = [];
 
-	function log(
-		action: AuditAction,
-		userId: string,
-		details?: Record<string, unknown>,
-	): AuditEntry {
+	function log(action: AuditAction, userId: string, details?: Record<string, unknown>): AuditEntry {
 		const entry: AuditEntry = {
 			id: generateId(),
 			timestamp: Date.now(),
@@ -54,7 +50,7 @@ export function createAuditLogger(options: AuditLoggerOptions = {}): AuditLogger
 	}
 
 	function getEntriesByUser(userId: string, limit?: number): AuditEntry[] {
-		const filtered = entries.filter((e) => e.userId === userId);
+		const filtered = entries.filter(e => e.userId === userId);
 		if (!limit) {
 			return [...filtered].reverse();
 		}
@@ -62,7 +58,7 @@ export function createAuditLogger(options: AuditLoggerOptions = {}): AuditLogger
 	}
 
 	function getEntriesByAction(action: AuditAction, limit?: number): AuditEntry[] {
-		const filtered = entries.filter((e) => e.action === action);
+		const filtered = entries.filter(e => e.action === action);
 		if (!limit) {
 			return [...filtered].reverse();
 		}
@@ -70,9 +66,7 @@ export function createAuditLogger(options: AuditLoggerOptions = {}): AuditLogger
 	}
 
 	function getEntriesInRange(startTime: number, endTime: number): AuditEntry[] {
-		return entries
-			.filter((e) => e.timestamp >= startTime && e.timestamp <= endTime)
-			.reverse();
+		return entries.filter(e => e.timestamp >= startTime && e.timestamp <= endTime).reverse();
 	}
 
 	function clear(): void {

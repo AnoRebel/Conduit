@@ -2,12 +2,12 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,
+	error,
+	notFound,
 	type Route,
 	type RouteContext,
 	type RouteResponse,
 	unauthorized,
-	notFound,
-	error,
 } from "../routes/index.js";
 
 export interface NodeAdminServerOptions {
@@ -22,24 +22,19 @@ export interface NodeAdminServer {
 /**
  * Create a Node.js HTTP request handler for the admin API
  */
-export function createNodeAdminServer(
-	options: NodeAdminServerOptions,
-): NodeAdminServer {
+export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdminServer {
 	const { admin } = options;
 	const config = admin.config;
 	const routes = createRoutes();
 	const basePath = `${config.path}/${config.apiVersion}`;
 
 	// Compile route patterns
-	const compiledRoutes = routes.map((route) => ({
+	const compiledRoutes = routes.map(route => ({
 		...route,
 		pattern: compilePattern(route.path),
 	}));
 
-	async function handleRequest(
-		req: IncomingMessage,
-		res: ServerResponse,
-	): Promise<void> {
+	async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
 		const method = req.method?.toUpperCase() ?? "GET";
 		const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 		const pathname = url.pathname;
@@ -70,7 +65,7 @@ export function createNodeAdminServer(
 
 		if (route.requiresAuth) {
 			authResult = admin.auth.authenticateRequest(
-				req.headers as Record<string, string | string[] | undefined>,
+				req.headers as Record<string, string | string[] | undefined>
 			);
 
 			if (!authResult.valid) {
@@ -89,11 +84,11 @@ export function createNodeAdminServer(
 		}
 
 		// Parse body for POST/PUT/PATCH
-		let body: unknown = undefined;
+		let body: unknown;
 		if (["POST", "PUT", "PATCH"].includes(method)) {
 			try {
 				body = await parseBody(req);
-			} catch (err) {
+			} catch (_err) {
 				sendResponse(res, error("Invalid JSON body"));
 				return;
 			}
@@ -114,10 +109,7 @@ export function createNodeAdminServer(
 			sendResponse(res, response);
 		} catch (err) {
 			console.error("Route handler error:", err);
-			sendResponse(
-				res,
-				error("Internal server error", 500),
-			);
+			sendResponse(res, error("Internal server error", 500));
 		}
 	}
 
@@ -152,7 +144,7 @@ function compilePattern(path: string): { regex: RegExp; paramNames: string[] } {
 function findRoute(
 	routes: CompiledRoute[],
 	method: string,
-	path: string,
+	path: string
 ): { route: CompiledRoute; params: Record<string, string> } | null {
 	for (const route of routes) {
 		if (route.method !== method) {

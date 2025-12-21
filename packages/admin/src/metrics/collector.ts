@@ -1,5 +1,5 @@
 import type { MetricsConfig } from "../config.js";
-import type { MetricsSnapshot, MemoryUsage, ErrorMetrics } from "../types.js";
+import type { ErrorMetrics, MemoryUsage, MetricsSnapshot } from "../types.js";
 import { Counter, CounterMap } from "./counters.js";
 import { Gauge } from "./gauges.js";
 import { CircularTimeSeries } from "./timeseries.js";

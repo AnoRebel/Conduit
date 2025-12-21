@@ -16,8 +16,8 @@ export { ExpressConduitServer } from "./adapters/express.js";
 export { fastifyConduitPlugin } from "./adapters/fastify.js";
 // Default adapter (Node HTTP)
 export {
-	createConduitServer,
 	type ConduitServer,
+	createConduitServer,
 	type NodeAdapterOptions,
 } from "./adapters/node.js";
 // Config exports
@@ -28,23 +28,23 @@ export {
 	type RateLimitConfig,
 	type ServerConfig,
 } from "./config.js";
-// Logger exports
-export {
-	createLogger,
-	getLogger,
-	createChildLogger,
-	wrapLogger,
-	logger,
-	type ILogger,
-	type LoggerConfig,
-	type LogLevel,
-} from "./logger.js";
 export { Client, type IClient } from "./core/client.js";
 export {
+	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
 	createConduitServerCore,
-	type ConduitServerCore,
 } from "./core/index.js";
 export { DefaultMessageHandler, type MessageHandler } from "./core/messageHandler/index.js";
 export { type IMessageQueue, MessageQueue } from "./core/messageQueue.js";
 export { type IRealm, Realm } from "./core/realm.js";
+// Logger exports
+export {
+	createChildLogger,
+	createLogger,
+	getLogger,
+	type ILogger,
+	type LoggerConfig,
+	type LogLevel,
+	logger,
+	wrapLogger,
+} from "./logger.js";

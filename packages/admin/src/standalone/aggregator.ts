@@ -1,4 +1,10 @@
-import type { MetricsSnapshot, ServerStatus, ClientMetrics, MessageMetrics, MemoryUsage } from "../types.js";
+import type {
+	ClientMetrics,
+	MemoryUsage,
+	MessageMetrics,
+	MetricsSnapshot,
+	ServerStatus,
+} from "../types.js";
 import type { RemoteServer } from "./connection.js";
 
 export interface AggregatedMetrics {
@@ -30,9 +36,7 @@ export interface AggregatedStatus {
 /**
  * Aggregate metrics from multiple servers
  */
-export function aggregateMetrics(
-	servers: RemoteServer[],
-): AggregatedMetrics {
+export function aggregateMetrics(servers: RemoteServer[]): AggregatedMetrics {
 	const byServer: Record<string, MetricsSnapshot> = {};
 	let totalConnected = 0;
 	let totalPeak = 0;
@@ -98,7 +102,7 @@ export function aggregateStatus(servers: RemoteServer[]): AggregatedStatus {
 	let peakClients = 0;
 	let messagesRelayed = 0;
 
-	const serverStatuses = servers.map((server) => {
+	const serverStatuses = servers.map(server => {
 		const serverStatus = server.lastStatus;
 
 		if (serverStatus?.running) {

@@ -86,17 +86,20 @@ function getObjectDepth(obj: unknown, currentDepth = 0): number {
 	}
 	if (Array.isArray(obj)) {
 		if (obj.length === 0) return currentDepth;
-		return Math.max(...obj.map((item) => getObjectDepth(item, currentDepth + 1)));
+		return Math.max(...obj.map(item => getObjectDepth(item, currentDepth + 1)));
 	}
 	const values = Object.values(obj);
 	if (values.length === 0) return currentDepth;
-	return Math.max(...values.map((value) => getObjectDepth(value, currentDepth + 1)));
+	return Math.max(...values.map(value => getObjectDepth(value, currentDepth + 1)));
 }
 
 /**
  * Validate a message structure
  */
-export function validateMessage(message: unknown, _maxSize: number = MAX_MESSAGE_SIZE): ValidationResult {
+export function validateMessage(
+	message: unknown,
+	_maxSize: number = MAX_MESSAGE_SIZE
+): ValidationResult {
 	if (typeof message !== "object" || message === null) {
 		return { valid: false, error: "Message must be an object" };
 	}
@@ -122,7 +125,10 @@ export function validateMessage(message: unknown, _maxSize: number = MAX_MESSAGE
 	if ("payload" in msg) {
 		const depth = getObjectDepth(msg.payload);
 		if (depth > MAX_PAYLOAD_DEPTH) {
-			return { valid: false, error: `Payload exceeds maximum nesting depth of ${MAX_PAYLOAD_DEPTH}` };
+			return {
+				valid: false,
+				error: `Payload exceeds maximum nesting depth of ${MAX_PAYLOAD_DEPTH}`,
+			};
 		}
 	}
 
@@ -162,6 +168,9 @@ export function safeJsonParse(
 		const data = JSON.parse(text);
 		return { success: true, data };
 	} catch (error) {
-		return { success: false, error: `Invalid JSON: ${error instanceof Error ? error.message : "parse error"}` };
+		return {
+			success: false,
+			error: `Invalid JSON: ${error instanceof Error ? error.message : "parse error"}`,
+		};
 	}
 }

@@ -34,7 +34,7 @@ export interface InstrumentationHooks {
 export function instrumentServerCore(
 	core: InstrumentableServerCore,
 	collector: MetricsCollector,
-	hooks?: InstrumentationHooks,
+	hooks?: InstrumentationHooks
 ): () => void {
 	// Store original methods
 	const originalHandleConnection = core.handleConnection.bind(core);
@@ -42,63 +42,62 @@ export function instrumentServerCore(
 	const originalHandleDisconnect = core.handleDisconnect.bind(core);
 
 	// Wrap handleConnection
-	(core as { handleConnection: typeof core.handleConnection }).handleConnection =
-		function (...args: unknown[]): unknown {
-			const result = originalHandleConnection(...args);
+	(core as { handleConnection: typeof core.handleConnection }).handleConnection = (
+		...args: unknown[]
+	): unknown => {
+		const result = originalHandleConnection(...args);
 
-			if (result) {
-				// Connection succeeded
-				collector.connectionsOpened.increment();
-				collector.activeConnections.increment();
-				hooks?.onConnectionOpened?.(
-					(result as { id: string }).id ?? "unknown",
-				);
-			}
+		if (result) {
+			// Connection succeeded
+			collector.connectionsOpened.increment();
+			collector.activeConnections.increment();
+			hooks?.onConnectionOpened?.((result as { id: string }).id ?? "unknown");
+		}
 
-			return result;
-		};
+		return result;
+	};
 
 	// Wrap handleMessage
-	(core as { handleMessage: typeof core.handleMessage }).handleMessage =
-		function (...args: unknown[]): void {
-			const startTime = performance.now();
+	(core as { handleMessage: typeof core.handleMessage }).handleMessage = (
+		...args: unknown[]
+	): void => {
+		const startTime = performance.now();
 
-			try {
-				originalHandleMessage(...args);
+		try {
+			originalHandleMessage(...args);
 
-				// Message was processed (relayed or queued)
-				collector.messagesRelayed.increment();
-				hooks?.onMessageRelayed?.();
+			// Message was processed (relayed or queued)
+			collector.messagesRelayed.increment();
+			hooks?.onMessageRelayed?.();
 
-				// Record latency
-				const latencyMs = performance.now() - startTime;
-				collector.latency.record(latencyMs);
-			} catch (error) {
-				collector.recordError("message_handling");
-				hooks?.onError?.("message_handling");
-				throw error;
-			}
-		};
+			// Record latency
+			const latencyMs = performance.now() - startTime;
+			collector.latency.record(latencyMs);
+		} catch (error) {
+			collector.recordError("message_handling");
+			hooks?.onError?.("message_handling");
+			throw error;
+		}
+	};
 
 	// Wrap handleDisconnect
-	(core as { handleDisconnect: typeof core.handleDisconnect }).handleDisconnect =
-		function (...args: unknown[]): void {
-			const client = args[0] as { id: string } | undefined;
+	(core as { handleDisconnect: typeof core.handleDisconnect }).handleDisconnect = (
+		...args: unknown[]
+	): void => {
+		const client = args[0] as { id: string } | undefined;
 
-			originalHandleDisconnect(...args);
+		originalHandleDisconnect(...args);
 
-			collector.connectionsClosed.increment();
-			collector.activeConnections.decrement();
-			hooks?.onConnectionClosed?.(client?.id ?? "unknown");
-		};
+		collector.connectionsClosed.increment();
+		collector.activeConnections.decrement();
+		hooks?.onConnectionClosed?.(client?.id ?? "unknown");
+	};
 
 	// Return cleanup function to restore original methods
 	return function uninstrument(): void {
-		(
-			core as { handleConnection: typeof core.handleConnection }
-		).handleConnection = originalHandleConnection;
-		(core as { handleMessage: typeof core.handleMessage }).handleMessage =
-			originalHandleMessage;
+		(core as { handleConnection: typeof core.handleConnection }).handleConnection =
+			originalHandleConnection;
+		(core as { handleMessage: typeof core.handleMessage }).handleMessage = originalHandleMessage;
 		(core as { handleDisconnect: typeof core.handleDisconnect }).handleDisconnect =
 			originalHandleDisconnect;
 	};
@@ -111,22 +110,20 @@ export function instrumentServerCore(
 export function createMetricsProxy<T extends InstrumentableServerCore>(
 	core: T,
 	collector: MetricsCollector,
-	hooks?: InstrumentationHooks,
+	hooks?: InstrumentationHooks
 ): T {
 	return new Proxy(core, {
 		get(target, prop, receiver) {
 			const value = Reflect.get(target, prop, receiver);
 
 			if (prop === "handleConnection" && typeof value === "function") {
-				return function (...args: unknown[]): unknown {
+				return (...args: unknown[]): unknown => {
 					const result = value.apply(target, args);
 
 					if (result) {
 						collector.connectionsOpened.increment();
 						collector.activeConnections.increment();
-						hooks?.onConnectionOpened?.(
-							(result as { id: string }).id ?? "unknown",
-						);
+						hooks?.onConnectionOpened?.((result as { id: string }).id ?? "unknown");
 					}
 
 					return result;
@@ -134,7 +131,7 @@ export function createMetricsProxy<T extends InstrumentableServerCore>(
 			}
 
 			if (prop === "handleMessage" && typeof value === "function") {
-				return function (...args: unknown[]): void {
+				return (...args: unknown[]): void => {
 					const startTime = performance.now();
 
 					try {
@@ -153,7 +150,7 @@ export function createMetricsProxy<T extends InstrumentableServerCore>(
 			}
 
 			if (prop === "handleDisconnect" && typeof value === "function") {
-				return function (...args: unknown[]): void {
+				return (...args: unknown[]): void => {
 					const client = args[0] as { id: string } | undefined;
 
 					value.apply(target, args);
@@ -175,7 +172,7 @@ export function createMetricsProxy<T extends InstrumentableServerCore>(
  */
 export function syncRealmToMetrics(
 	core: InstrumentableServerCore,
-	collector: MetricsCollector,
+	collector: MetricsCollector
 ): void {
 	const clientCount = core.realm.getClientIds().length;
 	collector.activeConnections.set(clientCount);

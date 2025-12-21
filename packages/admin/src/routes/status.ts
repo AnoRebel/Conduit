@@ -6,7 +6,7 @@ export const statusRoutes: Route[] = [
 		method: "GET",
 		path: "/status",
 		requiresAuth: true,
-		handler: (ctx) => {
+		handler: ctx => {
 			const status = ctx.admin.getServerStatus();
 			return json(status);
 		},
@@ -15,7 +15,7 @@ export const statusRoutes: Route[] = [
 		method: "GET",
 		path: "/health",
 		requiresAuth: false,
-		handler: (_ctx) => {
+		handler: _ctx => {
 			// Basic health check - no auth required
 			return json({
 				status: "ok",

@@ -11,10 +11,10 @@
 
 import type { ServerConfig } from "../config.js";
 import {
+	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
 	createConduitServerCore,
 	type IClient,
-	type ConduitServerCore,
 } from "../core/index.js";
 
 // Bun types (avoid importing from 'bun' to allow type checking without Bun installed)
