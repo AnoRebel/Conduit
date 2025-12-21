@@ -118,11 +118,16 @@ function getActionColor(action: string) {
 						</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+				<TransitionGroup
+					tag="tbody"
+					name="list"
+					class="divide-y divide-gray-200 dark:divide-gray-700"
+				>
 					<tr
-						v-for="entry in filteredEntries"
+						v-for="(entry, index) in filteredEntries"
 						:key="entry.id"
-						class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+						class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+						:style="{ animationDelay: `${index * 30}ms` }"
 					>
 						<td
 							class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap"
@@ -156,7 +161,7 @@ function getActionColor(action: string) {
 							<span v-else class="text-gray-400">-</span>
 						</td>
 					</tr>
-					<tr v-if="filteredEntries.length === 0">
+					<tr v-if="filteredEntries.length === 0" key="empty">
 						<td
 							colspan="4"
 							class="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
@@ -164,7 +169,7 @@ function getActionColor(action: string) {
 							No audit entries found
 						</td>
 					</tr>
-				</tbody>
+				</TransitionGroup>
 			</table>
 		</div>
 	</div>

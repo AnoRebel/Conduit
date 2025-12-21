@@ -103,26 +103,35 @@ const memoryPercent = computed(() => {
 				</p>
 			</div>
 
-			<!-- Loading state -->
-			<div v-if="store.isLoading" class="flex justify-center py-12">
-				<div
-					class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"
-				/>
-			</div>
+			<template v-if="store.isLoading">
+				<!-- Loading state -->
+				<div class="flex justify-center py-12">
+					<div class="flex flex-col items-center gap-3">
+						<div
+							class="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent"
+						/>
+						<span class="text-sm text-gray-500 dark:text-gray-400 animate-pulse-subtle">
+							Loading dashboard...
+						</span>
+					</div>
+				</div>
+			</template>
 
-			<!-- Error state -->
-			<div
-				v-else-if="store.error"
-				class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400"
-			>
-				{{ store.error }}
-			</div>
+			<template v-else-if="store.error">
+				<!-- Error state -->
+				<div
+					class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400"
+				>
+					{{ store.error }}
+				</div>
+			</template>
 
 			<!-- Stats grid -->
-			<div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+			<template v-else>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 				<!-- Connected Clients -->
 				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-1"
 					data-tour-guide="active-clients-card"
 				>
 					<div class="flex items-center justify-between">
@@ -147,7 +156,7 @@ const memoryPercent = computed(() => {
 
 				<!-- Messages Relayed -->
 				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-2"
 					data-tour-guide="messages-card"
 				>
 					<div class="flex items-center justify-between">
@@ -174,7 +183,7 @@ const memoryPercent = computed(() => {
 
 				<!-- Uptime -->
 				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-3"
 				>
 					<div class="flex items-center justify-between">
 						<div>
@@ -196,7 +205,7 @@ const memoryPercent = computed(() => {
 
 				<!-- Memory Usage -->
 				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-4"
 				>
 					<div class="flex items-center justify-between">
 						<div>
@@ -223,7 +232,7 @@ const memoryPercent = computed(() => {
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
 				<!-- Quick Actions -->
 				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-in stagger-5"
 					data-tour-guide="quick-actions"
 				>
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -259,7 +268,8 @@ const memoryPercent = computed(() => {
 
 				<!-- Server Status -->
 				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-in"
+					style="animation-delay: 300ms"
 					data-tour-guide="server-status-card"
 				>
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -300,6 +310,7 @@ const memoryPercent = computed(() => {
 					</div>
 				</div>
 			</div>
+			</template>
 		</div>
 	</div>
 </template>

@@ -105,11 +105,16 @@ function formatTime(timestamp: number) {
 						</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+				<TransitionGroup
+					tag="tbody"
+					name="list"
+					class="divide-y divide-gray-200 dark:divide-gray-700"
+				>
 					<tr
-						v-for="client in filteredClients"
+						v-for="(client, index) in filteredClients"
 						:key="client.id"
-						class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+						class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+						:style="{ animationDelay: `${index * 50}ms` }"
 					>
 						<td class="px-6 py-4">
 							<NuxtLink
@@ -160,7 +165,7 @@ function formatTime(timestamp: number) {
 							</div>
 						</td>
 					</tr>
-					<tr v-if="filteredClients.length === 0">
+					<tr v-if="filteredClients.length === 0" key="empty">
 						<td
 							colspan="5"
 							class="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
@@ -168,7 +173,7 @@ function formatTime(timestamp: number) {
 							No clients found
 						</td>
 					</tr>
-				</tbody>
+				</TransitionGroup>
 			</table>
 		</div>
 	</div>
