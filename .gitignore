@@ -7,6 +7,8 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+.nuxt/
+.output/
 
 # Bun
 bun.lockb
