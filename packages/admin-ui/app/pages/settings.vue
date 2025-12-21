@@ -1,5 +1,22 @@
 <script setup lang="ts">
-import { Key, RefreshCw, Save, Trash2 } from "lucide-vue-next";
+import { Key, Save, Trash2, Users } from "lucide-vue-next";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 
 const api = useAdminApi();
 const store = useAdminStore();
@@ -9,6 +26,12 @@ const rateLimitMaxTokens = ref(100);
 const rateLimitRefillRate = ref(10);
 const isSaving = ref(false);
 const saveMessage = ref("");
+const saveSuccess = ref(false);
+
+// Dialog states
+const clearApiKeyDialogOpen = ref(false);
+const clearBansDialogOpen = ref(false);
+const disconnectAllDialogOpen = ref(false);
 
 onMounted(async () => {
 	try {
@@ -38,218 +61,232 @@ async function saveRateLimits() {
 			refillRate: rateLimitRefillRate.value,
 		});
 		saveMessage.value = "Rate limits updated successfully";
+		saveSuccess.value = true;
 	} catch (e) {
 		saveMessage.value = e instanceof Error ? e.message : "Failed to save settings";
+		saveSuccess.value = false;
 	} finally {
 		isSaving.value = false;
+		setTimeout(() => {
+			saveMessage.value = "";
+		}, 3000);
 	}
 }
 
-function clearApiKey() {
-	if (window.confirm("Clear stored API key? You will need to re-authenticate.")) {
-		localStorage.removeItem("adminApiKey");
-		window.location.reload();
+function confirmClearApiKey() {
+	localStorage.removeItem("adminApiKey");
+	window.location.reload();
+}
+
+async function confirmClearBans() {
+	try {
+		await api.fetchApi("/bans", { method: "DELETE" });
+		await store.fetchBans();
+		clearBansDialogOpen.value = false;
+	} catch {
+		// Handle error
 	}
 }
 
-async function clearBans() {
-	if (window.confirm("Clear all bans? This cannot be undone.")) {
-		try {
-			await api.fetchApi("/bans", { method: "DELETE" });
-			await store.fetchBans();
-		} catch {
-			// Handle error
-		}
-	}
-}
-
-async function disconnectAllClients() {
-	if (window.confirm("Disconnect all clients?")) {
-		await api.disconnectAllClients();
-		await store.fetchClients();
-	}
+async function confirmDisconnectAll() {
+	await api.disconnectAllClients();
+	await store.fetchClients();
+	disconnectAllDialogOpen.value = false;
 }
 </script>
 
 <template>
 	<div>
 		<div class="mb-6" data-tour-guide="settings-header">
-			<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-				Settings
-			</h1>
-			<p class="text-gray-600 dark:text-gray-400">
-				Configure server and admin settings
-			</p>
+			<h1 class="text-2xl font-bold text-foreground">Settings</h1>
+			<p class="text-muted-foreground">Configure server and admin settings</p>
 		</div>
 
 		<div class="space-y-6">
 			<!-- Rate Limiting -->
-			<div
-				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-				data-tour-guide="api-settings"
-			>
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-					Rate Limiting
-				</h3>
-
-				<div class="space-y-4">
+			<Card data-tour-guide="api-settings">
+				<CardHeader>
+					<CardTitle>Rate Limiting</CardTitle>
+					<CardDescription>
+						Configure rate limiting to protect your server from abuse
+					</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-6">
 					<div class="flex items-center justify-between">
-						<div>
-							<label class="text-sm font-medium text-gray-900 dark:text-white">
-								Enable Rate Limiting
-							</label>
-							<p class="text-xs text-gray-500 dark:text-gray-400">
+						<div class="space-y-0.5">
+							<Label>Enable Rate Limiting</Label>
+							<p class="text-sm text-muted-foreground">
 								Limit the number of messages per client
 							</p>
 						</div>
-						<button
-							:class="[
-								'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-								rateLimitEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700',
-							]"
-							@click="rateLimitEnabled = !rateLimitEnabled"
-						>
-							<span
-								:class="[
-									'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-									rateLimitEnabled ? 'translate-x-5' : 'translate-x-0',
-								]"
+						<Switch v-model:checked="rateLimitEnabled" />
+					</div>
+
+					<Separator />
+
+					<div class="grid gap-4 sm:grid-cols-2">
+						<div class="space-y-2">
+							<Label for="maxTokens">Max Tokens</Label>
+							<Input
+								id="maxTokens"
+								v-model.number="rateLimitMaxTokens"
+								type="number"
+								min="1"
 							/>
-						</button>
-					</div>
+							<p class="text-xs text-muted-foreground">
+								Maximum number of tokens in the bucket
+							</p>
+						</div>
 
-					<div>
-						<label class="block text-sm font-medium text-gray-900 dark:text-white mb-1">
-							Max Tokens
-						</label>
-						<input
-							v-model.number="rateLimitMaxTokens"
-							type="number"
-							min="1"
-							class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-						/>
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							Maximum number of tokens in the bucket
-						</p>
-					</div>
-
-					<div>
-						<label class="block text-sm font-medium text-gray-900 dark:text-white mb-1">
-							Refill Rate
-						</label>
-						<input
-							v-model.number="rateLimitRefillRate"
-							type="number"
-							min="1"
-							class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-						/>
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							Tokens added per second
-						</p>
+						<div class="space-y-2">
+							<Label for="refillRate">Refill Rate</Label>
+							<Input
+								id="refillRate"
+								v-model.number="rateLimitRefillRate"
+								type="number"
+								min="1"
+							/>
+							<p class="text-xs text-muted-foreground">
+								Tokens added per second
+							</p>
+						</div>
 					</div>
 
 					<div class="flex items-center gap-4">
-						<button
-							class="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-							:disabled="isSaving"
-							@click="saveRateLimits"
-						>
+						<Button :disabled="isSaving" @click="saveRateLimits">
 							<Save class="h-4 w-4" />
 							{{ isSaving ? "Saving..." : "Save Changes" }}
-						</button>
-						<span
+						</Button>
+						<Alert
 							v-if="saveMessage"
-							:class="[
-								'text-sm',
-								saveMessage.includes('success')
-									? 'text-green-600 dark:text-green-400'
-									: 'text-red-600 dark:text-red-400',
-							]"
+							:variant="saveSuccess ? 'default' : 'destructive'"
+							class="flex-1 py-2"
 						>
-							{{ saveMessage }}
-						</span>
+							<AlertDescription>{{ saveMessage }}</AlertDescription>
+						</Alert>
 					</div>
-				</div>
-			</div>
+				</CardContent>
+			</Card>
 
 			<!-- Authentication -->
-			<div
-				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-				data-tour-guide="appearance-settings"
-			>
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-					Authentication
-				</h3>
-
-				<div class="space-y-4">
-					<div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+			<Card data-tour-guide="appearance-settings">
+				<CardHeader>
+					<CardTitle>Authentication</CardTitle>
+					<CardDescription>
+						Manage your API key and authentication settings
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div class="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
 						<div class="flex items-center gap-3">
-							<Key class="h-5 w-5 text-gray-400" />
+							<Key class="h-5 w-5 text-muted-foreground" />
 							<div>
-								<p class="text-sm font-medium text-gray-900 dark:text-white">
-									API Key
-								</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+								<p class="text-sm font-medium">API Key</p>
+								<p class="text-xs text-muted-foreground">
 									{{ api.isAuthenticated.value ? "Configured" : "Not configured" }}
 								</p>
 							</div>
 						</div>
-						<button
-							class="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-							@click="clearApiKey"
-						>
+						<Button variant="ghost" size="sm" @click="clearApiKeyDialogOpen = true">
 							Clear
-						</button>
+						</Button>
 					</div>
-				</div>
-			</div>
+				</CardContent>
+			</Card>
 
 			<!-- Danger Zone -->
-			<div
-				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-red-200 dark:border-red-800"
-			>
-				<h3 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-4">
-					Danger Zone
-				</h3>
-
-				<div class="space-y-4">
-					<div class="flex items-center justify-between p-4 border border-red-200 dark:border-red-800 rounded-lg">
+			<Card class="border-destructive/50">
+				<CardHeader>
+					<CardTitle class="text-destructive">Danger Zone</CardTitle>
+					<CardDescription>
+						Irreversible and destructive actions
+					</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-4">
+					<div class="flex items-center justify-between p-4 rounded-lg border border-destructive/30">
 						<div>
-							<p class="text-sm font-medium text-gray-900 dark:text-white">
-								Clear All Bans
-							</p>
-							<p class="text-xs text-gray-500 dark:text-gray-400">
+							<p class="text-sm font-medium">Clear All Bans</p>
+							<p class="text-xs text-muted-foreground">
 								Remove all client and IP bans
 							</p>
 						</div>
-						<button
-							class="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-							@click="clearBans"
-						>
+						<Button variant="outline" size="sm" @click="clearBansDialogOpen = true">
 							<Trash2 class="h-4 w-4" />
 							Clear Bans
-						</button>
+						</Button>
 					</div>
 
-					<div class="flex items-center justify-between p-4 border border-red-200 dark:border-red-800 rounded-lg">
+					<div class="flex items-center justify-between p-4 rounded-lg border border-destructive/30">
 						<div>
-							<p class="text-sm font-medium text-gray-900 dark:text-white">
-								Disconnect All Clients
-							</p>
-							<p class="text-xs text-gray-500 dark:text-gray-400">
+							<p class="text-sm font-medium">Disconnect All Clients</p>
+							<p class="text-xs text-muted-foreground">
 								Force disconnect all connected clients
 							</p>
 						</div>
-						<button
-							class="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-							@click="disconnectAllClients"
-						>
-							<Trash2 class="h-4 w-4" />
+						<Button variant="outline" size="sm" @click="disconnectAllDialogOpen = true">
+							<Users class="h-4 w-4" />
 							Disconnect All
-						</button>
+						</Button>
 					</div>
-				</div>
-			</div>
+				</CardContent>
+			</Card>
 		</div>
+
+		<!-- Clear API Key Dialog -->
+		<AlertDialog v-model:open="clearApiKeyDialogOpen">
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Clear API Key</AlertDialogTitle>
+					<AlertDialogDescription>
+						Are you sure you want to clear your stored API key?
+						You will need to re-authenticate to access the admin dashboard.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogAction @click="confirmClearApiKey">
+						Clear API Key
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+
+		<!-- Clear Bans Dialog -->
+		<AlertDialog v-model:open="clearBansDialogOpen">
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Clear All Bans</AlertDialogTitle>
+					<AlertDialogDescription>
+						Are you sure you want to remove all client and IP bans?
+						This action cannot be undone.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogAction @click="confirmClearBans">
+						Clear All Bans
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+
+		<!-- Disconnect All Dialog -->
+		<AlertDialog v-model:open="disconnectAllDialogOpen">
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Disconnect All Clients</AlertDialogTitle>
+					<AlertDialogDescription>
+						Are you sure you want to disconnect all connected clients?
+						This will terminate all active connections immediately.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogAction @click="confirmDisconnectAll">
+						Disconnect All
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	</div>
 </template>

@@ -1,8 +1,26 @@
 <script setup lang="ts">
-import { Activity, Clock, HardDrive, MessageSquare, TrendingUp, Users } from "lucide-vue-next";
+import {
+	AlertCircle,
+	Clock,
+	HardDrive,
+	MessageSquare,
+	RefreshCw,
+	Settings,
+	TrendingUp,
+	Users,
+} from "lucide-vue-next";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const store = useAdminStore();
 const api = useAdminApi();
+const apiKeyInput = ref("");
 
 // Initialize on mount
 onMounted(async () => {
@@ -40,11 +58,9 @@ const memoryPercent = computed(() => {
 	return ((store.metrics.memory.heapUsed / store.metrics.memory.heapTotal) * 100).toFixed(1);
 });
 
-function handleLogin(event: Event) {
-	const form = event.target as HTMLFormElement;
-	const key = (form.elements.namedItem("apiKey") as HTMLInputElement)?.value;
-	if (key) {
-		api.setApiKey(key);
+function handleLogin() {
+	if (apiKeyInput.value) {
+		api.setApiKey(apiKeyInput.value);
 		store.initialize();
 	}
 }
@@ -55,248 +71,212 @@ function handleLogin(event: Event) {
 		<!-- Auth check -->
 		<div
 			v-if="!api.isAuthenticated.value"
-			class="max-w-md mx-auto mt-20 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg"
+			class="flex items-center justify-center min-h-[60vh]"
 		>
-			<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-				Authentication Required
-			</h2>
-			<p class="text-gray-600 dark:text-gray-400 mb-4">
-				Enter your API key to access the admin dashboard.
-			</p>
-			<form @submit.prevent="handleLogin">
-				<input
-					name="apiKey"
-					type="password"
-					placeholder="API Key"
-					class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-				/>
-				<button
-					type="submit"
-					class="mt-4 w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-				>
-					Connect
-				</button>
-			</form>
+			<Card class="w-full max-w-md">
+				<CardHeader>
+					<CardTitle class="text-xl">Authentication Required</CardTitle>
+					<CardDescription>
+						Enter your API key to access the admin dashboard.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<form class="space-y-4" @submit.prevent="handleLogin">
+						<div class="space-y-2">
+							<Label for="apiKey">API Key</Label>
+							<Input
+								id="apiKey"
+								v-model="apiKeyInput"
+								type="password"
+								placeholder="Enter your API key"
+							/>
+						</div>
+						<Button type="submit" class="w-full">
+							Connect
+						</Button>
+					</form>
+				</CardContent>
+			</Card>
 		</div>
 
 		<!-- Dashboard content -->
 		<div v-else>
-			<div class="mb-6" data-tour-guide="dashboard-header">
-				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-					Dashboard
-				</h1>
-				<p class="text-gray-600 dark:text-gray-400">
-					Monitor your Conduit server in real-time
-				</p>
+			<div class="flex items-center justify-between mb-6" data-tour-guide="dashboard-header">
+				<div>
+					<h1 class="text-2xl font-bold text-foreground">
+						Dashboard
+					</h1>
+					<p class="text-muted-foreground">
+						Monitor your Conduit server in real-time
+					</p>
+				</div>
+				<Button variant="outline" size="sm" @click="store.fetchMetrics">
+					<RefreshCw class="h-4 w-4" />
+					Refresh
+				</Button>
 			</div>
 
 			<template v-if="store.isLoading">
-				<!-- Loading state -->
-				<div class="flex justify-center py-12">
-					<div class="flex flex-col items-center gap-3">
-						<div
-							class="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent"
-						/>
-						<span class="text-sm text-gray-500 dark:text-gray-400 animate-pulse-subtle">
-							Loading dashboard...
-						</span>
-					</div>
+				<!-- Loading state with skeletons -->
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					<Card v-for="i in 4" :key="i">
+						<CardHeader class="pb-2">
+							<Skeleton class="h-4 w-24" />
+						</CardHeader>
+						<CardContent>
+							<Skeleton class="h-8 w-20 mb-2" />
+							<Skeleton class="h-3 w-16" />
+						</CardContent>
+					</Card>
 				</div>
 			</template>
 
 			<template v-else-if="store.error">
 				<!-- Error state -->
-				<div
-					class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400"
-				>
-					{{ store.error }}
-				</div>
+				<Alert variant="destructive">
+					<AlertCircle class="h-4 w-4" />
+					<AlertTitle>Error</AlertTitle>
+					<AlertDescription>{{ store.error }}</AlertDescription>
+				</Alert>
 			</template>
 
 			<!-- Stats grid -->
 			<template v-else>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-				<!-- Connected Clients -->
-				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-1"
-					data-tour-guide="active-clients-card"
-				>
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm text-gray-500 dark:text-gray-400">
-								Connected Clients
-							</p>
-							<p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+					<!-- Connected Clients -->
+					<Card data-tour-guide="active-clients-card">
+						<CardHeader class="flex flex-row items-center justify-between pb-2">
+							<CardDescription>Connected Clients</CardDescription>
+							<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+								<Users class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+							</div>
+						</CardHeader>
+						<CardContent>
+							<div class="text-3xl font-bold">
 								{{ store.metrics?.clients.connected ?? 0 }}
+							</div>
+							<p class="text-xs text-muted-foreground mt-1">
+								Peak: {{ store.metrics?.clients.peak ?? 0 }}
 							</p>
-						</div>
-						<div
-							class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg"
-						>
-							<Users class="h-6 w-6 text-blue-600 dark:text-blue-400" />
-						</div>
-					</div>
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-						Peak: {{ store.metrics?.clients.peak ?? 0 }}
-					</p>
-				</div>
+						</CardContent>
+					</Card>
 
-				<!-- Messages Relayed -->
-				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-2"
-					data-tour-guide="messages-card"
-				>
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm text-gray-500 dark:text-gray-400">
-								Messages Relayed
-							</p>
-							<p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+					<!-- Messages Relayed -->
+					<Card data-tour-guide="messages-card">
+						<CardHeader class="flex flex-row items-center justify-between pb-2">
+							<CardDescription>Messages Relayed</CardDescription>
+							<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+								<MessageSquare class="h-4 w-4 text-green-600 dark:text-green-400" />
+							</div>
+						</CardHeader>
+						<CardContent>
+							<div class="text-3xl font-bold">
 								{{ store.metrics?.messages.relayed?.toLocaleString() ?? 0 }}
+							</div>
+							<p class="text-xs text-muted-foreground mt-1">
+								{{ store.metrics?.messages.throughputPerSecond ?? 0 }} msg/s
 							</p>
-						</div>
-						<div
-							class="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg"
-						>
-							<MessageSquare
-								class="h-6 w-6 text-green-600 dark:text-green-400"
-							/>
-						</div>
-					</div>
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-						{{ store.metrics?.messages.throughputPerSecond ?? 0 }} msg/s
-					</p>
-				</div>
+						</CardContent>
+					</Card>
 
-				<!-- Uptime -->
-				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-3"
-				>
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm text-gray-500 dark:text-gray-400">Uptime</p>
-							<p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">
-								{{ uptime }}
+					<!-- Uptime -->
+					<Card>
+						<CardHeader class="flex flex-row items-center justify-between pb-2">
+							<CardDescription>Uptime</CardDescription>
+							<div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+								<Clock class="h-4 w-4 text-purple-600 dark:text-purple-400" />
+							</div>
+						</CardHeader>
+						<CardContent>
+							<div class="text-3xl font-bold">{{ uptime }}</div>
+							<p class="text-xs text-muted-foreground mt-1">
+								v{{ store.status?.version ?? "N/A" }}
 							</p>
-						</div>
-						<div
-							class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg"
-						>
-							<Clock class="h-6 w-6 text-purple-600 dark:text-purple-400" />
-						</div>
-					</div>
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-						v{{ store.status?.version ?? "N/A" }}
-					</p>
-				</div>
+						</CardContent>
+					</Card>
 
-				<!-- Memory Usage -->
-				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 card-hover animate-in stagger-4"
-				>
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm text-gray-500 dark:text-gray-400">Memory</p>
-							<p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">
-								{{ memoryUsage }}
+					<!-- Memory Usage -->
+					<Card>
+						<CardHeader class="flex flex-row items-center justify-between pb-2">
+							<CardDescription>Memory</CardDescription>
+							<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+								<HardDrive class="h-4 w-4 text-orange-600 dark:text-orange-400" />
+							</div>
+						</CardHeader>
+						<CardContent>
+							<div class="text-3xl font-bold">{{ memoryUsage }}</div>
+							<p class="text-xs text-muted-foreground mt-1">
+								{{ memoryPercent }}% of heap
 							</p>
-						</div>
-						<div
-							class="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg"
-						>
-							<HardDrive
-								class="h-6 w-6 text-orange-600 dark:text-orange-400"
-							/>
-						</div>
-					</div>
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-						{{ memoryPercent }}% of heap
-					</p>
-				</div>
-			</div>
-
-			<!-- Quick Actions & Recent Activity -->
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-				<!-- Quick Actions -->
-				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-in stagger-5"
-					data-tour-guide="quick-actions"
-				>
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						Quick Actions
-					</h3>
-					<div class="space-y-2">
-						<button
-							class="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-							@click="store.fetchClients"
-						>
-							Refresh Clients
-						</button>
-						<button
-							class="w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-							@click="store.fetchMetrics"
-						>
-							Refresh Metrics
-						</button>
-						<NuxtLink
-							to="/clients"
-							class="block w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-						>
-							View All Clients
-						</NuxtLink>
-						<NuxtLink
-							to="/settings"
-							class="block w-full px-4 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-						>
-							Server Settings
-						</NuxtLink>
-					</div>
+						</CardContent>
+					</Card>
 				</div>
 
-				<!-- Server Status -->
-				<div
-					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-in"
-					style="animation-delay: 300ms"
-					data-tour-guide="server-status-card"
-				>
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						Server Status
-					</h3>
-					<div class="space-y-3">
-						<div class="flex justify-between items-center">
-							<span class="text-gray-600 dark:text-gray-400">Status</span>
-							<span
-								:class="[
-									'px-2 py-1 rounded-full text-xs font-medium',
-									store.status?.running
-										? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-										: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-								]"
-							>
-								{{ store.status?.running ? "Running" : "Stopped" }}
-							</span>
-						</div>
-						<div class="flex justify-between items-center">
-							<span class="text-gray-600 dark:text-gray-400">Rate Limit Hits</span>
-							<span class="text-gray-900 dark:text-white font-medium">
-								{{ store.metrics?.rateLimit.hits ?? 0 }}
-							</span>
-						</div>
-						<div class="flex justify-between items-center">
-							<span class="text-gray-600 dark:text-gray-400">Errors</span>
-							<span class="text-gray-900 dark:text-white font-medium">
-								{{ store.metrics?.errors.total ?? 0 }}
-							</span>
-						</div>
-						<div class="flex justify-between items-center">
-							<span class="text-gray-600 dark:text-gray-400">Queued Messages</span>
-							<span class="text-gray-900 dark:text-white font-medium">
-								{{ store.metrics?.messages.queued ?? 0 }}
-							</span>
-						</div>
-					</div>
+				<!-- Quick Actions & Recent Activity -->
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+					<!-- Quick Actions -->
+					<Card data-tour-guide="quick-actions">
+						<CardHeader>
+							<CardTitle>Quick Actions</CardTitle>
+						</CardHeader>
+						<CardContent class="space-y-2">
+							<Button variant="ghost" class="w-full justify-start" @click="store.fetchClients">
+								<RefreshCw class="h-4 w-4" />
+								Refresh Clients
+							</Button>
+							<Button variant="ghost" class="w-full justify-start" @click="store.fetchMetrics">
+								<TrendingUp class="h-4 w-4" />
+								Refresh Metrics
+							</Button>
+							<Button variant="ghost" class="w-full justify-start" as-child>
+								<NuxtLink to="/clients">
+									<Users class="h-4 w-4" />
+									View All Clients
+								</NuxtLink>
+							</Button>
+							<Button variant="ghost" class="w-full justify-start" as-child>
+								<NuxtLink to="/settings">
+									<Settings class="h-4 w-4" />
+									Server Settings
+								</NuxtLink>
+							</Button>
+						</CardContent>
+					</Card>
+
+					<!-- Server Status -->
+					<Card data-tour-guide="server-status-card">
+						<CardHeader>
+							<CardTitle>Server Status</CardTitle>
+						</CardHeader>
+						<CardContent class="space-y-4">
+							<div class="flex justify-between items-center">
+								<span class="text-muted-foreground">Status</span>
+								<Badge :variant="store.status?.running ? 'default' : 'destructive'">
+									{{ store.status?.running ? "Running" : "Stopped" }}
+								</Badge>
+							</div>
+							<Separator />
+							<div class="flex justify-between items-center">
+								<span class="text-muted-foreground">Rate Limit Hits</span>
+								<span class="font-medium">
+									{{ store.metrics?.rateLimit.hits ?? 0 }}
+								</span>
+							</div>
+							<div class="flex justify-between items-center">
+								<span class="text-muted-foreground">Errors</span>
+								<span class="font-medium">
+									{{ store.metrics?.errors.total ?? 0 }}
+								</span>
+							</div>
+							<div class="flex justify-between items-center">
+								<span class="text-muted-foreground">Queued Messages</span>
+								<span class="font-medium">
+									{{ store.metrics?.messages.queued ?? 0 }}
+								</span>
+							</div>
+						</CardContent>
+					</Card>
 				</div>
-			</div>
 			</template>
 		</div>
 	</div>

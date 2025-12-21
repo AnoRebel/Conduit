@@ -321,7 +321,7 @@ describe("util", () => {
 		expect(util.defaultConfig).toBeDefined();
 		expect(util.defaultConfig.iceServers).toBeDefined();
 		expect(Array.isArray(util.defaultConfig.iceServers)).toBe(true);
-		expect(util.defaultConfig.iceServers!.length).toBeGreaterThan(0);
+		expect(util.defaultConfig.iceServers?.length).toBeGreaterThan(0);
 	});
 
 	it("should have version info", () => {

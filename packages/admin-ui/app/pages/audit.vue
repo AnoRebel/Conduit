@@ -1,8 +1,37 @@
 <script setup lang="ts">
-import { Filter, RefreshCw } from "lucide-vue-next";
+import { Copy, Filter, RefreshCw } from "lucide-vue-next";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableEmpty,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const store = useAdminStore();
 const selectedAction = ref("");
+const isLoading = ref(false);
 
 const actionTypes = [
 	{ label: "All Actions", value: "" },
@@ -16,8 +45,10 @@ const actionTypes = [
 	{ label: "Toggle Feature", value: "toggle_feature" },
 ];
 
-onMounted(() => {
-	store.fetchAuditLog();
+onMounted(async () => {
+	isLoading.value = true;
+	await store.fetchAuditLog();
+	isLoading.value = false;
 });
 
 const filteredEntries = computed(() => {
@@ -36,20 +67,43 @@ function formatAction(action: string) {
 		.join(" ");
 }
 
-function getActionColor(action: string) {
-	if (action.includes("ban")) {
-		return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400";
+function getActionVariant(action: string): "default" | "destructive" | "outline" | "secondary" {
+	if (action.includes("ban") && !action.includes("unban")) {
+		return "destructive";
 	}
 	if (action.includes("unban")) {
-		return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400";
+		return "default";
 	}
 	if (action.includes("disconnect")) {
-		return "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400";
+		return "outline";
 	}
-	if (action.includes("broadcast")) {
-		return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400";
-	}
-	return "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400";
+	return "secondary";
+}
+
+async function refresh() {
+	isLoading.value = true;
+	await store.fetchAuditLog();
+	isLoading.value = false;
+}
+
+function formatDetails(details: unknown) {
+	if (!details) return null;
+	return JSON.stringify(details, null, 2);
+}
+
+function copyToClipboard(text: string) {
+	navigator.clipboard.writeText(text);
+}
+
+function copyEntryAsJson(entry: {
+	id: string;
+	timestamp: number;
+	action: string;
+	userId: string;
+	details?: unknown;
+}) {
+	const json = JSON.stringify(entry, null, 2);
+	navigator.clipboard.writeText(json);
 }
 </script>
 
@@ -57,118 +111,108 @@ function getActionColor(action: string) {
 	<div>
 		<div class="flex items-center justify-between mb-6" data-tour-guide="audit-header">
 			<div>
-				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-					Audit Log
-				</h1>
-				<p class="text-gray-600 dark:text-gray-400">
-					Track administrative actions
-				</p>
+				<h1 class="text-2xl font-bold text-foreground">Audit Log</h1>
+				<p class="text-muted-foreground">Track administrative actions</p>
 			</div>
-			<button
-				class="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-				@click="() => store.fetchAuditLog()"
-			>
+			<Button @click="refresh">
 				<RefreshCw class="h-4 w-4" />
 				Refresh
-			</button>
+			</Button>
 		</div>
 
 		<!-- Filter -->
 		<div class="mb-6 flex items-center gap-4" data-tour-guide="audit-filters">
-			<Filter class="h-5 w-5 text-gray-400" />
-			<select
-				v-model="selectedAction"
-				class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-			>
-				<option v-for="action in actionTypes" :key="action.value" :value="action.value">
-					{{ action.label }}
-				</option>
-			</select>
+			<Filter class="h-5 w-5 text-muted-foreground" />
+			<Select v-model="selectedAction">
+				<SelectTrigger class="w-[200px]">
+					<SelectValue placeholder="Filter by action" />
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem v-for="action in actionTypes" :key="action.value" :value="action.value">
+						{{ action.label }}
+					</SelectItem>
+				</SelectContent>
+			</Select>
 		</div>
 
 		<!-- Audit log table -->
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
-			data-tour-guide="audit-list"
-		>
-			<table class="w-full">
-				<thead class="bg-gray-50 dark:bg-gray-700">
-					<tr>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Timestamp
-						</th>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Action
-						</th>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							User
-						</th>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Details
-						</th>
-					</tr>
-				</thead>
-				<TransitionGroup
-					tag="tbody"
-					name="list"
-					class="divide-y divide-gray-200 dark:divide-gray-700"
-				>
-					<tr
-						v-for="(entry, index) in filteredEntries"
-						:key="entry.id"
-						class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-						:style="{ animationDelay: `${index * 30}ms` }"
-					>
-						<td
-							class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap"
-						>
-							{{ formatTime(entry.timestamp) }}
-						</td>
-						<td class="px-6 py-4">
-							<span
-								:class="[
-									'px-2 py-1 rounded-full text-xs font-medium',
-									getActionColor(entry.action),
-								]"
-							>
-								{{ formatAction(entry.action) }}
-							</span>
-						</td>
-						<td
-							class="px-6 py-4 text-sm text-gray-900 dark:text-white font-mono"
-						>
-							{{ entry.userId }}
-						</td>
-						<td
-							class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400"
-						>
-							<code
-								v-if="entry.details"
-								class="text-xs bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded"
-							>
-								{{ JSON.stringify(entry.details) }}
-							</code>
-							<span v-else class="text-gray-400">-</span>
-						</td>
-					</tr>
-					<tr v-if="filteredEntries.length === 0" key="empty">
-						<td
-							colspan="4"
-							class="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
-						>
+		<Card data-tour-guide="audit-list">
+			<Table>
+				<TableHeader>
+					<TableRow>
+						<TableHead>Timestamp</TableHead>
+						<TableHead>Action</TableHead>
+						<TableHead>User</TableHead>
+						<TableHead>Details</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					<!-- Loading state -->
+					<template v-if="isLoading">
+						<TableRow v-for="i in 5" :key="i">
+							<TableCell><Skeleton class="h-4 w-32" /></TableCell>
+							<TableCell><Skeleton class="h-5 w-24" /></TableCell>
+							<TableCell><Skeleton class="h-4 w-20" /></TableCell>
+							<TableCell><Skeleton class="h-4 w-40" /></TableCell>
+						</TableRow>
+					</template>
+
+					<!-- Data -->
+					<template v-else>
+						<ContextMenu v-for="entry in filteredEntries" :key="entry.id">
+							<ContextMenuTrigger as-child>
+								<TableRow class="cursor-context-menu">
+									<TableCell class="text-muted-foreground whitespace-nowrap">
+										{{ formatTime(entry.timestamp) }}
+									</TableCell>
+									<TableCell>
+										<Badge :variant="getActionVariant(entry.action)">
+											{{ formatAction(entry.action) }}
+										</Badge>
+									</TableCell>
+									<TableCell class="font-mono text-sm">
+										{{ entry.userId }}
+									</TableCell>
+									<TableCell>
+										<TooltipProvider v-if="entry.details">
+											<Tooltip>
+												<TooltipTrigger as-child>
+													<code class="text-xs bg-muted px-2 py-1 rounded cursor-help max-w-[200px] truncate block">
+														{{ JSON.stringify(entry.details) }}
+													</code>
+												</TooltipTrigger>
+												<TooltipContent side="bottom" class="max-w-md">
+													<pre class="text-xs">{{ formatDetails(entry.details) }}</pre>
+												</TooltipContent>
+											</Tooltip>
+										</TooltipProvider>
+										<span v-else class="text-muted-foreground">-</span>
+									</TableCell>
+								</TableRow>
+							</ContextMenuTrigger>
+							<ContextMenuContent>
+								<ContextMenuItem @click="copyToClipboard(entry.userId)">
+									<Copy class="h-4 w-4" />
+									Copy User ID
+								</ContextMenuItem>
+								<ContextMenuItem @click="copyToClipboard(entry.action)">
+									<Copy class="h-4 w-4" />
+									Copy Action
+								</ContextMenuItem>
+								<ContextMenuSeparator />
+								<ContextMenuItem @click="copyEntryAsJson(entry)">
+									<Copy class="h-4 w-4" />
+									Copy Entry as JSON
+								</ContextMenuItem>
+							</ContextMenuContent>
+						</ContextMenu>
+
+						<TableEmpty v-if="filteredEntries.length === 0" :colspan="4">
 							No audit entries found
-						</td>
-					</tr>
-				</TransitionGroup>
-			</table>
-		</div>
+						</TableEmpty>
+					</template>
+				</TableBody>
+			</Table>
+		</Card>
 	</div>
 </template>

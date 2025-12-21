@@ -1,12 +1,72 @@
 <script setup lang="ts">
-import { Ban, RefreshCw, Search, UserX } from "lucide-vue-next";
+import { Ban, Copy, ExternalLink, MoreHorizontal, RefreshCw, Search, UserX } from "lucide-vue-next";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableEmpty,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 
 const store = useAdminStore();
 const searchQuery = ref("");
+const isLoading = ref(false);
+
+// Disconnect dialog state
+const disconnectDialogOpen = ref(false);
+const clientToDisconnect = ref<string | null>(null);
+
+// Ban dialog state
+const banDialogOpen = ref(false);
+const clientToBan = ref<string | null>(null);
+const banReason = ref("");
 
 // Fetch clients on mount
-onMounted(() => {
-	store.fetchClients();
+onMounted(async () => {
+	isLoading.value = true;
+	await store.fetchClients();
+	isLoading.value = false;
 });
 
 const filteredClients = computed(() => {
@@ -15,21 +75,52 @@ const filteredClients = computed(() => {
 	return store.clients.filter(client => client.id.toLowerCase().includes(query));
 });
 
-async function handleDisconnect(id: string) {
-	if (window.confirm(`Disconnect client ${id}?`)) {
-		await store.disconnectClient(id);
+function openDisconnectDialog(id: string) {
+	clientToDisconnect.value = id;
+	disconnectDialogOpen.value = true;
+}
+
+async function confirmDisconnect() {
+	if (clientToDisconnect.value) {
+		await store.disconnectClient(clientToDisconnect.value);
+		disconnectDialogOpen.value = false;
+		clientToDisconnect.value = null;
 	}
 }
 
-async function handleBan(id: string) {
-	const reason = window.prompt(`Ban reason for ${id}:`);
-	if (reason !== null) {
-		await store.banClient(id, reason || undefined);
+function openBanDialog(id: string) {
+	clientToBan.value = id;
+	banReason.value = "";
+	banDialogOpen.value = true;
+}
+
+async function confirmBan() {
+	if (clientToBan.value) {
+		await store.banClient(clientToBan.value, banReason.value || undefined);
+		banDialogOpen.value = false;
+		clientToBan.value = null;
+		banReason.value = "";
 	}
 }
 
 function formatTime(timestamp: number) {
 	return new Date(timestamp).toLocaleString();
+}
+
+async function refresh() {
+	isLoading.value = true;
+	await store.fetchClients();
+	isLoading.value = false;
+}
+
+function copyClientId(id: string) {
+	navigator.clipboard.writeText(id);
+}
+
+const router = useRouter();
+
+function navigateToClient(id: string) {
+	router.push(`/clients/${id}`);
 }
 </script>
 
@@ -37,142 +128,192 @@ function formatTime(timestamp: number) {
 	<div>
 		<div class="flex items-center justify-between mb-6" data-tour-guide="clients-header">
 			<div>
-				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-					Clients
-				</h1>
-				<p class="text-gray-600 dark:text-gray-400">
-					Manage connected clients
-				</p>
+				<h1 class="text-2xl font-bold text-foreground">Clients</h1>
+				<p class="text-muted-foreground">Manage connected clients</p>
 			</div>
-			<button
-				class="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-				@click="store.fetchClients"
-			>
+			<Button @click="refresh">
 				<RefreshCw class="h-4 w-4" />
 				Refresh
-			</button>
+			</Button>
 		</div>
 
 		<!-- Search -->
 		<div class="mb-6" data-tour-guide="clients-search">
-			<div class="relative">
-				<Search
-					class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
-				/>
-				<input
+			<div class="relative max-w-sm">
+				<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+				<Input
 					v-model="searchQuery"
 					type="text"
 					placeholder="Search by client ID..."
-					class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+					class="pl-9"
 				/>
 			</div>
 		</div>
 
 		<!-- Clients table -->
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
-			data-tour-guide="clients-list"
-		>
-			<table class="w-full">
-				<thead class="bg-gray-50 dark:bg-gray-700">
-					<tr>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Client ID
-						</th>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Status
-						</th>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Connected At
-						</th>
-						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Messages
-						</th>
-						<th
-							class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Actions
-						</th>
-					</tr>
-				</thead>
-				<TransitionGroup
-					tag="tbody"
-					name="list"
-					class="divide-y divide-gray-200 dark:divide-gray-700"
-				>
-					<tr
-						v-for="(client, index) in filteredClients"
-						:key="client.id"
-						class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-						:style="{ animationDelay: `${index * 50}ms` }"
-					>
-						<td class="px-6 py-4">
-							<NuxtLink
-								:to="`/clients/${client.id}`"
-								class="text-primary-600 dark:text-primary-400 hover:underline font-mono text-sm"
-							>
-								{{ client.id }}
-							</NuxtLink>
-						</td>
-						<td class="px-6 py-4">
-							<span
-								:class="[
-									'px-2 py-1 rounded-full text-xs font-medium',
-									client.connected
-										? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-										: 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400',
-								]"
-							>
-								{{ client.connected ? "Connected" : "Disconnected" }}
-							</span>
-						</td>
-						<td
-							class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400"
-						>
-							{{ formatTime(client.connectedAt) }}
-						</td>
-						<td
-							class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400"
-						>
-							{{ client.messagesReceived }} / {{ client.messagesSent }}
-						</td>
-						<td class="px-6 py-4 text-right" data-tour-guide="client-actions">
-							<div class="flex justify-end gap-2">
-								<button
-									class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-									title="Disconnect"
-									@click="handleDisconnect(client.id)"
+		<Card data-tour-guide="clients-list">
+			<Table>
+				<TableHeader>
+					<TableRow>
+						<TableHead>Client ID</TableHead>
+						<TableHead>Status</TableHead>
+						<TableHead>Connected At</TableHead>
+						<TableHead>Messages</TableHead>
+						<TableHead class="text-right">Actions</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					<!-- Loading state -->
+					<template v-if="isLoading">
+						<TableRow v-for="i in 5" :key="i">
+							<TableCell><Skeleton class="h-4 w-32" /></TableCell>
+							<TableCell><Skeleton class="h-5 w-20" /></TableCell>
+							<TableCell><Skeleton class="h-4 w-28" /></TableCell>
+							<TableCell><Skeleton class="h-4 w-16" /></TableCell>
+							<TableCell class="text-right"><Skeleton class="h-8 w-8 ml-auto" /></TableCell>
+						</TableRow>
+					</template>
+
+					<!-- Data -->
+					<template v-else>
+						<ContextMenu v-for="client in filteredClients" :key="client.id">
+							<ContextMenuTrigger as-child>
+								<TableRow class="cursor-context-menu">
+									<TableCell>
+										<NuxtLink
+											:to="`/clients/${client.id}`"
+											class="text-primary hover:underline font-mono text-sm"
+										>
+											{{ client.id }}
+										</NuxtLink>
+									</TableCell>
+									<TableCell>
+										<Badge :variant="client.connected ? 'default' : 'secondary'">
+											{{ client.connected ? "Connected" : "Disconnected" }}
+										</Badge>
+									</TableCell>
+									<TableCell class="text-muted-foreground">
+										{{ formatTime(client.connectedAt) }}
+									</TableCell>
+									<TableCell class="text-muted-foreground">
+										{{ client.messagesReceived }} / {{ client.messagesSent }}
+									</TableCell>
+									<TableCell class="text-right" data-tour-guide="client-actions">
+										<DropdownMenu>
+											<DropdownMenuTrigger as-child>
+												<Button variant="ghost" size="icon-sm">
+													<MoreHorizontal class="h-4 w-4" />
+													<span class="sr-only">Actions</span>
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem as-child>
+													<NuxtLink :to="`/clients/${client.id}`">
+														View Details
+													</NuxtLink>
+												</DropdownMenuItem>
+												<DropdownMenuSeparator />
+												<DropdownMenuItem
+													variant="destructive"
+													@click="openDisconnectDialog(client.id)"
+												>
+													<UserX class="h-4 w-4" />
+													Disconnect
+												</DropdownMenuItem>
+												<DropdownMenuItem
+													variant="destructive"
+													@click="openBanDialog(client.id)"
+												>
+													<Ban class="h-4 w-4" />
+													Ban Client
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</TableCell>
+								</TableRow>
+							</ContextMenuTrigger>
+							<ContextMenuContent>
+								<ContextMenuItem @click="navigateToClient(client.id)">
+									<ExternalLink class="h-4 w-4" />
+									View Details
+								</ContextMenuItem>
+								<ContextMenuItem @click="copyClientId(client.id)">
+									<Copy class="h-4 w-4" />
+									Copy Client ID
+								</ContextMenuItem>
+								<ContextMenuSeparator />
+								<ContextMenuItem
+									variant="destructive"
+									@click="openDisconnectDialog(client.id)"
 								>
 									<UserX class="h-4 w-4" />
-								</button>
-								<button
-									class="p-2 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
-									title="Ban"
-									@click="handleBan(client.id)"
+									Disconnect
+								</ContextMenuItem>
+								<ContextMenuItem
+									variant="destructive"
+									@click="openBanDialog(client.id)"
 								>
 									<Ban class="h-4 w-4" />
-								</button>
-							</div>
-						</td>
-					</tr>
-					<tr v-if="filteredClients.length === 0" key="empty">
-						<td
-							colspan="5"
-							class="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
-						>
+									Ban Client
+								</ContextMenuItem>
+							</ContextMenuContent>
+						</ContextMenu>
+
+						<TableEmpty v-if="filteredClients.length === 0" :colspan="5">
 							No clients found
-						</td>
-					</tr>
-				</TransitionGroup>
-			</table>
-		</div>
+						</TableEmpty>
+					</template>
+				</TableBody>
+			</Table>
+		</Card>
+
+		<!-- Disconnect Confirmation Dialog -->
+		<AlertDialog v-model:open="disconnectDialogOpen">
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Disconnect Client</AlertDialogTitle>
+					<AlertDialogDescription>
+						Are you sure you want to disconnect client
+						<span class="font-mono font-medium">{{ clientToDisconnect }}</span>?
+						This will terminate their connection immediately.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogAction @click="confirmDisconnect">
+						Disconnect
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+
+		<!-- Ban Dialog -->
+		<Dialog v-model:open="banDialogOpen">
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Ban Client</DialogTitle>
+					<DialogDescription>
+						Ban client <span class="font-mono font-medium">{{ clientToBan }}</span> from the server.
+					</DialogDescription>
+				</DialogHeader>
+				<div class="py-4">
+					<Label for="banReason">Reason (optional)</Label>
+					<Input
+						id="banReason"
+						v-model="banReason"
+						placeholder="Enter ban reason..."
+						class="mt-2"
+					/>
+				</div>
+				<DialogFooter>
+					<DialogClose as-child>
+						<Button variant="outline">Cancel</Button>
+					</DialogClose>
+					<Button variant="destructive" @click="confirmBan">
+						Ban Client
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	</div>
 </template>
