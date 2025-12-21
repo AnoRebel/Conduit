@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@nuxt/devtools": "^3.1.1",
+    "@vitejs/plugin-vue": "^6.0.3",
     "@nuxt/icon": "2.1.1",
     "@nuxt/image": "2.0.0",
     "@pinia/nuxt": "^0.11.3",

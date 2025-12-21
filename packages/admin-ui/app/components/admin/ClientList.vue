@@ -1,15 +1,5 @@
 <script setup lang="ts">
-import { Ban, Copy, ExternalLink, MoreHorizontal, RefreshCw, Search, UserX } from "lucide-vue-next";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Ban, Copy, ExternalLink, MoreHorizontal, Search, UserX } from "lucide-vue-next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,15 +11,6 @@ import {
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -37,7 +18,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Pagination,
 	PaginationContent,
@@ -57,42 +37,41 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 
-const store = useAdminStore();
-const breadcrumbItems = [{ label: "Clients" }];
+export interface ClientInfo {
+	id: string;
+	connected: boolean;
+	connectedAt: number;
+	messagesReceived: number;
+	messagesSent: number;
+}
+
+const props = defineProps<{
+	clients: ClientInfo[];
+	loading?: boolean;
+	itemsPerPage?: number;
+}>();
+
+const emit = defineEmits<{
+	disconnect: [id: string];
+	ban: [id: string];
+	select: [id: string];
+}>();
+
 const searchQuery = ref("");
-const isLoading = ref(false);
-
-// Disconnect dialog state
-const disconnectDialogOpen = ref(false);
-const clientToDisconnect = ref<string | null>(null);
-
-// Ban dialog state
-const banDialogOpen = ref(false);
-const clientToBan = ref<string | null>(null);
-const banReason = ref("");
-
-// Fetch clients on mount
-onMounted(async () => {
-	isLoading.value = true;
-	await store.fetchClients();
-	isLoading.value = false;
-});
-
-// Pagination
 const currentPage = ref(1);
-const itemsPerPage = ref(10);
+const perPage = computed(() => props.itemsPerPage ?? 10);
 
 const filteredClients = computed(() => {
-	if (!searchQuery.value) return store.clients;
+	if (!searchQuery.value) return props.clients;
 	const query = searchQuery.value.toLowerCase();
-	return store.clients.filter(client => client.id.toLowerCase().includes(query));
+	return props.clients.filter(client => client.id.toLowerCase().includes(query));
 });
 
-const totalPages = computed(() => Math.ceil(filteredClients.value.length / itemsPerPage.value));
+const totalPages = computed(() => Math.ceil(filteredClients.value.length / perPage.value));
 
 const paginatedClients = computed(() => {
-	const start = (currentPage.value - 1) * itemsPerPage.value;
-	const end = start + itemsPerPage.value;
+	const start = (currentPage.value - 1) * perPage.value;
+	const end = start + perPage.value;
 	return filteredClients.value.slice(start, end);
 });
 
@@ -101,42 +80,8 @@ watch(searchQuery, () => {
 	currentPage.value = 1;
 });
 
-function openDisconnectDialog(id: string) {
-	clientToDisconnect.value = id;
-	disconnectDialogOpen.value = true;
-}
-
-async function confirmDisconnect() {
-	if (clientToDisconnect.value) {
-		await store.disconnectClient(clientToDisconnect.value);
-		disconnectDialogOpen.value = false;
-		clientToDisconnect.value = null;
-	}
-}
-
-function openBanDialog(id: string) {
-	clientToBan.value = id;
-	banReason.value = "";
-	banDialogOpen.value = true;
-}
-
-async function confirmBan() {
-	if (clientToBan.value) {
-		await store.banClient(clientToBan.value, banReason.value || undefined);
-		banDialogOpen.value = false;
-		clientToBan.value = null;
-		banReason.value = "";
-	}
-}
-
 function formatTime(timestamp: number) {
 	return new Date(timestamp).toLocaleString();
-}
-
-async function refresh() {
-	isLoading.value = true;
-	await store.fetchClients();
-	isLoading.value = false;
 }
 
 const { copy } = useClipboard();
@@ -144,31 +89,12 @@ const { copy } = useClipboard();
 function copyClientId(id: string) {
 	copy(id);
 }
-
-const router = useRouter();
-
-function navigateToClient(id: string) {
-	router.push(`/clients/${id}`);
-}
 </script>
 
 <template>
 	<div>
-		<PageBreadcrumb :items="breadcrumbItems" />
-
-		<div class="flex items-center justify-between mb-6" data-tour-guide="clients-header">
-			<div>
-				<h1 class="text-2xl font-bold text-foreground">Clients</h1>
-				<p class="text-muted-foreground">Manage connected clients</p>
-			</div>
-			<Button @click="refresh">
-				<RefreshCw class="h-4 w-4" />
-				Refresh
-			</Button>
-		</div>
-
 		<!-- Search -->
-		<div class="mb-6" data-tour-guide="clients-search">
+		<div class="mb-6">
 			<div class="relative max-w-sm">
 				<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 				<Input
@@ -181,7 +107,7 @@ function navigateToClient(id: string) {
 		</div>
 
 		<!-- Clients table -->
-		<Card data-tour-guide="clients-list">
+		<Card>
 			<Table>
 				<TableHeader>
 					<TableRow>
@@ -194,7 +120,7 @@ function navigateToClient(id: string) {
 				</TableHeader>
 				<TableBody>
 					<!-- Loading state -->
-					<template v-if="isLoading">
+					<template v-if="loading">
 						<TableRow v-for="i in 5" :key="i">
 							<TableCell><Skeleton class="h-4 w-32" /></TableCell>
 							<TableCell><Skeleton class="h-5 w-20" /></TableCell>
@@ -210,12 +136,12 @@ function navigateToClient(id: string) {
 							<ContextMenuTrigger as-child>
 								<TableRow class="cursor-context-menu">
 									<TableCell>
-										<NuxtLink
-											:to="`/clients/${client.id}`"
-											class="text-primary hover:underline font-mono text-sm"
+										<button
+											class="text-primary hover:underline font-mono text-sm text-left"
+											@click="emit('select', client.id)"
 										>
 											{{ client.id }}
-										</NuxtLink>
+										</button>
 									</TableCell>
 									<TableCell>
 										<Badge :variant="client.connected ? 'default' : 'secondary'">
@@ -228,7 +154,7 @@ function navigateToClient(id: string) {
 									<TableCell class="text-muted-foreground">
 										{{ client.messagesReceived }} / {{ client.messagesSent }}
 									</TableCell>
-									<TableCell class="text-right" data-tour-guide="client-actions">
+									<TableCell class="text-right">
 										<DropdownMenu>
 											<DropdownMenuTrigger as-child>
 												<Button variant="ghost" size="icon-sm">
@@ -237,22 +163,21 @@ function navigateToClient(id: string) {
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
-												<DropdownMenuItem as-child>
-													<NuxtLink :to="`/clients/${client.id}`">
-														View Details
-													</NuxtLink>
+												<DropdownMenuItem @click="emit('select', client.id)">
+													<ExternalLink class="h-4 w-4" />
+													View Details
 												</DropdownMenuItem>
 												<DropdownMenuSeparator />
 												<DropdownMenuItem
 													variant="destructive"
-													@click="openDisconnectDialog(client.id)"
+													@click="emit('disconnect', client.id)"
 												>
 													<UserX class="h-4 w-4" />
 													Disconnect
 												</DropdownMenuItem>
 												<DropdownMenuItem
 													variant="destructive"
-													@click="openBanDialog(client.id)"
+													@click="emit('ban', client.id)"
 												>
 													<Ban class="h-4 w-4" />
 													Ban Client
@@ -263,7 +188,7 @@ function navigateToClient(id: string) {
 								</TableRow>
 							</ContextMenuTrigger>
 							<ContextMenuContent>
-								<ContextMenuItem @click="navigateToClient(client.id)">
+								<ContextMenuItem @click="emit('select', client.id)">
 									<ExternalLink class="h-4 w-4" />
 									View Details
 								</ContextMenuItem>
@@ -274,14 +199,14 @@ function navigateToClient(id: string) {
 								<ContextMenuSeparator />
 								<ContextMenuItem
 									variant="destructive"
-									@click="openDisconnectDialog(client.id)"
+									@click="emit('disconnect', client.id)"
 								>
 									<UserX class="h-4 w-4" />
 									Disconnect
 								</ContextMenuItem>
 								<ContextMenuItem
 									variant="destructive"
-									@click="openBanDialog(client.id)"
+									@click="emit('ban', client.id)"
 								>
 									<Ban class="h-4 w-4" />
 									Ban Client
@@ -302,14 +227,14 @@ function navigateToClient(id: string) {
 				class="flex items-center justify-between border-t px-4 py-3"
 			>
 				<p class="text-sm text-muted-foreground">
-					Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
-					{{ Math.min(currentPage * itemsPerPage, filteredClients.length) }}
+					Showing {{ (currentPage - 1) * perPage + 1 }} to
+					{{ Math.min(currentPage * perPage, filteredClients.length) }}
 					of {{ filteredClients.length }} clients
 				</p>
 				<Pagination
 					v-model:page="currentPage"
 					:total="filteredClients.length"
-					:items-per-page="itemsPerPage"
+					:items-per-page="perPage"
 					:sibling-count="1"
 				>
 					<PaginationContent>
@@ -321,54 +246,5 @@ function navigateToClient(id: string) {
 				</Pagination>
 			</div>
 		</Card>
-
-		<!-- Disconnect Confirmation Dialog -->
-		<AlertDialog v-model:open="disconnectDialogOpen">
-			<AlertDialogContent>
-				<AlertDialogHeader>
-					<AlertDialogTitle>Disconnect Client</AlertDialogTitle>
-					<AlertDialogDescription>
-						Are you sure you want to disconnect client
-						<span class="font-mono font-medium">{{ clientToDisconnect }}</span>?
-						This will terminate their connection immediately.
-					</AlertDialogDescription>
-				</AlertDialogHeader>
-				<AlertDialogFooter>
-					<AlertDialogCancel>Cancel</AlertDialogCancel>
-					<AlertDialogAction @click="confirmDisconnect">
-						Disconnect
-					</AlertDialogAction>
-				</AlertDialogFooter>
-			</AlertDialogContent>
-		</AlertDialog>
-
-		<!-- Ban Dialog -->
-		<Dialog v-model:open="banDialogOpen">
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Ban Client</DialogTitle>
-					<DialogDescription>
-						Ban client <span class="font-mono font-medium">{{ clientToBan }}</span> from the server.
-					</DialogDescription>
-				</DialogHeader>
-				<div class="py-4">
-					<Label for="banReason">Reason (optional)</Label>
-					<Input
-						id="banReason"
-						v-model="banReason"
-						placeholder="Enter ban reason..."
-						class="mt-2"
-					/>
-				</div>
-				<DialogFooter>
-					<DialogClose as-child>
-						<Button variant="outline">Cancel</Button>
-					</DialogClose>
-					<Button variant="destructive" @click="confirmBan">
-						Ban Client
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
 	</div>
 </template>

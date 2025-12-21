@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { Copy, Filter, RefreshCw } from "lucide-vue-next";
+import { Copy, Filter } from "lucide-vue-next";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
 	ContextMenu,
@@ -37,14 +36,23 @@ import {
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const store = useAdminStore();
-const breadcrumbItems = [{ label: "Audit Log" }];
-const selectedAction = ref("");
-const isLoading = ref(false);
+export interface AuditEntry {
+	id: string;
+	timestamp: number;
+	action: string;
+	userId: string;
+	details?: unknown;
+}
 
-// Pagination
+const props = defineProps<{
+	entries: AuditEntry[];
+	loading?: boolean;
+	itemsPerPage?: number;
+}>();
+
+const selectedAction = ref("");
 const currentPage = ref(1);
-const itemsPerPage = ref(15);
+const perPage = computed(() => props.itemsPerPage ?? 15);
 
 const actionTypes = [
 	{ label: "All Actions", value: "" },
@@ -58,22 +66,16 @@ const actionTypes = [
 	{ label: "Toggle Feature", value: "toggle_feature" },
 ];
 
-onMounted(async () => {
-	isLoading.value = true;
-	await store.fetchAuditLog();
-	isLoading.value = false;
-});
-
 const filteredEntries = computed(() => {
-	if (!selectedAction.value) return store.auditLog;
-	return store.auditLog.filter(entry => entry.action === selectedAction.value);
+	if (!selectedAction.value) return props.entries;
+	return props.entries.filter(entry => entry.action === selectedAction.value);
 });
 
-const totalPages = computed(() => Math.ceil(filteredEntries.value.length / itemsPerPage.value));
+const totalPages = computed(() => Math.ceil(filteredEntries.value.length / perPage.value));
 
 const paginatedEntries = computed(() => {
-	const start = (currentPage.value - 1) * itemsPerPage.value;
-	const end = start + itemsPerPage.value;
+	const start = (currentPage.value - 1) * perPage.value;
+	const end = start + perPage.value;
 	return filteredEntries.value.slice(start, end);
 });
 
@@ -106,12 +108,6 @@ function getActionVariant(action: string): "default" | "destructive" | "outline"
 	return "secondary";
 }
 
-async function refresh() {
-	isLoading.value = true;
-	await store.fetchAuditLog();
-	isLoading.value = false;
-}
-
 function formatDetails(details: unknown) {
 	if (!details) return null;
 	return JSON.stringify(details, null, 2);
@@ -123,35 +119,15 @@ function copyToClipboard(text: string) {
 	copy(text);
 }
 
-function copyEntryAsJson(entry: {
-	id: string;
-	timestamp: number;
-	action: string;
-	userId: string;
-	details?: unknown;
-}) {
-	const json = JSON.stringify(entry, null, 2);
-	copy(json);
+function copyEntryAsJson(entry: AuditEntry) {
+	copy(JSON.stringify(entry, null, 2));
 }
 </script>
 
 <template>
 	<div>
-		<PageBreadcrumb :items="breadcrumbItems" />
-
-		<div class="flex items-center justify-between mb-6" data-tour-guide="audit-header">
-			<div>
-				<h1 class="text-2xl font-bold text-foreground">Audit Log</h1>
-				<p class="text-muted-foreground">Track administrative actions</p>
-			</div>
-			<Button @click="refresh">
-				<RefreshCw class="h-4 w-4" />
-				Refresh
-			</Button>
-		</div>
-
 		<!-- Filter -->
-		<div class="mb-6 flex items-center gap-4" data-tour-guide="audit-filters">
+		<div class="mb-6 flex items-center gap-4">
 			<Filter class="h-5 w-5 text-muted-foreground" />
 			<Select v-model="selectedAction">
 				<SelectTrigger class="w-[200px]">
@@ -166,7 +142,7 @@ function copyEntryAsJson(entry: {
 		</div>
 
 		<!-- Audit log table -->
-		<Card data-tour-guide="audit-list">
+		<Card>
 			<Table>
 				<TableHeader>
 					<TableRow>
@@ -178,7 +154,7 @@ function copyEntryAsJson(entry: {
 				</TableHeader>
 				<TableBody>
 					<!-- Loading state -->
-					<template v-if="isLoading">
+					<template v-if="loading">
 						<TableRow v-for="i in 5" :key="i">
 							<TableCell><Skeleton class="h-4 w-32" /></TableCell>
 							<TableCell><Skeleton class="h-5 w-24" /></TableCell>
@@ -250,14 +226,14 @@ function copyEntryAsJson(entry: {
 				class="flex items-center justify-between border-t px-4 py-3"
 			>
 				<p class="text-sm text-muted-foreground">
-					Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
-					{{ Math.min(currentPage * itemsPerPage, filteredEntries.length) }}
+					Showing {{ (currentPage - 1) * perPage + 1 }} to
+					{{ Math.min(currentPage * perPage, filteredEntries.length) }}
 					of {{ filteredEntries.length }} entries
 				</p>
 				<Pagination
 					v-model:page="currentPage"
 					:total="filteredEntries.length"
-					:items-per-page="itemsPerPage"
+					:items-per-page="perPage"
 					:sibling-count="1"
 				>
 					<PaginationContent>

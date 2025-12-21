@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 
 const api = useAdminApi();
 const store = useAdminStore();
+const breadcrumbItems = [{ label: "Settings" }];
 
 const rateLimitEnabled = ref(true);
 const rateLimitMaxTokens = ref(100);
@@ -97,6 +98,8 @@ async function confirmDisconnectAll() {
 
 <template>
 	<div>
+		<PageBreadcrumb :items="breadcrumbItems" />
+
 		<div class="mb-6" data-tour-guide="settings-header">
 			<h1 class="text-2xl font-bold text-foreground">Settings</h1>
 			<p class="text-muted-foreground">Configure server and admin settings</p>
