@@ -194,158 +194,183 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+	* {
+		@apply border-border outline-ring/50;
 	}
-  body {
-    @apply bg-background text-foreground;
+	body {
+		@apply bg-background text-foreground;
 	}
 }
 
 /* Page transitions */
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease;
 }
 
 .page-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
+	opacity: 0;
+	transform: translateY(10px);
 }
 
 .page-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
+	opacity: 0;
+	transform: translateY(-10px);
 }
 
 /* List item stagger animation */
 .list-enter-active,
 .list-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+	transition:
+		opacity 0.3s ease,
+		transform 0.3s ease;
 }
 
 .list-enter-from {
-  opacity: 0;
-  transform: translateX(-20px);
+	opacity: 0;
+	transform: translateX(-20px);
 }
 
 .list-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
+	opacity: 0;
+	transform: translateX(20px);
 }
 
 .list-move {
-  transition: transform 0.3s ease;
+	transition: transform 0.3s ease;
 }
 
 /* Fade animation */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+	transition: opacity 0.2s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
-  opacity: 0;
+	opacity: 0;
 }
 
 /* Scale fade animation for modals/cards */
 .scale-enter-active,
 .scale-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease;
 }
 
 .scale-enter-from,
 .scale-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
+	opacity: 0;
+	transform: scale(0.95);
 }
 
 /* Slide up animation for toasts/notifications */
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+	transition:
+		opacity 0.3s ease,
+		transform 0.3s ease;
 }
 
 .slide-up-enter-from {
-  opacity: 0;
-  transform: translateY(20px);
+	opacity: 0;
+	transform: translateY(20px);
 }
 
 .slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
+	opacity: 0;
+	transform: translateY(-10px);
 }
 
 /* Card hover effect */
 .card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px -5px rgb(0 0 0 / 0.1), 0 4px 10px -6px rgb(0 0 0 / 0.1);
+	transform: translateY(-2px);
+	box-shadow:
+		0 8px 25px -5px rgb(0 0 0 / 0.1),
+		0 4px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 .dark .card-hover:hover {
-  box-shadow: 0 8px 25px -5px rgb(0 0 0 / 0.3), 0 4px 10px -6px rgb(0 0 0 / 0.2);
+	box-shadow:
+		0 8px 25px -5px rgb(0 0 0 / 0.3),
+		0 4px 10px -6px rgb(0 0 0 / 0.2);
 }
 
 /* Pulse animation for loading states */
 @keyframes pulse-subtle {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
 }
 
 .animate-pulse-subtle {
-  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+	animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Skeleton loading animation */
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
 }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    hsl(var(--muted)) 25%,
-    hsl(var(--muted-foreground) / 0.1) 50%,
-    hsl(var(--muted)) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+	background: linear-gradient(
+		90deg,
+		hsl(var(--muted)) 25%,
+		hsl(var(--muted-foreground) / 0.1) 50%,
+		hsl(var(--muted)) 75%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
 }
 
 /* Stagger delay utilities */
-.stagger-1 { animation-delay: 50ms; }
-.stagger-2 { animation-delay: 100ms; }
-.stagger-3 { animation-delay: 150ms; }
-.stagger-4 { animation-delay: 200ms; }
-.stagger-5 { animation-delay: 250ms; }
+.stagger-1 {
+	animation-delay: 50ms;
+}
+.stagger-2 {
+	animation-delay: 100ms;
+}
+.stagger-3 {
+	animation-delay: 150ms;
+}
+.stagger-4 {
+	animation-delay: 200ms;
+}
+.stagger-5 {
+	animation-delay: 250ms;
+}
 
 /* Animate on scroll entrance */
 .animate-in {
-  animation: animate-in 0.3s ease forwards;
-  opacity: 0;
+	animation: animate-in 0.3s ease forwards;
+	opacity: 0;
 }
 
 @keyframes animate-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }

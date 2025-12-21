@@ -14,10 +14,14 @@
       "!**/coverage",
       "!**/.turbo",
       "!**/*.min.js",
-      "!**/packages/client/src/version.ts",
-      "!**/*.vue",
-      "!**/packages/admin-ui/**/*.css"
+      "!**/packages/client/src/version.ts"
     ]
+  },
+  "css": {
+    "parser": {
+      "cssModules": true,
+      "tailwindDirectives": true
+    }
   },
   "formatter": {
     "enabled": true,
@@ -73,5 +77,23 @@
       "indentWidth": 2,
       "trailingCommas": "none"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.vue"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useConst": "off",
+            "useImportType": "off"
+          },
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off",
+            "useHookAtTopLevel": "off"
+          }
+        }
+      }
+    }
+  ]
 }
