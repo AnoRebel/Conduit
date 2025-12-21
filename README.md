@@ -31,6 +31,10 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 
 ```bash
 npm install conduit
+# or
+bun add conduit
+# or
+yarn add conduit
 ```
 
 ```typescript
@@ -67,6 +71,10 @@ conduit.on('connection', (conn) => {
 
 ```bash
 npm install @conduit/server
+# or
+bun add @conduit/server
+# or
+yarn add @conduit/server
 ```
 
 ```typescript
@@ -88,6 +96,8 @@ Or run the CLI:
 
 ```bash
 npx @conduit/server
+# or
+bunx @conduit/server
 ```
 
 ## Transport Types

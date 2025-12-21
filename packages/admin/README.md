@@ -8,6 +8,8 @@ Admin API and monitoring tools for Conduit servers.
 npm install @conduit/admin
 # or
 bun add @conduit/admin
+# or
+yarn add @conduit/admin
 ```
 
 ## Features

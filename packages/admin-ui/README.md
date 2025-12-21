@@ -60,6 +60,10 @@ Use individual components in your own Vue 3 application:
 
 ```bash
 npm install @conduit/admin-ui
+# or
+bun add @conduit/admin-ui
+# or
+yarn add @conduit/admin-ui
 ```
 
 ### Plugin Setup

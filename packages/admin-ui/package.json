@@ -1,6 +1,6 @@
 {
 	"name": "@conduit/admin-ui",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "Conduit Admin Dashboard - Vue 3/Nuxt 4 UI for monitoring and managing Conduit servers",
 	"type": "module",
 	"exports": {

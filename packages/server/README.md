@@ -33,16 +33,21 @@ server.listen(9000, '0.0.0.0', () => {
 
 ### CLI
 
-Run directly with npx:
+Run directly with npx/bunx:
 
 ```bash
 npx @conduit/server --port 9000 --allow-discovery
+# or
+bunx @conduit/server --port 9000 --allow-discovery
 ```
 
 Or install globally:
 
 ```bash
 npm install -g @conduit/server
+# or
+bun add -g @conduit/server
+
 conduit --port 9000
 ```
 
