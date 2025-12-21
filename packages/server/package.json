@@ -67,7 +67,7 @@
     "@conduit/shared": "workspace:*",
     "@inquirer/prompts": "^8.1.0",
     "commander": "^14.0.2",
-    "pino": "^9.6.0",
+    "pino": "^10.1.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
