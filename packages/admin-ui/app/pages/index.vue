@@ -94,7 +94,7 @@ const memoryPercent = computed(() => {
 
 		<!-- Dashboard content -->
 		<div v-else>
-			<div class="mb-6">
+			<div class="mb-6" data-tour-guide="dashboard-header">
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
 					Dashboard
 				</h1>
@@ -123,6 +123,7 @@ const memoryPercent = computed(() => {
 				<!-- Connected Clients -->
 				<div
 					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					data-tour-guide="active-clients-card"
 				>
 					<div class="flex items-center justify-between">
 						<div>
@@ -147,6 +148,7 @@ const memoryPercent = computed(() => {
 				<!-- Messages Relayed -->
 				<div
 					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					data-tour-guide="messages-card"
 				>
 					<div class="flex items-center justify-between">
 						<div>
@@ -222,6 +224,7 @@ const memoryPercent = computed(() => {
 				<!-- Quick Actions -->
 				<div
 					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					data-tour-guide="quick-actions"
 				>
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Quick Actions
@@ -257,6 +260,7 @@ const memoryPercent = computed(() => {
 				<!-- Server Status -->
 				<div
 					class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+					data-tour-guide="server-status-card"
 				>
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Server Status

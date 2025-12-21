@@ -130,7 +130,7 @@ const chartOptions = {
 
 <template>
 	<div>
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex items-center justify-between mb-6" data-tour-guide="metrics-header">
 			<div>
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
 					Metrics
@@ -170,6 +170,7 @@ const chartOptions = {
 			<!-- Throughput -->
 			<div
 				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+				data-tour-guide="throughput-chart"
 			>
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Message Throughput
@@ -192,6 +193,7 @@ const chartOptions = {
 			<!-- Connections -->
 			<div
 				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+				data-tour-guide="connections-chart"
 			>
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Connected Clients
@@ -236,6 +238,7 @@ const chartOptions = {
 			<!-- Current Stats -->
 			<div
 				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+				data-tour-guide="error-stats"
 			>
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Current Statistics

@@ -37,7 +37,7 @@ function formatTime(timestamp: number) {
 
 <template>
 	<div>
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex items-center justify-between mb-6" data-tour-guide="clients-header">
 			<div>
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
 					Clients
@@ -56,7 +56,7 @@ function formatTime(timestamp: number) {
 		</div>
 
 		<!-- Search -->
-		<div class="mb-6">
+		<div class="mb-6" data-tour-guide="clients-search">
 			<div class="relative">
 				<Search
 					class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
@@ -73,6 +73,7 @@ function formatTime(timestamp: number) {
 		<!-- Clients table -->
 		<div
 			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+			data-tour-guide="clients-list"
 		>
 			<table class="w-full">
 				<thead class="bg-gray-50 dark:bg-gray-700">
@@ -140,7 +141,7 @@ function formatTime(timestamp: number) {
 						>
 							{{ client.messagesReceived }} / {{ client.messagesSent }}
 						</td>
-						<td class="px-6 py-4 text-right">
+						<td class="px-6 py-4 text-right" data-tour-guide="client-actions">
 							<div class="flex justify-end gap-2">
 								<button
 									class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

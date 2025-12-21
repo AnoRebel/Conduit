@@ -67,7 +67,7 @@ async function clearBans() {
 
 <template>
 	<div>
-		<div class="mb-6">
+		<div class="mb-6" data-tour-guide="settings-header">
 			<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
 				Settings
 			</h1>
@@ -80,6 +80,7 @@ async function clearBans() {
 			<!-- Rate Limiting -->
 			<div
 				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+				data-tour-guide="api-settings"
 			>
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Rate Limiting
@@ -168,6 +169,7 @@ async function clearBans() {
 			<!-- Authentication -->
 			<div
 				class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+				data-tour-guide="appearance-settings"
 			>
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Authentication

@@ -57,7 +57,7 @@ function getActionColor(action: string) {
 
 <template>
 	<div>
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex items-center justify-between mb-6" data-tour-guide="audit-header">
 			<div>
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
 					Audit Log
@@ -76,7 +76,7 @@ function getActionColor(action: string) {
 		</div>
 
 		<!-- Filter -->
-		<div class="mb-6 flex items-center gap-4">
+		<div class="mb-6 flex items-center gap-4" data-tour-guide="audit-filters">
 			<Filter class="h-5 w-5 text-gray-400" />
 			<select
 				v-model="selectedAction"
@@ -91,6 +91,7 @@ function getActionColor(action: string) {
 		<!-- Audit log table -->
 		<div
 			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+			data-tour-guide="audit-list"
 		>
 			<table class="w-full">
 				<thead class="bg-gray-50 dark:bg-gray-700">
