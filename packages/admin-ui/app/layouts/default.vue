@@ -29,6 +29,58 @@ function toggleDarkMode() {
 function toggleSidebar() {
 	isSidebarOpen.value = !isSidebarOpen.value;
 }
+
+// Tour guide setup
+const {
+	currentSteps,
+	hasTourForCurrentPage,
+	hasSeenCurrentTour,
+	markTourAsSeen,
+	setTourManager,
+} = useTour();
+
+const tourManagerRef = ref<{
+	startTourGuide: () => void;
+	skipTourGuide: () => void;
+	resetTourGuide: () => void;
+	isActive: Ref<boolean>;
+	currentStepIndex: Ref<number>;
+} | null>(null);
+
+// Set tour manager reference when component mounts
+watch(tourManagerRef, (manager) => {
+	if (manager) {
+		setTourManager(manager);
+	}
+});
+
+// Auto-start tour for first-time visitors on each page
+const route = useRoute();
+watch(
+	() => route.path,
+	async () => {
+		await nextTick();
+		// Small delay to ensure DOM is ready
+		setTimeout(() => {
+			if (
+				hasTourForCurrentPage.value &&
+				!hasSeenCurrentTour.value &&
+				tourManagerRef.value
+			) {
+				tourManagerRef.value.startTourGuide();
+			}
+		}, 500);
+	},
+	{ immediate: true },
+);
+
+function onTourComplete() {
+	markTourAsSeen();
+}
+
+function onTourSkip() {
+	markTourAsSeen();
+}
 </script>
 
 <template>
@@ -55,7 +107,7 @@ function toggleSidebar() {
 			</div>
 
 			<!-- Navigation -->
-			<nav class="flex-1 px-4 py-4 space-y-1">
+			<nav class="flex-1 px-4 py-4 space-y-1" data-tour-guide="nav-sidebar">
 				<NuxtLink
 					v-for="item in navigation"
 					:key="item.name"
@@ -96,9 +148,13 @@ function toggleSidebar() {
 
 				<div class="flex-1" />
 
+				<!-- Tour button -->
+				<TourButton />
+
 				<!-- Dark mode toggle -->
 				<button
 					class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					data-tour-guide="theme-toggle"
 					@click="toggleDarkMode"
 				>
 					<Sun
@@ -115,4 +171,12 @@ function toggleSidebar() {
 			</main>
 		</div>
 	</div>
+	<!-- Tour Guide Manager -->
+	<TourGuideManager
+		ref="tourManagerRef"
+		:steps="currentSteps"
+		highlight
+		@complete="onTourComplete"
+		@skip="onTourSkip"
+	/>
 </template>
