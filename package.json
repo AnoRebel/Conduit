@@ -5,11 +5,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run --filter='./packages/*' build",
+    "build": "bun run build:shared && bun run --filter='./packages/*' --filter='!@conduit/shared' build",
     "build:shared": "bun run --filter=@conduit/shared build",
-    "build:client": "bun run --filter=conduit build",
-    "build:server": "bun run --filter=@conduit/server build",
-    "build:admin": "bun run --filter=@conduit/admin build",
+    "build:client": "bun run build:shared && bun run --filter=conduit build",
+    "build:server": "bun run build:shared && bun run --filter=@conduit/server build",
+    "build:admin": "bun run build:shared && bun run --filter=@conduit/admin build",
     "build:admin-ui": "bun run --filter=@conduit/admin-ui build",
     "dev": "bun run --filter='./packages/*' dev",
     "test": "bun run --filter='./packages/*' test",
@@ -18,7 +18,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "typecheck": "bun run --filter='./packages/*' typecheck",
+    "typecheck": "bun run build:shared && bun run --filter='./packages/*' typecheck",
     "clean": "rm -rf packages/*/dist packages/*/.turbo node_modules/.cache",
     "prepare": "bun run build"
   },

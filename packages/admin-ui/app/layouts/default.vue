@@ -23,7 +23,6 @@ const navigation = [
 
 function toggleDarkMode() {
 	colorMode.preference = colorMode.value === "dark" ? "light" : "dark";
-	localStorage.setItem("theme", colorMode.preference);
 }
 
 function toggleSidebar() {

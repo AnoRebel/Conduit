@@ -46,20 +46,27 @@ async function saveRateLimits() {
 }
 
 function clearApiKey() {
-	if (confirm("Clear stored API key? You will need to re-authenticate.")) {
+	if (window.confirm("Clear stored API key? You will need to re-authenticate.")) {
 		localStorage.removeItem("adminApiKey");
 		window.location.reload();
 	}
 }
 
 async function clearBans() {
-	if (confirm("Clear all bans? This cannot be undone.")) {
+	if (window.confirm("Clear all bans? This cannot be undone.")) {
 		try {
 			await api.fetchApi("/bans", { method: "DELETE" });
 			await store.fetchBans();
 		} catch {
 			// Handle error
 		}
+	}
+}
+
+async function disconnectAllClients() {
+	if (window.confirm("Disconnect all clients?")) {
+		await api.disconnectAllClients();
+		await store.fetchClients();
 	}
 }
 </script>
@@ -235,14 +242,7 @@ async function clearBans() {
 						</div>
 						<button
 							class="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-							@click="
-								async () => {
-									if (confirm('Disconnect all clients?')) {
-										await api.disconnectAllClients();
-										await store.fetchClients();
-									}
-								}
-							"
+							@click="disconnectAllClients"
 						>
 							<Trash2 class="h-4 w-4" />
 							Disconnect All

@@ -1,6 +1,6 @@
 export function useColorMode() {
-	const preference = useState<"light" | "dark" | "system">("colorMode", () => "system");
-	const value = useState<"light" | "dark">("colorModeValue", () => "light");
+	const _preference = useState<"light" | "dark" | "system">("colorMode", () => "system");
+	const _value = useState<"light" | "dark">("colorModeValue", () => "light");
 
 	function updateDOM(mode: "light" | "dark") {
 		if (import.meta.client) {
@@ -16,19 +16,19 @@ export function useColorMode() {
 	}
 
 	function update() {
-		if (preference.value === "system") {
-			value.value = getSystemPreference();
+		if (_preference.value === "system") {
+			_value.value = getSystemPreference();
 		} else {
-			value.value = preference.value;
+			_value.value = _preference.value;
 		}
-		updateDOM(value.value);
+		updateDOM(_value.value);
 	}
 
 	// Watch preference changes
-	watch(preference, () => {
+	watch(_preference, () => {
 		update();
 		if (import.meta.client) {
-			localStorage.setItem("theme", preference.value);
+			localStorage.setItem("theme", _preference.value);
 		}
 	});
 
@@ -37,7 +37,7 @@ export function useColorMode() {
 		// Load saved preference
 		const saved = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
 		if (saved) {
-			preference.value = saved;
+			_preference.value = saved;
 		}
 
 		update();
@@ -45,14 +45,22 @@ export function useColorMode() {
 		// Listen for system preference changes
 		const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 		mediaQuery.addEventListener("change", () => {
-			if (preference.value === "system") {
+			if (_preference.value === "system") {
 				update();
 			}
 		});
 	});
 
+	// Return API compatible with @nuxtjs/color-mode
 	return {
-		preference,
-		value: readonly(value),
+		get preference() {
+			return _preference.value;
+		},
+		set preference(val: "light" | "dark" | "system") {
+			_preference.value = val;
+		},
+		get value() {
+			return _value.value;
+		},
 	};
 }

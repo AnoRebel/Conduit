@@ -39,6 +39,15 @@ const memoryPercent = computed(() => {
 	if (!store.metrics?.memory) return 0;
 	return ((store.metrics.memory.heapUsed / store.metrics.memory.heapTotal) * 100).toFixed(1);
 });
+
+function handleLogin(event: Event) {
+	const form = event.target as HTMLFormElement;
+	const key = (form.elements.namedItem("apiKey") as HTMLInputElement)?.value;
+	if (key) {
+		api.setApiKey(key);
+		store.initialize();
+	}
+}
 </script>
 
 <template>
@@ -54,19 +63,7 @@ const memoryPercent = computed(() => {
 			<p class="text-gray-600 dark:text-gray-400 mb-4">
 				Enter your API key to access the admin dashboard.
 			</p>
-			<form
-				@submit.prevent="
-					() => {
-						const input = $event.target as HTMLFormElement;
-						const key = (input.elements.namedItem('apiKey') as HTMLInputElement)
-							?.value;
-						if (key) {
-							api.setApiKey(key);
-							store.initialize();
-						}
-					}
-				"
-			>
+			<form @submit.prevent="handleLogin">
 				<input
 					name="apiKey"
 					type="password"

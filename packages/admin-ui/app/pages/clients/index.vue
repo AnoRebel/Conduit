@@ -16,13 +16,13 @@ const filteredClients = computed(() => {
 });
 
 async function handleDisconnect(id: string) {
-	if (confirm(`Disconnect client ${id}?`)) {
+	if (window.confirm(`Disconnect client ${id}?`)) {
 		await store.disconnectClient(id);
 	}
 }
 
 async function handleBan(id: string) {
-	const reason = prompt(`Ban reason for ${id}:`);
+	const reason = window.prompt(`Ban reason for ${id}:`);
 	if (reason !== null) {
 		await store.banClient(id, reason || undefined);
 	}

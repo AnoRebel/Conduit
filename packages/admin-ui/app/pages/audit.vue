@@ -66,7 +66,7 @@ function getActionColor(action: string) {
 			</div>
 			<button
 				class="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-				@click="store.fetchAuditLog"
+				@click="() => store.fetchAuditLog()"
 			>
 				<RefreshCw class="h-4 w-4" />
 				Refresh
