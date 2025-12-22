@@ -7,8 +7,8 @@ WORKDIR /app
 COPY package.json bun.lock* ./
 COPY packages/admin-ui/package.json packages/admin-ui/
 
-# Install dependencies
-RUN bun install
+# Install dependencies (ignore scripts since source isn't copied yet)
+RUN bun install --ignore-scripts
 
 # Copy source files
 COPY tsconfig.base.json ./

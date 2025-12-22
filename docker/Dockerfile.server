@@ -9,8 +9,8 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/server/package.json packages/server/
 COPY packages/admin/package.json packages/admin/
 
-# Install dependencies
-RUN bun install
+# Install dependencies (ignore scripts since source isn't copied yet)
+RUN bun install --ignore-scripts
 
 # Copy source files
 COPY tsconfig.base.json ./
