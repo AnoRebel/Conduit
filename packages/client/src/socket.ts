@@ -4,6 +4,9 @@ import type { ConduitOptions } from "./conduit.js";
 import { logger } from "./logger.js";
 import { util } from "./util.js";
 
+// WebSocket ready state constants (avoid accessing static properties on potentially undefined WebSocket)
+const WS_OPEN = 1;
+
 export interface SocketEvents {
 	message: (data: ServerMessage) => void;
 	error: (error: Error) => void;
@@ -126,7 +129,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 			return;
 		}
 
-		if (!this._ws || this._ws.readyState !== WebSocket.OPEN) {
+		if (!this._ws || this._ws.readyState !== WS_OPEN) {
 			this._messagesQueue.push(data);
 			return;
 		}
@@ -158,7 +161,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 			this._ws.onmessage = null;
 			this._ws.onopen = null;
 
-			if (this._ws.readyState === WebSocket.OPEN) {
+			if (this._ws.readyState === WS_OPEN) {
 				this._ws.close();
 			}
 
@@ -169,6 +172,6 @@ export class Socket extends EventEmitter<SocketEvents> {
 	}
 
 	get isOpen(): boolean {
-		return this._ws?.readyState === WebSocket.OPEN;
+		return this._ws?.readyState === WS_OPEN;
 	}
 }
