@@ -1,5 +1,5 @@
 # Multi-stage build for Conduit server with Admin API enabled
-FROM oven/bun:1.3 AS builder
+FROM oven/bun:1.3.5 AS builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY packages/server/package.json packages/server/
 COPY packages/admin/package.json packages/admin/
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Copy source files
 COPY tsconfig.base.json ./
@@ -22,7 +22,7 @@ COPY packages/admin packages/admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
 # Production stage
-FROM oven/bun:1.3-alpine AS production
+FROM oven/bun:1.3.5-alpine AS production
 
 WORKDIR /app
 
@@ -35,7 +35,7 @@ COPY --from=builder /app/packages/admin/dist ./node_modules/@conduit/admin/dist
 COPY --from=builder /app/packages/admin/package.json ./node_modules/@conduit/admin/
 
 # Install production dependencies only
-RUN bun install --production --frozen-lockfile
+RUN bun install --production
 
 # Environment variables - Server
 ENV PORT=9000
