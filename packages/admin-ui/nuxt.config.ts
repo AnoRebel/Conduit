@@ -1,5 +1,4 @@
 import tailwindcss from "@tailwindcss/vite";
-import type { PluginOption } from "vite";
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -15,7 +14,8 @@ export default defineNuxtConfig({
 	css: ["~/assets/css/main.css"],
 
 	vite: {
-		plugins: [tailwindcss() as PluginOption],
+		// @ts-ignore - tailwindcss vite plugin type may conflict with nuxt's vite version in CI
+		plugins: [tailwindcss()],
 	},
 
 	runtimeConfig: {
