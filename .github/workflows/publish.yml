@@ -1,0 +1,78 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish NPM Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.5"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build all packages
+        run: bun run build
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update package versions
+        run: |
+          cd packages/shared && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ../client && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ../server && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ../admin && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ../admin-ui && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+
+      - name: Setup npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish @conduit/shared
+        run: cd packages/shared && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish conduit (client)
+        run: cd packages/client && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @conduit/server
+        run: cd packages/server && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @conduit/admin
+        run: cd packages/admin && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @conduit/admin-ui
+        run: cd packages/admin-ui && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create publish summary
+        run: |
+          echo "## NPM Packages Published!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version: ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/shared](https://www.npmjs.com/package/@conduit/shared)" >> $GITHUB_STEP_SUMMARY
+          echo "- [conduit](https://www.npmjs.com/package/conduit) (client)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/server](https://www.npmjs.com/package/@conduit/server)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/admin](https://www.npmjs.com/package/@conduit/admin)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@conduit/admin-ui](https://www.npmjs.com/package/@conduit/admin-ui)" >> $GITHUB_STEP_SUMMARY

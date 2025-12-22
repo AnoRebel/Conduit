@@ -2,23 +2,16 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
-      - "releases/**"
     tags:
       - "v*"
-      - "@conduit/*"
 
 permissions:
   contents: write
-  packages: write
-  id-token: write
 
 jobs:
   release:
-    name: Release
+    name: Create GitHub Release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,7 +19,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.0"
+          bun-version: "1.3.5"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -41,148 +34,14 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Update package versions
-        run: |
-          # Update version in all packages
-          cd packages/shared && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
-          cd ../client && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
-          cd ../server && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
-          cd ../admin && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
-          cd ../admin-ui && npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
-
-      - name: Setup npm auth
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
-      - name: Publish @conduit/shared
-        run: |
-          cd packages/shared
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish conduit (client)
-        run: |
-          cd packages/client
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @conduit/server
-        run: |
-          cd packages/server
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @conduit/admin
-        run: |
-          cd packages/admin
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @conduit/admin-ui
-        run: |
-          cd packages/admin-ui
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
           files: |
             packages/client/dist/*
             packages/server/dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  docker-release:
-    name: Docker Release
-    runs-on: ubuntu-latest
-    needs: release
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push server
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.server
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            conduit/server:${{ steps.version.outputs.VERSION }}
-            conduit/server:latest
-            ghcr.io/${{ github.repository }}/server:${{ steps.version.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}/server:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push admin-ui
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.admin-ui
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            conduit/admin-ui:${{ steps.version.outputs.VERSION }}
-            conduit/admin-ui:latest
-            ghcr.io/${{ github.repository }}/admin-ui:${{ steps.version.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}/admin-ui:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  notify-release:
-    name: Notify Release
-    runs-on: ubuntu-latest
-    needs: [release, docker-release]
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create release summary
-        run: |
-          echo "## Release v${{ steps.version.outputs.VERSION }} Published!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### NPM Packages" >> $GITHUB_STEP_SUMMARY
-          echo "- [@conduit/shared](https://www.npmjs.com/package/@conduit/shared)" >> $GITHUB_STEP_SUMMARY
-          echo "- [conduit](https://www.npmjs.com/package/conduit) (client)" >> $GITHUB_STEP_SUMMARY
-          echo "- [@conduit/server](https://www.npmjs.com/package/@conduit/server)" >> $GITHUB_STEP_SUMMARY
-          echo "- [@conduit/admin](https://www.npmjs.com/package/@conduit/admin)" >> $GITHUB_STEP_SUMMARY
-          echo "- [@conduit/admin-ui](https://www.npmjs.com/package/@conduit/admin-ui)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Docker Images" >> $GITHUB_STEP_SUMMARY
-          echo "- \`conduit/server:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`conduit/admin-ui:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ github.repository }}/server:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ github.repository }}/admin-ui:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
