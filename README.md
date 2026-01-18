@@ -400,6 +400,105 @@ import { Peer } from 'conduit/peerjs-compat';
 const peer = new Peer('my-id');
 ```
 
+## Installation
+
+### From npm (recommended)
+
+```bash
+# Client
+npm install conduit
+# or
+bun add conduit
+
+# Server
+npm install @conduit/server
+# or
+bun add @conduit/server
+```
+
+### From GitHub
+
+You can also install directly from GitHub:
+
+```bash
+# Install the client from GitHub
+npm install github:AnoRebel/conduit#packages/client
+# or using bun
+bun add github:AnoRebel/conduit
+
+# Install the server from GitHub
+npm install github:AnoRebel/conduit#packages/server
+```
+
+## Docker Deployment
+
+### Quick Start with Docker
+
+```bash
+# Clone the repository
+git clone https://github.com/AnoRebel/conduit.git
+cd conduit/docker
+
+# Start the server (signaling only)
+docker compose up server -d
+
+# Or start with admin API enabled
+docker compose --profile admin up -d
+```
+
+### Docker Images
+
+| Image | Description | Port |
+|-------|-------------|------|
+| `server` | Signaling server only | 9000 |
+| `server-admin` | Server with Admin API | 9000 |
+| `admin-ui` | Admin Dashboard (Nuxt) | 3000 |
+
+### Using Docker Compose
+
+```yaml
+# docker-compose.yml
+version: "3.8"
+
+services:
+  conduit:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - HOST=0.0.0.0
+      - CONDUIT_KEY=your-secret-key
+      - ALLOW_DISCOVERY=false
+    restart: unless-stopped
+```
+
+### Running with Admin Dashboard
+
+```bash
+# Set your admin API key
+export ADMIN_API_KEY=your-secure-api-key
+
+# Start server with admin API and dashboard
+docker compose --profile admin up -d
+
+# Access the dashboard at http://localhost:3000
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `9000` |
+| `HOST` | Bind address | `0.0.0.0` |
+| `CONDUIT_KEY` | API key for clients | `conduit` |
+| `ALLOW_DISCOVERY` | Enable peer discovery endpoint | `false` |
+| `ADMIN_ENABLED` | Enable admin API | `false` |
+| `ADMIN_API_KEY` | Admin API authentication key | - |
+| `ADMIN_PATH` | Admin API path prefix | `/admin/v1` |
+
 ## Development
 
 This is a Bun monorepo. To get started:
@@ -414,9 +513,39 @@ bun run build
 # Run tests
 bun run test
 
+# Type checking
+bun run typecheck
+
 # Run linting
 bun run lint
+
+# Format code
+bun run format
 ```
+
+### Project Structure
+
+```
+conduit/
+├── packages/
+│   ├── client/      # Browser/Node.js client library
+│   ├── server/      # WebRTC signaling server
+│   ├── shared/      # Shared types and enums
+│   ├── admin/       # Admin API and monitoring
+│   └── admin-ui/    # Vue 3/Nuxt 4 dashboard
+├── docker/          # Docker configurations
+└── .github/         # CI/CD workflows
+```
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting a pull request.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 

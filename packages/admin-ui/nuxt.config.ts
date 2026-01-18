@@ -14,7 +14,7 @@ export default defineNuxtConfig({
 	css: ["~/assets/css/main.css"],
 
 	vite: {
-		// @ts-ignore - tailwindcss vite plugin type may conflict with nuxt's vite version in CI
+		// @ts-expect-error - tailwindcss vite plugin type may conflict with nuxt's vite version in CI
 		plugins: [tailwindcss()],
 	},
 

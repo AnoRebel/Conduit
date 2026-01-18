@@ -17,13 +17,37 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
+  "keywords": [
+    "conduit",
+    "types",
+    "enums",
+    "webrtc",
+    "signaling"
+  ],
+  "author": "Conduit Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnoRebel/conduit.git",
+    "directory": "packages/shared"
+  },
+  "bugs": {
+    "url": "https://github.com/AnoRebel/conduit/issues"
+  },
+  "homepage": "https://github.com/AnoRebel/conduit#readme",
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }
