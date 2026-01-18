@@ -34,7 +34,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "echo 'No tests yet' && exit 0",
+    "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
@@ -80,5 +80,12 @@
   ],
   "engines": {
     "node": ">=22.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/AnoRebel/conduit/issues"
+  },
+  "homepage": "https://github.com/AnoRebel/conduit#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

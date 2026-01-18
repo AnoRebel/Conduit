@@ -56,5 +56,31 @@
   },
   "peerDependencies": {
     "vue": "^3.5.0"
+  },
+  "keywords": [
+    "conduit",
+    "admin",
+    "dashboard",
+    "vue",
+    "nuxt",
+    "webrtc",
+    "monitoring"
+  ],
+  "author": "Conduit Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AnoRebel/conduit.git",
+    "directory": "packages/admin-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/AnoRebel/conduit/issues"
+  },
+  "homepage": "https://github.com/AnoRebel/conduit#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }
