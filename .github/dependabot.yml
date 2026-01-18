@@ -1,0 +1,181 @@
+# Dependabot configuration for Conduit monorepo
+# Note: Bun uses npm ecosystem for dependency updates since it reads package.json
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # Root package dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+    groups:
+      # Group all minor and patch updates together
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Keep major updates separate for careful review
+      typescript:
+        patterns:
+          - "typescript"
+          - "@types/*"
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      linting:
+        patterns:
+          - "@biomejs/*"
+          - "biome"
+
+  # Shared package
+  - package-ecosystem: "npm"
+    directory: "/packages/shared"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(shared)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "pkg:shared"
+
+  # Client package
+  - package-ecosystem: "npm"
+    directory: "/packages/client"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(client)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "pkg:client"
+
+  # Server package
+  - package-ecosystem: "npm"
+    directory: "/packages/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(server)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "pkg:server"
+
+  # Admin package
+  - package-ecosystem: "npm"
+    directory: "/packages/admin"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(admin)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "pkg:admin"
+
+  # Admin UI package (Nuxt)
+  - package-ecosystem: "npm"
+    directory: "/packages/admin-ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(admin-ui)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "pkg:admin-ui"
+    groups:
+      nuxt:
+        patterns:
+          - "nuxt"
+          - "@nuxt/*"
+          - "@pinia/*"
+          - "@vueuse/*"
+      vue:
+        patterns:
+          - "vue"
+          - "@vue/*"
+      ui:
+        patterns:
+          - "shadcn-nuxt"
+          - "@tailwindcss/*"
+          - "tailwindcss"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "github-actions"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"

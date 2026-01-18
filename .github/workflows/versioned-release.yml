@@ -1,0 +1,329 @@
+name: Versioned Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - custom
+        default: patch
+      custom_version:
+        description: "Custom version (only if release_type is 'custom', e.g., 1.2.3 or 1.2.3-beta.1)"
+        required: false
+        type: string
+      prerelease_tag:
+        description: "Prerelease tag (e.g., alpha, beta, rc) - leave empty for stable release"
+        required: false
+        type: string
+      skip_tests:
+        description: "Skip tests (not recommended)"
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run (don't actually create the release)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  BUN_VERSION: "1.3.5"
+
+jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      current_version: ${{ steps.current.outputs.version }}
+      new_version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          echo "version=$CURRENT" >> $GITHUB_OUTPUT
+          echo "📦 Current version: $CURRENT"
+
+      - name: Calculate new version
+        id: version
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          RELEASE_TYPE="${{ inputs.release_type }}"
+          CUSTOM_VERSION="${{ inputs.custom_version }}"
+          PRERELEASE_TAG="${{ inputs.prerelease_tag }}"
+
+          # Parse current version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT%%-*}"
+
+          if [ "$RELEASE_TYPE" == "custom" ]; then
+            if [ -z "$CUSTOM_VERSION" ]; then
+              echo "::error::Custom version is required when release_type is 'custom'"
+              exit 1
+            fi
+            NEW_VERSION="$CUSTOM_VERSION"
+          else
+            case "$RELEASE_TYPE" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          fi
+
+          # Add prerelease tag if specified
+          if [ -n "$PRERELEASE_TAG" ]; then
+            # Check if version already has a prerelease tag
+            if [[ "$NEW_VERSION" == *-* ]]; then
+              # Extract base version and increment prerelease number
+              BASE_VERSION="${NEW_VERSION%%-*}"
+              NEW_VERSION="$BASE_VERSION-$PRERELEASE_TAG.1"
+            else
+              NEW_VERSION="$NEW_VERSION-$PRERELEASE_TAG.1"
+            fi
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Validate semver format
+          if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$ ]]; then
+            echo "::error::Invalid version format: $NEW_VERSION"
+            exit 1
+          fi
+
+          TAG="v$NEW_VERSION"
+
+          # Check if tag already exists
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          echo "📦 New version: $NEW_VERSION"
+          echo "🏷️ Tag: $TAG"
+
+  test:
+    name: Test
+    needs: prepare
+    if: ${{ !inputs.skip_tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build
+        run: bun run build
+
+      - name: Test
+        run: bun run test
+
+  release:
+    name: Create Release
+    needs: [prepare, test]
+    if: ${{ always() && needs.prepare.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build all packages
+        run: bun run build
+
+      - name: Update package versions
+        run: |
+          VERSION="${{ needs.prepare.outputs.new_version }}"
+          echo "📦 Updating all packages to version $VERSION"
+
+          # Update root package.json
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+          # Update all workspace packages
+          for pkg in shared client server admin admin-ui; do
+            echo "  → packages/$pkg"
+            cd "packages/$pkg"
+            npm version "$VERSION" --no-git-tag-version --allow-same-version
+            cd ../..
+          done
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.prepare.outputs.new_version }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          echo "## Release v$VERSION" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "### Changes since $PREV_TAG" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            git log --oneline --no-decorate "$PREV_TAG"..HEAD | while read line; do
+              echo "- $line" >> RELEASE_NOTES.md
+            done
+          else
+            echo "### Initial Release" >> RELEASE_NOTES.md
+          fi
+
+          echo "" >> RELEASE_NOTES.md
+          echo "### Installation" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          echo "# Install from npm" >> RELEASE_NOTES.md
+          echo "npm install conduit@$VERSION" >> RELEASE_NOTES.md
+          echo "npm install @conduit/server@$VERSION" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "# Or install from GitHub" >> RELEASE_NOTES.md
+          echo "npm install github:AnoRebel/conduit#v$VERSION" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "### Docker" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          echo "docker pull ghcr.io/anorebel/conduit/server:$VERSION" >> RELEASE_NOTES.md
+          echo "docker pull ghcr.io/anorebel/conduit/server-admin:$VERSION" >> RELEASE_NOTES.md
+          echo "docker pull ghcr.io/anorebel/conduit/admin-ui:$VERSION" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
+
+          cat RELEASE_NOTES.md
+
+      - name: Create release archives
+        run: |
+          VERSION="${{ needs.prepare.outputs.new_version }}"
+          mkdir -p release-assets
+
+          # Create archives for each package
+          for pkg in client server shared admin; do
+            if [ -d "packages/$pkg/dist" ]; then
+              tar -czvf "release-assets/conduit-$pkg-$VERSION.tar.gz" -C "packages/$pkg/dist" .
+              cd "packages/$pkg/dist" && zip -r "../../../release-assets/conduit-$pkg-$VERSION.zip" . && cd ../../..
+            fi
+          done
+
+          ls -la release-assets/
+
+      - name: Commit and tag (dry run)
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "🔍 DRY RUN - Would commit and create tag ${{ needs.prepare.outputs.tag }}"
+          echo ""
+          echo "Files that would be modified:"
+          git status --short
+          echo ""
+          echo "Version: ${{ needs.prepare.outputs.new_version }}"
+          echo "Tag: ${{ needs.prepare.outputs.tag }}"
+          echo "Prerelease: ${{ needs.prepare.outputs.is_prerelease }}"
+
+      - name: Commit and tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.new_version }}"
+          TAG="${{ needs.prepare.outputs.tag }}"
+
+          git add -A
+          git commit -m "chore(release): $VERSION" || echo "No changes to commit"
+          git tag -a "$TAG" -m "Release $VERSION"
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Release ${{ needs.prepare.outputs.new_version }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create summary
+        run: |
+          VERSION="${{ needs.prepare.outputs.new_version }}"
+          TAG="${{ needs.prepare.outputs.tag }}"
+          IS_PRERELEASE="${{ needs.prepare.outputs.is_prerelease }}"
+          DRY_RUN="${{ inputs.dry_run }}"
+
+          if [ "$DRY_RUN" == "true" ]; then
+            echo "## 🔍 Dry Run Complete" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No changes were made. Here's what would happen:" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## 🚀 Release Created Successfully" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | $VERSION |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | $TAG |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Prerelease** | $IS_PRERELEASE |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Previous Version** | ${{ needs.prepare.outputs.current_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$DRY_RUN" != "true" ]; then
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The following workflows will be triggered automatically:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "1. **[Publish to npm](${{ github.server_url }}/${{ github.repository }}/actions/workflows/publish.yml)** - Publishes packages to npm registry" >> $GITHUB_STEP_SUMMARY
+            echo "2. **[Docker Build](${{ github.server_url }}/${{ github.repository }}/actions/workflows/docker.yml)** - Builds and pushes Docker images" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Release URL" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG" >> $GITHUB_STEP_SUMMARY
+          fi
