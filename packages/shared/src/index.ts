@@ -1,4 +1,4 @@
-// Enums
+// Enums - Re-export all enum types and values
 export {
 	ConduitErrorType,
 	ConnectionType,
@@ -8,18 +8,23 @@ export {
 	SocketEventType,
 	TransportType,
 } from "./enums.js";
-// Types - Core message types
-// Types - Payload types
-// Types - Discriminated message types
-// Types - Client information
-// Types - Configuration
-// Types - Connection state
-// Types - Statistics
-// Types - Browser support
-// Types - Errors
-// Types - Events
-// Types - Log levels
-// Types - Utility types
+
+// ============================================================================
+// Types - All type exports for external consumption
+// ============================================================================
+
+// Connection State Types
+// Log Level Types
+// Buffer & Connection Statistics
+// Base Message Types
+// Message Payload Types
+// Discriminated Message Types (for type-safe message handling)
+// Client Information Types
+// Configuration Types
+// Browser Support Types
+// Error Types
+// Event Types
+// Utility Types
 export type {
 	AsyncResult,
 	ConnectionState,
