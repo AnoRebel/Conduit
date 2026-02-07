@@ -1,5 +1,5 @@
 # Multi-stage build for Conduit server with optional admin API
-FROM oven/bun:1.3.6 AS builder
+FROM oven/bun:1.3.8 AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ COPY packages/admin packages/admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
 # Production stage
-FROM oven/bun:1.3.6-alpine AS production
+FROM oven/bun:1.3.8-alpine AS production
 
 WORKDIR /app
 
