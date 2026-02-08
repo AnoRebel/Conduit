@@ -36,7 +36,7 @@ permissions:
   contents: write
 
 env:
-  BUN_VERSION: "1.3.5"
+  BUN_VERSION: "1.3.8"
 
 jobs:
   prepare:
@@ -197,6 +197,15 @@ jobs:
             npm version "$VERSION" --no-git-tag-version --allow-same-version
             cd ../..
           done
+
+          # Update client version.ts fallback
+          sed -i "s/: \".*\";/: \"$VERSION\";/" packages/client/src/version.ts
+          echo "  → Updated packages/client/src/version.ts"
+
+          # Update server CLI version display
+          sed -i "s/Conduit Server v[0-9]\+\.[0-9]\+\.[0-9]\+[^\"]*/Conduit Server v$VERSION/" packages/server/bin/conduit.js
+          sed -i "s/\.version(\"[^\"]*\")/.version(\"$VERSION\")/" packages/server/bin/conduit.js
+          echo "  → Updated packages/server/bin/conduit.js"
 
       - name: Generate changelog
         id: changelog

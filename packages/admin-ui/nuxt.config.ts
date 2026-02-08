@@ -6,7 +6,7 @@ export default defineNuxtConfig({
 	devtools: { enabled: true },
 
 	future: {
-		compatibilityVersion: 4,
+		compatibilityVersion: 5,
 	},
 
 	modules: ["@pinia/nuxt", "@vueuse/nuxt", "shadcn-nuxt", "@nuxt/icon", "@nuxt/image"],
@@ -14,7 +14,7 @@ export default defineNuxtConfig({
 	css: ["~/assets/css/main.css"],
 
 	vite: {
-		plugins: [tailwindcss()],
+		plugins: [tailwindcss() as any],
 	},
 
 	runtimeConfig: {
