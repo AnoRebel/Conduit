@@ -187,15 +187,16 @@ jobs:
           VERSION="${{ needs.prepare.outputs.new_version }}"
           echo "📦 Updating all packages to version $VERSION"
 
-          # Update root package.json
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
-
-          # Update all workspace packages (npm)
-          for pkg in shared client server admin admin-ui; do
-            echo "  → packages/$pkg/package.json"
-            cd "packages/$pkg"
-            npm version "$VERSION" --no-git-tag-version --allow-same-version
-            cd ../..
+          # Update all package.json versions using node (avoids npm workspace:* issues)
+          for pkg in . packages/shared packages/client packages/server packages/admin packages/admin-ui; do
+            node -e "
+              const fs = require('fs');
+              const p = '$pkg/package.json';
+              const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+              data.version = '$VERSION';
+              fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');
+            "
+            echo "  → $pkg/package.json"
           done
 
           # Update JSR package versions
@@ -243,19 +244,22 @@ jobs:
           echo "" >> RELEASE_NOTES.md
           echo "### Installation" >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
-          echo "#### npm" >> RELEASE_NOTES.md
+          echo "#### npm / bun" >> RELEASE_NOTES.md
           echo '```bash' >> RELEASE_NOTES.md
+          echo "bun add conduit@$VERSION" >> RELEASE_NOTES.md
+          echo "bun add @conduit/server@$VERSION" >> RELEASE_NOTES.md
+          echo "# or with npm" >> RELEASE_NOTES.md
           echo "npm install conduit@$VERSION" >> RELEASE_NOTES.md
           echo "npm install @conduit/server@$VERSION" >> RELEASE_NOTES.md
           echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           echo "#### JSR" >> RELEASE_NOTES.md
           echo '```bash' >> RELEASE_NOTES.md
+          echo "bunx jsr add @conduit/client@$VERSION" >> RELEASE_NOTES.md
+          echo "bunx jsr add @conduit/server@$VERSION" >> RELEASE_NOTES.md
+          echo "# or with deno" >> RELEASE_NOTES.md
           echo "deno add jsr:@conduit/client@$VERSION" >> RELEASE_NOTES.md
           echo "deno add jsr:@conduit/server@$VERSION" >> RELEASE_NOTES.md
-          echo "# or with npx" >> RELEASE_NOTES.md
-          echo "npx jsr add @conduit/client@$VERSION" >> RELEASE_NOTES.md
-          echo "npx jsr add @conduit/server@$VERSION" >> RELEASE_NOTES.md
           echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           echo "### Docker" >> RELEASE_NOTES.md

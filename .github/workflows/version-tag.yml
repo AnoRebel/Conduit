@@ -95,15 +95,18 @@ jobs:
       - name: Update package versions
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
+          echo "📦 Updating all packages to version $VERSION"
 
-          # Update root package.json
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
-
-          # Update all workspace packages (npm)
-          for pkg in shared client server admin admin-ui; do
-            cd "packages/$pkg"
-            npm version "$VERSION" --no-git-tag-version --allow-same-version
-            cd ../..
+          # Update all package.json versions using node (avoids npm workspace:* issues)
+          for pkg in . packages/shared packages/client packages/server packages/admin packages/admin-ui; do
+            node -e "
+              const fs = require('fs');
+              const p = '$pkg/package.json';
+              const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+              data.version = '$VERSION';
+              fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');
+            "
+            echo "  → $pkg/package.json"
           done
 
           # Update JSR package versions
@@ -116,7 +119,7 @@ jobs:
                 data.version = '$VERSION';
                 fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
               "
-              echo "Updated packages/$pkg/jsr.json to version $VERSION"
+              echo "  → packages/$pkg/jsr.json"
             fi
           done
 

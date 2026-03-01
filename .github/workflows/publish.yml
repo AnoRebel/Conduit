@@ -26,7 +26,8 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - uses: actions/setup-node@v4
+      # setup-node configures .npmrc for OIDC trusted publishing
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: "https://registry.npmjs.org"
@@ -49,31 +50,23 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
 
-          # Update all workspace packages to the release version
-          for pkg in shared client server admin admin-ui; do
-            cd "packages/$pkg"
-            npm version "$VERSION" --no-git-tag-version --allow-same-version
-            cd ../..
+          # Update all package.json versions using node (avoids workspace:* issues)
+          for pkg in packages/shared packages/client packages/server packages/admin packages/admin-ui; do
+            node -e "
+              const fs = require('fs');
+              const p = '$pkg/package.json';
+              const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+              data.version = '$VERSION';
+              fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');
+            "
+            echo "  → $pkg/package.json"
           done
 
-      - name: Resolve workspace dependencies
-        run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
-
-          # Replace workspace:* references with the actual version
-          # This is critical - npm registry doesn't understand workspace: protocol
-          for pkg in client server admin admin-ui; do
-            PKGJSON="packages/$pkg/package.json"
-            # Replace "workspace:*" with the actual version in dependencies
-            sed -i "s/\"workspace:\\*\"/\"^$VERSION\"/g" "$PKGJSON"
-            echo "Updated workspace deps in $PKGJSON:"
-            grep -n "conduit" "$PKGJSON" || true
-          done
-
-      # npm trusted publishing uses OIDC (id-token: write) — no secrets needed
-      # Provenance attestations are generated automatically
+      # bun publish automatically resolves workspace:* → actual versions
+      # Trusted publishing OIDC token is configured via setup-node's .npmrc
       - name: Publish @conduit/shared
-        run: cd packages/shared && npm publish --access public
+        run: bun publish --access public
+        working-directory: packages/shared
 
       - name: Wait for shared package availability
         run: |
@@ -89,16 +82,20 @@ jobs:
           done
 
       - name: Publish conduit (client)
-        run: cd packages/client && npm publish --access public
+        run: bun publish --access public
+        working-directory: packages/client
 
       - name: Publish @conduit/server
-        run: cd packages/server && npm publish --access public
+        run: bun publish --access public
+        working-directory: packages/server
 
       - name: Publish @conduit/admin
-        run: cd packages/admin && npm publish --access public
+        run: bun publish --access public
+        working-directory: packages/admin
 
       - name: Publish @conduit/admin-ui
-        run: cd packages/admin-ui && npm publish --access public
+        run: bun publish --access public
+        working-directory: packages/admin-ui
 
       - name: Create NPM publish summary
         run: |
@@ -126,6 +123,10 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Extract version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -144,23 +145,27 @@ jobs:
                 pkg.version = '$VERSION';
                 fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
               "
-              echo "Updated packages/$pkg/jsr.json to version $VERSION"
+              echo "  → packages/$pkg/jsr.json"
             fi
           done
 
       # JSR uses GitHub Actions OIDC for authentication (id-token: write)
       # No secrets needed — just link each package to this repo on jsr.io
       - name: Publish @conduit/shared to JSR
-        run: cd packages/shared && npx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types
+        working-directory: packages/shared
 
       - name: Publish @conduit/client to JSR
-        run: cd packages/client && npx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types
+        working-directory: packages/client
 
       - name: Publish @conduit/server to JSR
-        run: cd packages/server && npx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types
+        working-directory: packages/server
 
       - name: Publish @conduit/admin to JSR
-        run: cd packages/admin && npx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types
+        working-directory: packages/admin
 
       - name: Create JSR publish summary
         run: |

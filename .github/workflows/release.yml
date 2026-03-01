@@ -53,28 +53,28 @@ jobs:
         run: bun run test
 
       - name: Upload client artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: client-dist
           path: packages/client/dist/
           retention-days: 30
 
       - name: Upload server artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: server-dist
           path: packages/server/dist/
           retention-days: 30
 
       - name: Upload shared artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: shared-dist
           path: packages/shared/dist/
           retention-days: 30
 
       - name: Upload admin artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: admin-dist
           path: packages/admin/dist/
@@ -90,7 +90,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
@@ -139,19 +139,22 @@ jobs:
 
           ### Installation
 
-          #### npm
+          #### npm / bun
           \`\`\`bash
+          bun add conduit@$VERSION
+          bun add @conduit/server@$VERSION
+          # or with npm
           npm install conduit@$VERSION
           npm install @conduit/server@$VERSION
           \`\`\`
 
           #### JSR
           \`\`\`bash
+          bunx jsr add @conduit/client@$VERSION
+          bunx jsr add @conduit/server@$VERSION
+          # or with deno
           deno add jsr:@conduit/client@$VERSION
           deno add jsr:@conduit/server@$VERSION
-          # or with npx
-          npx jsr add @conduit/client@$VERSION
-          npx jsr add @conduit/server@$VERSION
           \`\`\`
 
           ### Docker

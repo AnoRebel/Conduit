@@ -63,14 +63,14 @@ jobs:
         run: bun run build
 
       - name: Upload client artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: client-dist
           path: packages/client/dist/
           retention-days: 7
 
       - name: Upload server artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: server-dist
           path: packages/server/dist/
