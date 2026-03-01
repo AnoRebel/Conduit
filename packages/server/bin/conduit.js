@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { confirm, input, number } from "@inquirer/prompts";
 import { Command } from "commander";
 import { createConduitServer } from "../dist/adapters/node.js";
 
@@ -207,6 +206,8 @@ program
 	.command("init")
 	.description("Initialize a new Conduit server configuration interactively")
 	.action(async () => {
+		const { confirm, input, number } = await import("@inquirer/prompts");
+
 		console.log("Conduit Server Configuration\n");
 
 		const port = await number({

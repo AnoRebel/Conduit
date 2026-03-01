@@ -26,17 +26,22 @@ FROM imbios/bun-node:1.3.10-24-slim AS production
 
 WORKDIR /app
 
-# Copy production dependencies from builder first (base layer)
-COPY --from=builder /app/node_modules ./node_modules
-# Then overlay workspace packages with their actual built output (overwrites symlinks)
+# Copy server package.json and workspace lockfile for production install
+COPY --from=builder /app/packages/server/package.json ./package.json
+COPY --from=builder /app/bun.lock ./bun.lock
+
+# Install production dependencies only (gets commander, ws, pino, etc.)
+RUN bun install --production --ignore-scripts
+
+# Overlay workspace packages with their actual built output (replaces symlinks)
 COPY --from=builder /app/packages/shared/dist ./node_modules/@conduit/shared/dist
 COPY --from=builder /app/packages/shared/package.json ./node_modules/@conduit/shared/
 COPY --from=builder /app/packages/admin/dist ./node_modules/@conduit/admin/dist
 COPY --from=builder /app/packages/admin/package.json ./node_modules/@conduit/admin/
-# Copy server files
+
+# Copy server build output and CLI
 COPY --from=builder /app/packages/server/dist ./dist
 COPY --from=builder /app/packages/server/bin ./bin
-COPY --from=builder /app/packages/server/package.json ./
 
 # Non-sensitive environment defaults
 ENV PORT=9000
