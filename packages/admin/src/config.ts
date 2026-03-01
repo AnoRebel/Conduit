@@ -1,3 +1,4 @@
+import type { PersistenceConfig } from "./persistence/index.js";
 import type { ServerConnection } from "./types.js";
 
 // ============================================================================
@@ -127,6 +128,9 @@ export interface AdminConfig {
 
 	/** SSE configuration */
 	sse: SSEConfig;
+
+	/** Persistence configuration (default: in-memory, no durability) */
+	persistence?: PersistenceConfig;
 
 	/** Standalone mode configuration (when not attached to a server) */
 	standalone?: {

@@ -30,6 +30,18 @@ export {
 } from "./config.js";
 
 // ============================================================================
+// Persistence
+// ============================================================================
+
+export {
+	createPersistenceStore,
+	MemoryStore,
+	type PersistenceConfig,
+	type PersistenceStore,
+	SQLiteStore,
+} from "./persistence/index.js";
+
+// ============================================================================
 // Core Admin Components
 // ============================================================================
 

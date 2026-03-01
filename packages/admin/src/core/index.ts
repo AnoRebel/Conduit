@@ -7,6 +7,7 @@ import {
 	instrumentServerCore,
 	syncRealmToMetrics,
 } from "../metrics/instrumentation.js";
+import { createPersistenceStore, type PersistenceStore } from "../persistence/index.js";
 import type {
 	AuditEntry,
 	BanEntry,
@@ -71,13 +72,17 @@ export interface CreateAdminCoreOptions {
 export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 	const { config } = options;
 
+	// Initialize persistence store (defaults to in-memory)
+	const store: PersistenceStore = createPersistenceStore(config.persistence);
+
 	// Initialize components
 	const metrics = createMetricsCollector(config.metrics);
 	const auth = createAuthManager(config.auth);
-	const bans = createBanManager();
+	const bans = createBanManager({ store });
 	const audit = createAuditLogger({
 		enabled: config.audit.enabled,
 		maxEntries: config.audit.maxEntries,
+		store,
 	});
 
 	// Server attachment state
@@ -305,6 +310,7 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		metrics.destroy();
 		bans.clear();
 		audit.clear();
+		store.close();
 	}
 
 	return {
