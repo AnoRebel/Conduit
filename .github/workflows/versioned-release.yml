@@ -190,12 +190,26 @@ jobs:
           # Update root package.json
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
-          # Update all workspace packages
+          # Update all workspace packages (npm)
           for pkg in shared client server admin admin-ui; do
-            echo "  → packages/$pkg"
+            echo "  → packages/$pkg/package.json"
             cd "packages/$pkg"
             npm version "$VERSION" --no-git-tag-version --allow-same-version
             cd ../..
+          done
+
+          # Update JSR package versions
+          for pkg in shared client server admin; do
+            if [ -f "packages/$pkg/jsr.json" ]; then
+              node -e "
+                const fs = require('fs');
+                const path = 'packages/$pkg/jsr.json';
+                const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+                data.version = '$VERSION';
+                fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+              "
+              echo "  → packages/$pkg/jsr.json"
+            fi
           done
 
           # Update client version.ts fallback
@@ -229,13 +243,19 @@ jobs:
           echo "" >> RELEASE_NOTES.md
           echo "### Installation" >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
+          echo "#### npm" >> RELEASE_NOTES.md
           echo '```bash' >> RELEASE_NOTES.md
-          echo "# Install from npm" >> RELEASE_NOTES.md
           echo "npm install conduit@$VERSION" >> RELEASE_NOTES.md
           echo "npm install @conduit/server@$VERSION" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
-          echo "# Or install from GitHub" >> RELEASE_NOTES.md
-          echo "npm install github:AnoRebel/conduit#v$VERSION" >> RELEASE_NOTES.md
+          echo "#### JSR" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          echo "deno add jsr:@conduit/client@$VERSION" >> RELEASE_NOTES.md
+          echo "deno add jsr:@conduit/server@$VERSION" >> RELEASE_NOTES.md
+          echo "# or with npx" >> RELEASE_NOTES.md
+          echo "npx jsr add @conduit/client@$VERSION" >> RELEASE_NOTES.md
+          echo "npx jsr add @conduit/server@$VERSION" >> RELEASE_NOTES.md
           echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           echo "### Docker" >> RELEASE_NOTES.md
@@ -329,7 +349,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "The following workflows will be triggered automatically:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "1. **[Publish to npm](${{ github.server_url }}/${{ github.repository }}/actions/workflows/publish.yml)** - Publishes packages to npm registry" >> $GITHUB_STEP_SUMMARY
+            echo "1. **[Publish to npm & JSR](${{ github.server_url }}/${{ github.repository }}/actions/workflows/publish.yml)** - Publishes packages to npm and JSR registries" >> $GITHUB_STEP_SUMMARY
             echo "2. **[Docker Build](${{ github.server_url }}/${{ github.repository }}/actions/workflows/docker.yml)** - Builds and pushes Docker images" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Release URL" >> $GITHUB_STEP_SUMMARY
