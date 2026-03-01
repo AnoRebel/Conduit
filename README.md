@@ -36,13 +36,13 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 ### Client
 
 ```bash
-bun add conduit
+bun add @conduit/client
 # or
-npm install conduit
+npm install @conduit/client
 ```
 
 ```typescript
-import { Conduit } from 'conduit';
+import { Conduit } from '@conduit/client';
 
 // Create a new Conduit instance
 const conduit = new Conduit('my-peer-id');
@@ -442,7 +442,7 @@ import { Peer } from 'peerjs';
 const peer = new Peer('my-id');
 
 // After (Conduit with compat layer)
-import { Peer } from 'conduit/peerjs-compat';
+import { Peer } from '@conduit/client/peerjs-compat';
 const peer = new Peer('my-id');
 ```
 
@@ -452,9 +452,9 @@ const peer = new Peer('my-id');
 
 ```bash
 # Client
-bun add conduit
+bun add @conduit/client
 # or
-npm install conduit
+npm install @conduit/client
 
 # Server
 bun add @conduit/server

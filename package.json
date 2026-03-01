@@ -8,7 +8,7 @@
   "scripts": {
     "build": "bun run build:shared && bun run --filter='./packages/*' --filter='!@conduit/shared' build",
     "build:shared": "bun run --filter=@conduit/shared build",
-    "build:client": "bun run build:shared && bun run --filter=conduit build",
+    "build:client": "bun run build:shared && bun run --filter=@conduit/client build",
     "build:server": "bun run build:shared && bun run --filter=@conduit/server build",
     "build:admin": "bun run build:shared && bun run --filter=@conduit/admin build",
     "build:admin-ui": "NITRO_PRESET=bun bun run --filter=@conduit/admin-ui build",

@@ -8,10 +8,10 @@
  *   import { Peer } from 'peerjs';
  *
  * With:
- *   import { Peer } from 'conduit/peerjs-compat';
+ *   import { Peer } from '@conduit/client/peerjs-compat';
  *
  * Or simply update your import to use the new names:
- *   import { Conduit, ConduitError, ConduitErrorType } from 'conduit';
+ *   import { Conduit, ConduitError, ConduitErrorType } from '@conduit/client';
  */
 
 // Re-export ConduitErrorType as PeerErrorType

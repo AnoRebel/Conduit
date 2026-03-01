@@ -5,11 +5,11 @@ WebRTC peer-to-peer data, video, and audio connections for browsers and Node.js.
 ## Installation
 
 ```bash
-npm install conduit
+npm install @conduit/client
 # or
-bun add conduit
+bun add @conduit/client
 # or
-yarn add conduit
+yarn add @conduit/client
 ```
 
 ## Usage
@@ -17,7 +17,7 @@ yarn add conduit
 ### Basic Data Connection
 
 ```typescript
-import { Conduit } from 'conduit';
+import { Conduit } from '@conduit/client';
 
 // Create a new Conduit instance (uses cloud server by default)
 const conduit = new Conduit('my-peer-id');
@@ -82,7 +82,7 @@ conduit.on('call', (call) => {
 ### Transport Types
 
 ```typescript
-import { Conduit, TransportType } from 'conduit';
+import { Conduit, TransportType } from '@conduit/client';
 
 const conduit = new Conduit('my-id', {
   transport: TransportType.Auto, // Default: try WebRTC, fallback to WebSocket
@@ -102,7 +102,7 @@ Available transports:
 ### Serialization
 
 ```typescript
-import { Conduit, SerializationType } from 'conduit';
+import { Conduit, SerializationType } from '@conduit/client';
 
 const conn = conduit.connect('peer-id', {
   serialization: SerializationType.JSON,
@@ -243,7 +243,7 @@ Use the compatibility layer for drop-in replacement:
 
 ```typescript
 // Replace your PeerJS import
-import { Peer } from 'conduit/peerjs-compat';
+import { Peer } from '@conduit/client/peerjs-compat';
 
 // Your existing code works unchanged
 const peer = new Peer('my-id');

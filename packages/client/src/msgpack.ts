@@ -3,8 +3,8 @@
  *
  * Usage:
  * ```typescript
- * import { Conduit, SerializationType } from 'conduit';
- * import 'conduit/msgpack'; // Register MsgPack serializer
+ * import { Conduit, SerializationType } from '@conduit/client';
+ * import '@conduit/client/msgpack'; // Register MsgPack serializer
  *
  * const conduit = new Conduit({
  *   serialization: SerializationType.MsgPack

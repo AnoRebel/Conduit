@@ -81,7 +81,7 @@ jobs:
             sleep 10
           done
 
-      - name: Publish conduit (client)
+      - name: Publish @conduit/client
         run: bun publish --access public
         working-directory: packages/client
 
@@ -107,7 +107,7 @@ jobs:
           echo "| Package | Link |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|------|" >> $GITHUB_STEP_SUMMARY
           echo "| \`@conduit/shared\` | [npm](https://www.npmjs.com/package/@conduit/shared) |" >> $GITHUB_STEP_SUMMARY
-          echo "| \`conduit\` (client) | [npm](https://www.npmjs.com/package/conduit) |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`@conduit/client\` | [npm](https://www.npmjs.com/package/@conduit/client) |" >> $GITHUB_STEP_SUMMARY
           echo "| \`@conduit/server\` | [npm](https://www.npmjs.com/package/@conduit/server) |" >> $GITHUB_STEP_SUMMARY
           echo "| \`@conduit/admin\` | [npm](https://www.npmjs.com/package/@conduit/admin) |" >> $GITHUB_STEP_SUMMARY
           echo "| \`@conduit/admin-ui\` | [npm](https://www.npmjs.com/package/@conduit/admin-ui) |" >> $GITHUB_STEP_SUMMARY

@@ -246,10 +246,10 @@ jobs:
           echo "" >> RELEASE_NOTES.md
           echo "#### npm / bun" >> RELEASE_NOTES.md
           echo '```bash' >> RELEASE_NOTES.md
-          echo "bun add conduit@$VERSION" >> RELEASE_NOTES.md
+          echo "bun add @conduit/client@$VERSION" >> RELEASE_NOTES.md
           echo "bun add @conduit/server@$VERSION" >> RELEASE_NOTES.md
           echo "# or with npm" >> RELEASE_NOTES.md
-          echo "npm install conduit@$VERSION" >> RELEASE_NOTES.md
+          echo "npm install @conduit/client@$VERSION" >> RELEASE_NOTES.md
           echo "npm install @conduit/server@$VERSION" >> RELEASE_NOTES.md
           echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
