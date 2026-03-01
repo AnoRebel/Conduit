@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { extname, join, resolve } from "node:path";
 import { Command } from "commander";
 import { createConduitServer } from "../dist/adapters/node.js";
 
@@ -27,6 +29,8 @@ program
 	.option("--admin-api-key <key>", "Admin API key")
 	.option("--auth <mode>", "Auth mode for signaling: key or none", "key")
 	.option("--db <path>", "SQLite database path for admin persistence")
+	.option("--admin-ui <dir>", "Serve admin UI static files from this directory")
+	.option("--admin-ui-path <path>", "URL path to serve admin UI at", "/ui")
 	.action(async options => {
 		const port = parseInt(options.port, 10);
 		const host = options.host;
@@ -51,6 +55,8 @@ program
 		const adminBasicUser = env("ADMIN_BASIC_USER");
 		const adminBasicPass = env("ADMIN_BASIC_PASS");
 		const adminCorsOrigins = env("ADMIN_CORS_ORIGINS") || options.cors;
+		const adminUiDir = env("ADMIN_UI_DIR") || options.adminUi;
+		const adminUiPath = env("ADMIN_UI_PATH") || options.adminUiPath || "/ui";
 
 		console.log(`
 ╔═══════════════════════════════════════════════════════════╗
@@ -183,6 +189,40 @@ program
 			}
 		}
 
+		// Set up embedded admin UI static file serving
+		if (adminUiDir) {
+			const resolvedDir = resolve(adminUiDir);
+			if (!existsSync(resolvedDir)) {
+				console.error(`Admin UI directory not found: ${resolvedDir}`);
+				console.error("Continuing without embedded admin UI...");
+			} else {
+				// Normalize path: ensure leading slash, no trailing slash
+				const uiPrefix = adminUiPath.startsWith("/") ? adminUiPath : `/${adminUiPath}`;
+				const normalizedPrefix = uiPrefix.endsWith("/") ? uiPrefix.slice(0, -1) : uiPrefix;
+
+				// Prepend a static file handler before existing request listeners
+				const existingListeners = conduitServer.server.listeners("request").slice();
+				conduitServer.server.removeAllListeners("request");
+
+				conduitServer.server.on("request", (req, res) => {
+					const url = req.url || "";
+					const pathname = url.split("?")[0] || "";
+
+					if (pathname === normalizedPrefix || pathname.startsWith(`${normalizedPrefix}/`)) {
+						serveStaticFile(resolvedDir, normalizedPrefix, pathname, res);
+						return;
+					}
+
+					// Fall through to existing handlers (admin API, conduit)
+					for (const listener of existingListeners) {
+						listener.call(conduitServer.server, req, res);
+					}
+				});
+
+				console.log(`Admin UI serving from ${resolvedDir} at ${normalizedPrefix}`);
+			}
+		}
+
 		conduitServer.listen(port, host, () => {
 			console.log(`Server listening on ${host}:${port}`);
 			console.log(`Path: ${path}`);
@@ -195,6 +235,9 @@ program
 				if (dbPath) {
 					console.log(`Database: ${dbPath}`);
 				}
+			}
+			if (adminUiDir) {
+				console.log(`Admin UI: ${adminUiPath}`);
 			}
 			console.log("");
 			console.log("Press Ctrl+C to stop the server");
@@ -315,4 +358,80 @@ program.parse();
 function env(name) {
 	const value = process.env[name];
 	return value && value.trim() !== "" ? value.trim() : undefined;
+}
+
+/** MIME type map for static file serving */
+const MIME_TYPES = {
+	".html": "text/html; charset=utf-8",
+	".js": "application/javascript; charset=utf-8",
+	".mjs": "application/javascript; charset=utf-8",
+	".css": "text/css; charset=utf-8",
+	".json": "application/json; charset=utf-8",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif": "image/gif",
+	".svg": "image/svg+xml",
+	".ico": "image/x-icon",
+	".webp": "image/webp",
+	".woff": "font/woff",
+	".woff2": "font/woff2",
+	".ttf": "font/ttf",
+	".otf": "font/otf",
+	".map": "application/json",
+};
+
+/**
+ * Serve a static file from the given root directory.
+ * Supports SPA fallback — serves index.html for paths that don't match a file.
+ */
+function serveStaticFile(rootDir, prefix, pathname, res) {
+	// Strip the prefix to get the relative file path
+	let relativePath = pathname.slice(prefix.length);
+	if (!relativePath || relativePath === "/") {
+		relativePath = "/index.html";
+	}
+
+	// Security: prevent directory traversal
+	const normalizedPath = join(rootDir, relativePath);
+	if (!normalizedPath.startsWith(rootDir)) {
+		res.writeHead(403, { "Content-Type": "text/plain" });
+		res.end("Forbidden");
+		return;
+	}
+
+	try {
+		// Try the exact file first
+		if (existsSync(normalizedPath) && statSync(normalizedPath).isFile()) {
+			const ext = extname(normalizedPath);
+			const contentType = MIME_TYPES[ext] || "application/octet-stream";
+			const content = readFileSync(normalizedPath);
+			res.writeHead(200, {
+				"Content-Type": contentType,
+				"Content-Length": content.length,
+				"Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable",
+			});
+			res.end(content);
+			return;
+		}
+
+		// SPA fallback: serve index.html for client-side routing
+		const indexPath = join(rootDir, "index.html");
+		if (existsSync(indexPath)) {
+			const content = readFileSync(indexPath);
+			res.writeHead(200, {
+				"Content-Type": "text/html; charset=utf-8",
+				"Content-Length": content.length,
+				"Cache-Control": "no-cache",
+			});
+			res.end(content);
+			return;
+		}
+
+		res.writeHead(404, { "Content-Type": "text/plain" });
+		res.end("Not Found");
+	} catch {
+		res.writeHead(500, { "Content-Type": "text/plain" });
+		res.end("Internal Server Error");
+	}
 }

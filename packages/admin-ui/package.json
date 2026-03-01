@@ -10,7 +10,7 @@
     "dev": "nuxt dev",
     "build": "NITRO_PRESET=bun nuxt build",
 
-    "generate": "NITRO_PRESET=bun nuxt generate",
+    "generate": "nuxt generate",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck"
   },

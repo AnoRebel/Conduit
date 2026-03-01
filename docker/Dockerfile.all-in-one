@@ -1,0 +1,82 @@
+# All-in-one: Conduit Server + Admin API + Embedded Admin UI
+# Single container that serves the signaling server, admin API, and admin dashboard.
+#
+# The admin-ui is built as a static SPA and served by the Conduit server
+# at /ui (configurable via ADMIN_UI_PATH). No separate UI deployment needed.
+
+FROM imbios/bun-node:1.3.10-24-debian AS builder
+
+WORKDIR /app
+
+# Copy workspace files
+COPY package.json bun.lock* ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/server/package.json packages/server/
+COPY packages/admin/package.json packages/admin/
+COPY packages/admin-ui/package.json packages/admin-ui/
+
+# Install dependencies (ignore scripts since source isn't copied yet)
+RUN bun install --ignore-scripts
+
+# Copy source files
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY packages/server packages/server
+COPY packages/admin packages/admin
+COPY packages/admin-ui packages/admin-ui
+
+# Build packages in order: shared -> server + admin -> admin-ui (static SPA)
+RUN bun run build:shared && bun run build:server && bun run build:admin
+
+# Generate admin-ui as static SPA for embedding
+# nuxt generate pre-renders all routes into .output/public with index.html
+WORKDIR /app/packages/admin-ui
+RUN bun run generate
+
+# Production stage — debian slim for glibc compatibility
+FROM oven/bun:1.3.10-slim AS production
+
+WORKDIR /app
+
+# Create a standalone package.json with only external runtime dependencies
+RUN echo '{"name":"conduit-server","private":true,"type":"module","dependencies":{"commander":"^14.0.3","pino":"^10.3.1","ws":"^8.19.0","jsonwebtoken":"^9.0.3"}}' > package.json
+
+# Install only external production dependencies and clean cache
+RUN bun install --production --ignore-scripts && rm -rf /root/.bun/install/cache
+
+# Overlay workspace packages with their actual built output
+COPY --from=builder /app/packages/shared/dist ./node_modules/@conduit/shared/dist
+COPY --from=builder /app/packages/shared/package.json ./node_modules/@conduit/shared/
+COPY --from=builder /app/packages/admin/dist ./node_modules/@conduit/admin/dist
+COPY --from=builder /app/packages/admin/package.json ./node_modules/@conduit/admin/
+
+# Copy server build output and CLI
+COPY --from=builder /app/packages/server/dist ./dist
+COPY --from=builder /app/packages/server/bin ./bin
+
+# Copy admin-ui static SPA output (nuxt generate produces full static site in .output/public)
+COPY --from=builder /app/packages/admin-ui/.output/public ./admin-ui
+
+# Create data directory for SQLite persistence
+RUN mkdir -p /data && chown bun:bun /data
+VOLUME /data
+
+# Non-sensitive environment defaults
+ENV PORT=9000
+ENV HOST=0.0.0.0
+ENV ALLOW_DISCOVERY=false
+ENV ADMIN_ENABLED=true
+ENV ADMIN_PATH=/admin
+ENV AUTH_MODE=key
+ENV ADMIN_DB_PATH=/data/conduit.db
+ENV ADMIN_UI_DIR=/app/admin-ui
+ENV ADMIN_UI_PATH=/ui
+# Sensitive values must be provided at runtime via docker run --env or compose
+# CONDUIT_KEY, ADMIN_AUTH_TYPE, ADMIN_API_KEY
+
+# Expose port
+EXPOSE ${PORT}
+
+# Run server with admin API and embedded UI
+# Shell form with exec is required for env var expansion + proper signal handling
+CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --key \"${CONDUIT_KEY:-conduit}\""]

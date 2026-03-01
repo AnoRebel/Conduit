@@ -63,6 +63,31 @@ services:
     profiles:
       - admin
 
+  # All-in-one: Server + Admin API + Embedded Admin UI (single container)
+  all-in-one:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.all-in-one
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - HOST=0.0.0.0
+      - CONDUIT_KEY=conduit
+      - ALLOW_DISCOVERY=false
+      - ADMIN_ENABLED=true
+      - ADMIN_AUTH_TYPE=apiKey
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-changeme}
+      - AUTH_MODE=key
+      - ADMIN_DB_PATH=/data/conduit.db
+      - ADMIN_UI_DIR=/app/admin-ui
+      - ADMIN_UI_PATH=/ui
+    volumes:
+      - conduit-data:/data
+    restart: unless-stopped
+    profiles:
+      - all-in-one
+
   # Development server with hot reload
   dev:
     build:
@@ -82,6 +107,9 @@ services:
     environment:
       - NODE_ENV=development
     command: bun run dev
+
+volumes:
+  conduit-data:
 
 networks:
   default:

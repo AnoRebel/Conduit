@@ -101,6 +101,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Docker meta for all-in-one
+        id: meta-all-in-one
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/all-in-one
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push all-in-one
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.all-in-one
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-all-in-one.outputs.tags }}
+          labels: ${{ steps.meta-all-in-one.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Create docker summary
         run: |
           echo "## Docker Images Published!" >> $GITHUB_STEP_SUMMARY
@@ -115,7 +138,12 @@ jobs:
           echo "docker pull ghcr.io/${{ github.repository }}/server-admin:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Admin UI" >> $GITHUB_STEP_SUMMARY
+          echo "### Admin UI (standalone)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ghcr.io/${{ github.repository }}/admin-ui:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### All-in-One (Server + Admin API + Dashboard)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository }}/all-in-one:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
