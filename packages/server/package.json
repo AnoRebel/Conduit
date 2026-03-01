@@ -65,13 +65,13 @@
   "homepage": "https://github.com/AnoRebel/conduit",
   "dependencies": {
     "@conduit/shared": "workspace:*",
-    "@inquirer/prompts": "^8.2.0",
+    "@inquirer/prompts": "^8.3.0",
     "commander": "^14.0.3",
-    "pino": "^10.3.0",
+    "pino": "^10.3.1",
     "ws": "^8.19.0"
   },
   "devDependencies": {
-    "@types/node": "^22.19.9",
+    "@types/node": "^25.3.3",
     "@types/ws": "^8.18.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
@@ -102,5 +102,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "bun@1.3.8"
+  "packageManager": "bun@1.3.10"
 }
