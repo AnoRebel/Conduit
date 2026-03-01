@@ -1,0 +1,16 @@
+{
+  "name": "@conduit/admin",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./adapters/node": "./src/adapters/node.ts",
+    "./adapters/express": "./src/adapters/express.ts",
+    "./adapters/hono": "./src/adapters/hono.ts",
+    "./adapters/fastify": "./src/adapters/fastify.ts",
+    "./standalone": "./src/standalone/index.ts"
+  },
+  "publish": {
+    "include": ["src/**/*.ts", "README.md", "LICENSE"],
+    "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"]
+  }
+}
