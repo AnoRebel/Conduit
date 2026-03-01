@@ -67,6 +67,9 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 			return;
 		}
 
+		// Whether auth-less routes are available
+		const noAuth = config.auth.mode === "none";
+
 		// Route requests
 		if (pathname === config.path || pathname === `${config.path}/`) {
 			// Health check
@@ -74,14 +77,16 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 			res.end(JSON.stringify({ name: "Conduit Server", version: "1.0.0" }));
 		} else if (
 			pathname === `${config.path}${config.key}/id` ||
-			pathname === `${config.path}/${config.key}/id`
+			pathname === `${config.path}/${config.key}/id` ||
+			(noAuth && (pathname === `${config.path}id` || pathname === `${config.path}/id`))
 		) {
 			// Generate new client ID
 			res.writeHead(200, { "Content-Type": "text/plain" });
 			res.end(core.generateClientId());
 		} else if (
 			pathname === `${config.path}${config.key}/conduits` ||
-			pathname === `${config.path}/${config.key}/conduits`
+			pathname === `${config.path}/${config.key}/conduits` ||
+			(noAuth && (pathname === `${config.path}conduits` || pathname === `${config.path}/conduits`))
 		) {
 			// List all conduits (if discovery is enabled)
 			if (config.allowDiscovery) {
@@ -129,14 +134,15 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 
 		const { key, id, token } = url.query as { key?: string; id?: string; token?: string };
 
-		if (!key || !id || !token) {
+		// key is required when auth mode is "key", optional when "none"
+		if ((!key && config.auth.mode === "key") || !id || !token) {
 			logger.debug("WebSocket upgrade missing required parameters");
 			socket.destroy();
 			return;
 		}
 
 		wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-			wss.emit("connection", ws, request, { key, id, token });
+			wss.emit("connection", ws, request, { key: key || config.key, id, token });
 		});
 	});
 

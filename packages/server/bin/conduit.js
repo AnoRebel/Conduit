@@ -25,6 +25,8 @@ program
 	.option("--admin-path <path>", "Admin API path prefix", "/admin")
 	.option("--admin-auth-type <type>", "Admin auth type (apiKey, jwt, basic)", "apiKey")
 	.option("--admin-api-key <key>", "Admin API key")
+	.option("--auth <mode>", "Auth mode for signaling: key or none", "key")
+	.option("--db <path>", "SQLite database path for admin persistence")
 	.action(async options => {
 		const port = parseInt(options.port, 10);
 		const host = options.host;
@@ -36,6 +38,8 @@ program
 		const expireTimeout = parseInt(options.expireTimeout, 10);
 		const corsOrigin = options.cors === "*" ? true : options.cors;
 		const relayEnabled = options.relay !== false;
+		const authMode = env("AUTH_MODE") || options.auth || "key";
+		const dbPath = env("ADMIN_DB_PATH") || options.db;
 
 		// Resolve admin settings: env vars take precedence over CLI flags
 		const adminEnabled =
@@ -60,6 +64,9 @@ program
 				host,
 				key,
 				path,
+				auth: {
+					mode: authMode,
+				},
 				allowDiscovery,
 				concurrentLimit,
 				aliveTimeout,
@@ -99,6 +106,7 @@ program
 				const adminConfig = createAdminConfig({
 					path: adminPath,
 					auth: authConfig,
+					...(dbPath ? { persistence: { type: "sqlite", dbPath } } : {}),
 				});
 
 				const adminCore = createAdminCore({ config: adminConfig });
@@ -179,10 +187,14 @@ program
 			console.log(`Server listening on ${host}:${port}`);
 			console.log(`Path: ${path}`);
 			console.log(`Key: ${key}`);
+			console.log(`Auth: ${authMode}`);
 			console.log(`Discovery: ${allowDiscovery ? "enabled" : "disabled"}`);
 			console.log(`Relay: ${relayEnabled ? "enabled" : "disabled"}`);
 			if (adminEnabled) {
 				console.log(`Admin: enabled`);
+				if (dbPath) {
+					console.log(`Database: ${dbPath}`);
+				}
 			}
 			console.log("");
 			console.log("Press Ctrl+C to stop the server");

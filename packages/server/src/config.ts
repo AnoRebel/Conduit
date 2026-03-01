@@ -16,11 +16,18 @@ export interface LoggingConfig {
 	pretty: boolean;
 }
 
+export interface ServerAuthConfig {
+	/** Authentication mode: "key" requires a signaling key, "none" allows unauthenticated access */
+	mode: "key" | "none";
+}
+
 export interface ServerConfig {
 	port: number;
 	host: string;
 	path: string;
 	key: string;
+	/** Authentication configuration */
+	auth: ServerAuthConfig;
 	expireTimeout: number;
 	aliveTimeout: number;
 	concurrentLimit: number;
@@ -45,6 +52,9 @@ export const defaultConfig: ServerConfig = {
 	host: "0.0.0.0",
 	path: "/",
 	key: "conduit",
+	auth: {
+		mode: "key",
+	},
 	expireTimeout: 5000,
 	aliveTimeout: 60000,
 	concurrentLimit: 5000,
@@ -73,6 +83,10 @@ export function createConfig(options: Partial<ServerConfig> = {}): ServerConfig 
 	return {
 		...defaultConfig,
 		...options,
+		auth: {
+			...defaultConfig.auth,
+			...options.auth,
+		},
 		relay: {
 			...defaultConfig.relay,
 			...options.relay,

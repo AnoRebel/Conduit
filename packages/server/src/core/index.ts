@@ -118,7 +118,8 @@ export function createConduitServerCore(
 		}
 
 		// Validate key (constant-time comparison to prevent timing attacks)
-		if (!safeCompare(key, config.key)) {
+		// Skip validation when auth mode is "none"
+		if (config.auth.mode === "key" && !safeCompare(key, config.key)) {
 			clientLogger.warn("Connection rejected: invalid API key");
 			socket.send(
 				JSON.stringify({
