@@ -6,7 +6,7 @@
     "declaration": true,
     "declarationMap": true,
     "lib": ["ES2023"],
-    "types": ["node", "bun"]
+    "types": ["node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
