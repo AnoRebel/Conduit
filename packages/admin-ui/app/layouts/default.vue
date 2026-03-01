@@ -7,6 +7,7 @@ import {
 	LayoutDashboard,
 	Moon,
 	Settings,
+	ShieldBan,
 	Sun,
 	Users,
 } from "lucide-vue-next";
@@ -50,6 +51,7 @@ const showConnectionSheet = ref(false);
 const navigation = [
 	{ name: "Dashboard", href: "/", icon: LayoutDashboard },
 	{ name: "Clients", href: "/clients", icon: Users },
+	{ name: "Bans", href: "/bans", icon: ShieldBan },
 	{ name: "Metrics", href: "/metrics", icon: BarChart3 },
 	{ name: "Audit Log", href: "/audit", icon: FileText },
 	{ name: "Settings", href: "/settings", icon: Settings },

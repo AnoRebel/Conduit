@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import {
+	CategoryScale,
+	Chart as ChartJS,
+	Tooltip as ChartTooltip,
+	Filler,
+	Legend,
+	LinearScale,
+	LineElement,
+	PointElement,
+	Title,
+} from "chart.js";
+import {
 	AlertCircle,
 	Clock,
 	HardDrive,
@@ -9,6 +20,7 @@ import {
 	TrendingUp,
 	Users,
 } from "lucide-vue-next";
+import { Line } from "vue-chartjs";
 import { toast } from "vue-sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +29,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
+ChartJS.register(
+	CategoryScale,
+	LinearScale,
+	PointElement,
+	LineElement,
+	Title,
+	ChartTooltip,
+	Legend,
+	Filler
+);
+
 const store = useAdminStore();
 const connection = useConnection();
+const colorMode = useColorMode();
 
 // Initialize on mount if already configured
 onMounted(async () => {
@@ -68,6 +92,118 @@ async function refreshMetrics() {
 	await store.fetchMetrics();
 	toast.success("Metrics refreshed");
 }
+
+// --- Theme-reactive mini chart ---
+const isDark = computed(() => colorMode.value === "dark");
+
+const miniChartData = computed(() => {
+	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
+	const throughput = store.metricsHistory.map(m => m.messages.throughputPerSecond);
+	const clients = store.metricsHistory.map(m => m.clients.connected);
+
+	return {
+		labels,
+		datasets: [
+			{
+				label: "Messages/sec",
+				data: throughput,
+				borderColor: "rgb(59, 130, 246)",
+				backgroundColor: "rgba(59, 130, 246, 0.08)",
+				fill: true,
+				tension: 0.4,
+				pointRadius: 0,
+				pointHitRadius: 10,
+				pointHoverRadius: 3,
+				borderWidth: 2,
+				yAxisID: "y",
+			},
+			{
+				label: "Connected Clients",
+				data: clients,
+				borderColor: "rgb(34, 197, 94)",
+				backgroundColor: "rgba(34, 197, 94, 0.08)",
+				fill: true,
+				tension: 0.4,
+				pointRadius: 0,
+				pointHitRadius: 10,
+				pointHoverRadius: 3,
+				borderWidth: 2,
+				yAxisID: "y1",
+			},
+		],
+	};
+});
+
+const miniChartOptions = computed(() => {
+	const gridColor = isDark.value ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
+	const tickColor = isDark.value ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)";
+	const tooltipBg = isDark.value ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)";
+	const tooltipText = isDark.value ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.8)";
+
+	return {
+		responsive: true,
+		maintainAspectRatio: false,
+		interaction: { mode: "index" as const, intersect: false },
+		plugins: {
+			legend: {
+				display: true,
+				position: "top" as const,
+				labels: {
+					color: tickColor,
+					usePointStyle: true,
+					pointStyle: "circle",
+					padding: 16,
+					font: { size: 11 },
+				},
+			},
+			tooltip: {
+				backgroundColor: tooltipBg,
+				titleColor: tooltipText,
+				bodyColor: tooltipText,
+				borderColor: isDark.value ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+				borderWidth: 1,
+				cornerRadius: 8,
+				padding: 10,
+				boxPadding: 4,
+			},
+		},
+		scales: {
+			x: {
+				grid: { color: gridColor, drawBorder: false },
+				ticks: { color: tickColor, maxRotation: 0, autoSkipPadding: 30, font: { size: 10 } },
+				border: { display: false },
+			},
+			y: {
+				type: "linear" as const,
+				display: true,
+				position: "left" as const,
+				beginAtZero: true,
+				grid: { color: gridColor, drawBorder: false },
+				ticks: { color: tickColor, font: { size: 10 }, padding: 6 },
+				border: { display: false },
+				title: {
+					display: false,
+				},
+			},
+			y1: {
+				type: "linear" as const,
+				display: true,
+				position: "right" as const,
+				beginAtZero: true,
+				grid: { drawOnChartArea: false },
+				ticks: { color: tickColor, font: { size: 10 }, padding: 6 },
+				border: { display: false },
+			},
+		},
+	};
+});
+
+// Fetch history for dashboard mini chart
+onMounted(async () => {
+	if (connection.isConfigured.value && store.metricsHistory.length === 0) {
+		await store.fetchMetricsHistory("1h");
+	}
+});
 
 // Stats cards config for staggered animation
 const statsCards = computed(() => [
@@ -273,6 +409,38 @@ const statsCards = computed(() => [
 						</CardContent>
 					</Card>
 				</div>
+
+				<!-- Mini Chart — Activity Overview -->
+				<Card
+					v-if="store.metricsHistory.length > 0"
+					v-motion
+					:initial="{ opacity: 0, y: 20 }"
+					:visible-once="{ opacity: 1, y: 0, transition: { duration: 400, delay: 400 } }"
+					class="mt-6"
+					data-tour-guide="activity-chart"
+				>
+					<CardHeader class="flex flex-row items-center justify-between pb-2">
+						<div>
+							<CardTitle>Activity Overview</CardTitle>
+							<CardDescription>Throughput and connections over the last hour</CardDescription>
+						</div>
+						<Button variant="outline" size="sm" as-child>
+							<NuxtLink to="/metrics">
+								<TrendingUp class="h-4 w-4" />
+								Full Metrics
+							</NuxtLink>
+						</Button>
+					</CardHeader>
+					<CardContent>
+						<div class="h-48 sm:h-56">
+							<Line
+								:key="`dashboard-chart-${isDark}`"
+								:data="miniChartData"
+								:options="miniChartOptions"
+							/>
+						</div>
+					</CardContent>
+				</Card>
 			</template>
 		</div>
 	</div>

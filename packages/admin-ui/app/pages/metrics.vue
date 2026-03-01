@@ -38,6 +38,7 @@ ChartJS.register(
 );
 
 const store = useAdminStore();
+const colorMode = useColorMode();
 const breadcrumbItems = [{ label: "Metrics" }];
 const selectedDuration = ref("1h");
 const isLoading = ref(false);
@@ -61,6 +62,26 @@ watch(selectedDuration, async duration => {
 	isLoading.value = false;
 });
 
+// --- Theme-reactive chart colors ---
+const isDark = computed(() => colorMode.value === "dark");
+
+const gridColor = computed(() =>
+	isDark.value ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"
+);
+const tickColor = computed(() =>
+	isDark.value ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.5)"
+);
+const tooltipBg = computed(() =>
+	isDark.value ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)"
+);
+const tooltipText = computed(() =>
+	isDark.value ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.8)"
+);
+const tooltipBorder = computed(() =>
+	isDark.value ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
+);
+
+// --- Chart data ---
 const throughputData = computed(() => {
 	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
 	const data = store.metricsHistory.map(m => m.messages.throughputPerSecond);
@@ -75,6 +96,10 @@ const throughputData = computed(() => {
 				backgroundColor: "rgba(59, 130, 246, 0.1)",
 				fill: true,
 				tension: 0.4,
+				pointRadius: 0,
+				pointHitRadius: 10,
+				pointHoverRadius: 4,
+				borderWidth: 2,
 			},
 		],
 	};
@@ -94,6 +119,10 @@ const connectionsData = computed(() => {
 				backgroundColor: "rgba(34, 197, 94, 0.1)",
 				fill: true,
 				tension: 0.4,
+				pointRadius: 0,
+				pointHitRadius: 10,
+				pointHoverRadius: 4,
+				borderWidth: 2,
 			},
 		],
 	};
@@ -113,30 +142,72 @@ const memoryData = computed(() => {
 				backgroundColor: "rgba(249, 115, 22, 0.1)",
 				fill: true,
 				tension: 0.4,
+				pointRadius: 0,
+				pointHitRadius: 10,
+				pointHoverRadius: 4,
+				borderWidth: 2,
 			},
 		],
 	};
 });
 
-const chartOptions = {
+// Theme-reactive chart options — triggers re-render on dark/light switch
+const chartOptions = computed(() => ({
 	responsive: true,
 	maintainAspectRatio: false,
+	interaction: {
+		mode: "index" as const,
+		intersect: false,
+	},
 	plugins: {
 		legend: {
 			display: false,
+		},
+		tooltip: {
+			backgroundColor: tooltipBg.value,
+			titleColor: tooltipText.value,
+			bodyColor: tooltipText.value,
+			borderColor: tooltipBorder.value,
+			borderWidth: 1,
+			cornerRadius: 8,
+			padding: 10,
+			displayColors: true,
+			boxPadding: 4,
 		},
 	},
 	scales: {
 		x: {
 			grid: {
+				color: gridColor.value,
+				drawBorder: false,
+			},
+			ticks: {
+				color: tickColor.value,
+				maxRotation: 0,
+				autoSkipPadding: 20,
+				font: { size: 11 },
+			},
+			border: {
 				display: false,
 			},
 		},
 		y: {
 			beginAtZero: true,
+			grid: {
+				color: gridColor.value,
+				drawBorder: false,
+			},
+			ticks: {
+				color: tickColor.value,
+				font: { size: 11 },
+				padding: 8,
+			},
+			border: {
+				display: false,
+			},
 		},
 	},
-};
+}));
 
 async function refresh() {
 	isLoading.value = true;
@@ -293,12 +364,16 @@ function getChartDataForCard(key: string) {
 							<CardTitle>{{ card.title }}</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div class="h-64">
+							<div class="h-48 sm:h-64">
 								<template v-if="isLoading">
-									<Skeleton class="h-full w-full" />
+									<Skeleton class="h-full w-full rounded-lg" />
 								</template>
 								<template v-else-if="store.metricsHistory.length > 0">
-									<Line :data="getChartDataForCard(card.key)" :options="chartOptions" />
+									<Line
+										:key="`${card.key}-${isDark}`"
+										:data="getChartDataForCard(card.key)"
+										:options="chartOptions"
+									/>
 								</template>
 								<div
 									v-else

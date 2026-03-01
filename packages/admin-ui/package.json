@@ -3,24 +3,13 @@
   "version": "1.0.0",
   "description": "Conduit Admin Dashboard - Vue 3/Nuxt 4 UI for monitoring and managing Conduit servers",
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/types.d.ts",
-      "import": "./dist/conduit-admin-ui.es.js"
-    },
-    "./components": {
-      "types": "./dist/components.d.ts",
-      "import": "./dist/components.es.js"
-    }
-  },
   "files": [
-    "dist",
     ".output"
   ],
   "scripts": {
     "dev": "nuxt dev",
     "build": "NITRO_PRESET=bun nuxt build",
-    "build:lib": "vite build --config vite.lib.config.ts",
+
     "generate": "NITRO_PRESET=bun nuxt generate",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck"
@@ -49,7 +38,6 @@
     "@nuxt/image": "2.0.0",
     "@pinia/nuxt": "^0.11.3",
     "@tailwindcss/vite": "^4.2.1",
-    "@vitejs/plugin-vue": "^6.0.4",
     "@vueuse/nuxt": "^14.2.1",
     "nuxt": "^4.3.1",
     "shadcn-nuxt": "2.4.3",
