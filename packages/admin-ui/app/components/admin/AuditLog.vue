@@ -50,12 +50,12 @@ const props = defineProps<{
 	itemsPerPage?: number;
 }>();
 
-const selectedAction = ref("");
+const selectedAction = ref("all");
 const currentPage = ref(1);
 const perPage = computed(() => props.itemsPerPage ?? 15);
 
 const actionTypes = [
-	{ label: "All Actions", value: "" },
+	{ label: "All Actions", value: "all" },
 	{ label: "Disconnect Client", value: "disconnect_client" },
 	{ label: "Ban Client", value: "ban_client" },
 	{ label: "Unban Client", value: "unban_client" },
@@ -67,7 +67,7 @@ const actionTypes = [
 ];
 
 const filteredEntries = computed(() => {
-	if (!selectedAction.value) return props.entries;
+	if (selectedAction.value === "all") return props.entries;
 	return props.entries.filter(entry => entry.action === selectedAction.value);
 });
 

@@ -40,7 +40,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 const store = useAdminStore();
 const breadcrumbItems = [{ label: "Audit Log" }];
-const selectedAction = ref("");
+const selectedAction = ref("all");
 const isLoading = ref(false);
 
 // Pagination
@@ -48,7 +48,7 @@ const currentPage = ref(1);
 const itemsPerPage = ref(15);
 
 const actionTypes = [
-	{ label: "All Actions", value: "" },
+	{ label: "All Actions", value: "all" },
 	{ label: "Disconnect Client", value: "disconnect_client" },
 	{ label: "Ban Client", value: "ban_client" },
 	{ label: "Unban Client", value: "unban_client" },
@@ -66,7 +66,7 @@ onMounted(async () => {
 });
 
 const filteredEntries = computed(() => {
-	if (!selectedAction.value) return store.auditLog;
+	if (selectedAction.value === "all") return store.auditLog;
 	return store.auditLog.filter(entry => entry.action === selectedAction.value);
 });
 

@@ -93,6 +93,8 @@ function getClientIp(req: IncomingMessage): string {
 
 export interface NodeAdminServerOptions {
 	admin: AdminCore;
+	/** Allowed CORS origins. Use "*" for any origin, or provide specific origins. */
+	corsOrigins?: string | string[];
 }
 
 export interface NodeAdminServer {
@@ -100,11 +102,39 @@ export interface NodeAdminServer {
 	readonly basePath: string;
 }
 
+// ============================================================================
+// CORS Helpers
+// ============================================================================
+
+function isOriginAllowed(origin: string | undefined, allowed: string | string[]): boolean {
+	if (!origin) return false;
+	if (allowed === "*") return true;
+	const origins = Array.isArray(allowed) ? allowed : [allowed];
+	return origins.includes(origin);
+}
+
+function setCorsHeaders(
+	res: ServerResponse,
+	origin: string | undefined,
+	corsOrigins: string | string[]
+): void {
+	if (corsOrigins === "*") {
+		res.setHeader("Access-Control-Allow-Origin", "*");
+	} else if (origin && isOriginAllowed(origin, corsOrigins)) {
+		res.setHeader("Access-Control-Allow-Origin", origin);
+		res.setHeader("Vary", "Origin");
+	}
+
+	res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+	res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key");
+	res.setHeader("Access-Control-Max-Age", "86400");
+}
+
 /**
  * Create a Node.js HTTP request handler for the admin API
  */
 export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdminServer {
-	const { admin } = options;
+	const { admin, corsOrigins } = options;
 	const config = admin.config;
 	const routes = createRoutes();
 	const basePath = `${config.path}/${config.apiVersion}`;
@@ -122,6 +152,19 @@ export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdmi
 		const method = req.method?.toUpperCase() ?? "GET";
 		const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 		const pathname = url.pathname;
+		const origin = req.headers.origin;
+
+		// Set CORS headers on every response if configured
+		if (corsOrigins) {
+			setCorsHeaders(res, origin, corsOrigins);
+		}
+
+		// Handle CORS preflight requests
+		if (method === "OPTIONS" && corsOrigins) {
+			res.statusCode = 204;
+			res.end();
+			return;
+		}
 
 		// Check if path matches our base path
 		if (!pathname.startsWith(basePath)) {

@@ -46,6 +46,7 @@ program
 		const adminJwtSecret = env("ADMIN_JWT_SECRET");
 		const adminBasicUser = env("ADMIN_BASIC_USER");
 		const adminBasicPass = env("ADMIN_BASIC_PASS");
+		const adminCorsOrigins = env("ADMIN_CORS_ORIGINS") || options.cors;
 
 		console.log(`
 ╔═══════════════════════════════════════════════════════════╗
@@ -103,7 +104,10 @@ program
 				const adminCore = createAdminCore({ config: adminConfig });
 				adminCore.attachToServer(conduitServer.core);
 
-				const adminServer = createNodeAdminServer({ admin: adminCore });
+				const adminServer = createNodeAdminServer({
+					admin: adminCore,
+					corsOrigins: adminCorsOrigins === "*" ? "*" : adminCorsOrigins,
+				});
 				const adminWS = createAdminWSServer({ admin: adminCore });
 
 				const adminBasePath = adminServer.basePath;

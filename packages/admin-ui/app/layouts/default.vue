@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { BarChart3, FileText, LayoutDashboard, Moon, Settings, Sun, Users } from "lucide-vue-next";
+import {
+	BarChart3,
+	Circle,
+	FileText,
+	LayoutDashboard,
+	Moon,
+	Settings,
+	Sun,
+	Users,
+} from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -43,6 +52,17 @@ function toggleDarkMode() {
 function isNavActive(href: string): boolean {
 	if (href === "/") return route.path === "/";
 	return route.path.startsWith(href);
+}
+
+// Format uptime from seconds to human readable string
+function formatUptime(seconds: number): string {
+	if (!seconds) return "0s";
+	const d = Math.floor(seconds / 86400);
+	const h = Math.floor((seconds % 86400) / 3600);
+	const m = Math.floor((seconds % 3600) / 60);
+	if (d > 0) return `${d}d ${h}h`;
+	if (h > 0) return `${h}h ${m}m`;
+	return `${m}m`;
 }
 
 // Current page title for header
@@ -165,11 +185,40 @@ function onTourSkip() {
 				</SidebarGroup>
 			</SidebarContent>
 
-			<!-- Sidebar Footer -->
+			<!-- Sidebar Footer — Connection Status -->
 			<SidebarFooter class="border-t border-sidebar-border/50">
-				<p class="text-xs text-sidebar-foreground/50 px-2 py-1 group-data-[collapsible=icon]:hidden">
-					Conduit Admin v1.0.0
-				</p>
+				<div class="flex items-center gap-2 px-2 py-2 overflow-hidden">
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger as-child>
+								<Circle
+									:class="[
+										'h-3 w-3 shrink-0 fill-current',
+										store.isConnected ? 'text-green-500' : 'text-red-500',
+									]"
+								/>
+							</TooltipTrigger>
+							<TooltipContent side="right">
+								<div class="text-xs space-y-1">
+									<p class="font-medium">{{ store.isConnected ? 'Connected' : 'Disconnected' }}</p>
+									<template v-if="store.status">
+										<p>Version: {{ store.status.version || 'unknown' }}</p>
+										<p>Uptime: {{ formatUptime(store.status.uptime) }}</p>
+										<p>Clients: {{ store.status.clients?.connected ?? 0 }}/{{ store.status.clients?.total ?? 0 }}</p>
+									</template>
+								</div>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+					<div class="flex flex-col overflow-hidden transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
+						<span class="text-xs font-medium text-sidebar-foreground/80 truncate">
+							{{ store.isConnected ? 'Connected' : 'Disconnected' }}
+						</span>
+						<span v-if="store.status" class="text-[10px] text-sidebar-foreground/50 truncate">
+							v{{ store.status.version || '?' }} · {{ formatUptime(store.status.uptime) }}
+						</span>
+					</div>
+				</div>
 			</SidebarFooter>
 
 			<SidebarRail />
@@ -256,9 +305,9 @@ function onTourSkip() {
 						<p class="text-xs">Conduit Admin v1.0.0</p>
 						<template v-if="isAtBottom">
 							<div class="flex items-center gap-4 text-xs">
-								<a href="#" class="hover:text-foreground transition-colors">Documentation</a>
-								<a href="#" class="hover:text-foreground transition-colors">GitHub</a>
-								<a href="#" class="hover:text-foreground transition-colors">Support</a>
+								<a href="https://github.com/AnoRebel/Conduit#readme" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Documentation</a>
+								<a href="https://github.com/AnoRebel/Conduit" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">GitHub</a>
+								<a href="https://github.com/AnoRebel/Conduit/issues" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Support</a>
 							</div>
 						</template>
 					</div>
