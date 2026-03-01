@@ -5,9 +5,9 @@ WebRTC signaling server for Conduit peer-to-peer connections.
 ## Installation
 
 ```bash
-npm install @conduit/server
-# or
 bun add @conduit/server
+# or
+npm install @conduit/server
 ```
 
 ## Quick Start
@@ -33,22 +33,104 @@ server.listen(9000, '0.0.0.0', () => {
 
 ### CLI
 
-Run directly with npx/bunx:
+Run directly with bunx/npx:
 
 ```bash
-npx @conduit/server --port 9000 --allow-discovery
+bunx @conduit/server start --port 9000 --allow-discovery
 # or
-bunx @conduit/server --port 9000 --allow-discovery
+npx @conduit/server start --port 9000 --allow-discovery
 ```
 
 Or install globally:
 
 ```bash
-npm install -g @conduit/server
-# or
 bun add -g @conduit/server
+# or
+npm install -g @conduit/server
 
-conduit --port 9000
+conduit start --port 9000
+```
+
+#### CLI Commands
+
+**`conduit start`** — Start the server with optional admin API:
+
+```bash
+# Basic server
+conduit start --port 9000
+
+# Server with admin API
+conduit start --admin --admin-api-key "$(openssl rand -base64 32)"
+
+# All admin options
+conduit start \
+  --admin \
+  --admin-path /admin \
+  --admin-auth-type apiKey \
+  --admin-api-key "your-secret-key"
+```
+
+**`conduit init`** — Interactive configuration wizard.
+
+#### CLI Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-p, --port <port>` | Port to listen on | `9000` |
+| `-H, --host <host>` | Host to bind to | `0.0.0.0` |
+| `-k, --key <key>` | API key for clients | `conduit` |
+| `--path <path>` | Path prefix | `/` |
+| `--allow-discovery` | Allow peer discovery API | `false` |
+| `--concurrent-limit <n>` | Max concurrent connections | `5000` |
+| `--alive-timeout <ms>` | Connection alive timeout | `60000` |
+| `--expire-timeout <ms>` | Message expire timeout | `5000` |
+| `--cors <origin>` | CORS origin (`*` for all) | `*` |
+| `--no-relay` | Disable WebSocket relay transport | - |
+| `--admin` | Enable admin API | `false` |
+| `--admin-path <path>` | Admin API path prefix | `/admin` |
+| `--admin-auth-type <type>` | Auth type (`apiKey`, `jwt`, `basic`) | `apiKey` |
+| `--admin-api-key <key>` | Admin API key | - |
+
+#### Environment Variables
+
+The CLI also reads these environment variables (env vars take precedence over CLI flags for admin settings):
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ADMIN_ENABLED` | Enable admin API (`true` or `1`) | `false` |
+| `ADMIN_PATH` | Admin API path prefix | `/admin` |
+| `ADMIN_AUTH_TYPE` | Authentication method (`apiKey`, `jwt`, `basic`) | `apiKey` |
+| `ADMIN_API_KEY` | Admin API authentication key | - |
+| `ADMIN_JWT_SECRET` | Secret for JWT token signing/verification | - |
+| `ADMIN_BASIC_USER` | Username for Basic authentication | - |
+| `ADMIN_BASIC_PASS` | Password for Basic authentication | - |
+
+Example with environment variables:
+
+```bash
+ADMIN_ENABLED=true \
+ADMIN_API_KEY="$(openssl rand -base64 32)" \
+conduit start --port 9000
+```
+
+### Admin Integration
+
+The CLI is the primary way to run the server with admin API. When `--admin` is passed (or `ADMIN_ENABLED=true`), the CLI:
+
+1. Dynamically imports `@conduit/admin`
+2. Creates an admin core attached to the signaling server
+3. Mounts admin HTTP routes under `--admin-path` (default `/admin`)
+4. Sets up admin WebSocket at `{admin-path}/ws`
+5. Handles graceful shutdown of admin resources
+
+This means you get a complete server + admin API from a single command with no custom code needed:
+
+```bash
+# Start everything in one command
+conduit start --admin --admin-api-key "your-key"
+
+# Admin REST API available at http://localhost:9000/admin/*
+# Admin WebSocket at ws://localhost:9000/admin/ws
 ```
 
 ## Framework Adapters
@@ -208,14 +290,29 @@ const server = createConduitServer({
 
 ## Docker
 
+Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for both Bun and Node.js compatibility:
+
 ```dockerfile
-FROM oven/bun:1
-
+# Builder stage
+FROM imbios/bun-node:1.3.10-24-debian AS builder
 WORKDIR /app
-COPY package.json .
-RUN bun install
+COPY package.json bun.lock* ./
+RUN bun install --ignore-scripts
+COPY . .
+RUN bun run build
 
-CMD ["bun", "run", "start"]
+# Production stage
+FROM imbios/bun-node:1.3.10-24-slim AS production
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/bin ./bin
+COPY --from=builder /app/package.json ./
+
+ENV PORT=9000
+ENV HOST=0.0.0.0
+EXPOSE 9000
+
+CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\""]
 ```
 
 ```yaml
@@ -223,13 +320,16 @@ CMD ["bun", "run", "start"]
 version: '3.8'
 services:
   conduit:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
     ports:
       - "9000:9000"
     environment:
-      - CONDUIT_PORT=9000
+      - PORT=9000
       - CONDUIT_KEY=conduit
-      - CONDUIT_ALLOW_DISCOVERY=false
+      - ADMIN_ENABLED=true
+      - ADMIN_API_KEY=your-secure-key
 ```
 
 ## Security Features
@@ -250,6 +350,14 @@ const server = createConduitServer({
     },
   },
 });
+```
+
+### Timing-Safe Authentication
+
+API key comparisons use constant-time algorithms to prevent timing attacks. Always generate strong keys:
+
+```bash
+openssl rand -base64 32
 ```
 
 ### HTTPS/WSS Enforcement
@@ -318,7 +426,7 @@ server.logger.child({ requestId: '123' }).debug('Scoped log');
 - **Set appropriate CORS origins** - Don't use `corsOrigin: true` in production
 - **Disable discovery in production** unless you need peer listing
 - **Rate limiting is enabled by default** - Tune limits for your use case
-- **Use a unique API key** for your deployment
+- **Use a unique API key** for your deployment - Generate with `openssl rand -base64 32`
 - **Restrict WebSocket origins** with `allowedOrigins` for web apps
 
 ## License

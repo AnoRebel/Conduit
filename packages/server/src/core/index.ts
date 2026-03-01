@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { type IMessage, MessageType } from "@conduit/shared";
 import type { RawData, WebSocket } from "ws";
 import { createConfig, type ServerConfig } from "../config.js";
@@ -15,6 +16,20 @@ import {
 	validateMessage,
 	validateToken,
 } from "./validation.js";
+
+/**
+ * Constant-time string comparison to prevent timing attacks on API key validation.
+ */
+function safeCompare(a: string, b: string): boolean {
+	const bufA = Buffer.from(a);
+	const bufB = Buffer.from(b);
+	if (bufA.length !== bufB.length) {
+		// Compare against self to maintain constant time even for different lengths
+		timingSafeEqual(bufA, bufA);
+		return false;
+	}
+	return timingSafeEqual(bufA, bufB);
+}
 
 export interface ConduitServerCore {
 	readonly realm: IRealm;
@@ -102,8 +117,8 @@ export function createConduitServerCore(
 			return null;
 		}
 
-		// Validate key
-		if (key !== config.key) {
+		// Validate key (constant-time comparison to prevent timing attacks)
+		if (!safeCompare(key, config.key)) {
 			clientLogger.warn("Connection rejected: invalid API key");
 			socket.send(
 				JSON.stringify({

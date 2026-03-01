@@ -156,9 +156,9 @@ describe("Client", () => {
 			send: vi.fn(),
 			close: vi.fn(),
 			readyState: 1,
-		};
+		} as unknown as import("ws").WebSocket;
 
-		client.setSocket(mockSocket as any);
+		client.setSocket(mockSocket);
 		expect(client.socket).toBe(mockSocket);
 	});
 
@@ -168,9 +168,9 @@ describe("Client", () => {
 			send: vi.fn(),
 			close: vi.fn(),
 			readyState: 1,
-		};
+		} as unknown as import("ws").WebSocket;
 
-		client.setSocket(mockSocket as any);
+		client.setSocket(mockSocket);
 
 		const message = { type: MessageType.OPEN };
 		client.send(message);

@@ -5,11 +5,9 @@ Admin API and monitoring tools for Conduit servers.
 ## Installation
 
 ```bash
-npm install @conduit/admin
-# or
 bun add @conduit/admin
 # or
-yarn add @conduit/admin
+npm install @conduit/admin
 ```
 
 ## Features
@@ -20,11 +18,29 @@ yarn add @conduit/admin
 - **Rate Limit Control** - Dynamically update rate limiting settings
 - **Audit Logging** - Track all administrative actions
 - **Multiple Auth Methods** - API Key, JWT, or Basic authentication
+- **Role-Based Access** - JWT viewers (read-only) vs admins (full access)
 - **Framework Adapters** - Express, Fastify, Hono, or standalone Node.js HTTP
 - **WebSocket Support** - Real-time updates via WebSocket subscriptions
 - **Standalone Mode** - Connect to multiple remote servers from a single dashboard
 
 ## Quick Start
+
+### CLI Integration (Recommended)
+
+The simplest way to run the admin API is via the Conduit CLI — no custom code needed:
+
+```bash
+# Start server with admin API in one command
+conduit start --admin --admin-api-key "$(openssl rand -base64 32)"
+
+# Or use environment variables
+ADMIN_ENABLED=true \
+ADMIN_API_KEY="your-secret-key" \
+ADMIN_AUTH_TYPE=apiKey \
+conduit start
+```
+
+The CLI handles all wiring: creates the admin core, mounts HTTP routes, sets up WebSocket, and manages graceful shutdown.
 
 ### Embedded with Express
 
@@ -50,7 +66,7 @@ const admin = ExpressAdminServer({
   },
 });
 
-app.use('/admin/v1', admin);
+app.use('/admin', admin);
 ```
 
 ### Embedded with Fastify
@@ -69,7 +85,7 @@ await fastify.register(fastifyConduitPlugin, {
 
 // Register Admin API
 await fastify.register(fastifyAdminPlugin, {
-  prefix: '/admin/v1',
+  prefix: '/admin',
   serverCore: fastify.conduit.core,
   auth: { type: 'apiKey', apiKey: 'secret-key' },
 });
@@ -93,7 +109,7 @@ const admin = honoAdminAdapter({
 });
 
 app.route('/conduit', conduit.routes);
-app.route('/admin/v1', admin);
+app.route('/admin', admin);
 ```
 
 ### Standalone Node.js HTTP
@@ -110,9 +126,9 @@ const adminHandler = NodeAdminServer({
   auth: { type: 'apiKey', apiKey: 'secret-key' },
 });
 
-// Handle admin requests at /admin/v1/*
+// Handle admin requests at /admin/*
 http.createServer((req, res) => {
-  if (req.url?.startsWith('/admin/v1')) {
+  if (req.url?.startsWith('/admin')) {
     adminHandler(req, res);
   } else {
     // Handle other requests
@@ -222,7 +238,7 @@ interface AdminConfig {
 Connect to the WebSocket endpoint for real-time updates:
 
 ```typescript
-const ws = new WebSocket('ws://localhost:9000/admin/v1/ws');
+const ws = new WebSocket('ws://localhost:9000/admin/ws');
 
 // Authenticate
 ws.send(JSON.stringify({
@@ -261,12 +277,12 @@ const admin = createStandaloneAdmin({
   servers: [
     {
       id: 'prod-1',
-      url: 'wss://server1.example.com/admin/v1/ws',
+      url: 'wss://server1.example.com/admin/ws',
       adminKey: process.env.PROD1_ADMIN_KEY,
     },
     {
       id: 'prod-2',
-      url: 'wss://server2.example.com/admin/v1/ws',
+      url: 'wss://server2.example.com/admin/ws',
       adminKey: process.env.PROD2_ADMIN_KEY,
     },
   ],
@@ -287,12 +303,12 @@ Simple API key authentication via header:
 
 ```bash
 curl -H "Authorization: Bearer your-api-key" \
-  http://localhost:9000/admin/v1/status
+  http://localhost:9000/admin/status
 ```
 
 ### JWT
 
-JWT tokens with configurable expiration:
+JWT tokens with configurable expiration and **role-based access control**:
 
 ```typescript
 import { createAdminCore } from '@conduit/admin';
@@ -304,13 +320,24 @@ const admin = createAdminCore({
   },
 });
 
-// Generate token
-const token = admin.auth.generateToken({ userId: 'admin' });
+// Generate token with role
+const token = admin.auth.generateToken({ userId: 'admin', role: 'admin' });
 
 // Use token
 curl -H "Authorization: Bearer ${token}" \
-  http://localhost:9000/admin/v1/status
+  http://localhost:9000/admin/status
 ```
+
+#### Role-Based Access
+
+JWT tokens carry a `role` claim that controls access:
+
+| Role | Permissions |
+|------|-------------|
+| `viewer` | Read-only access — `GET` requests only |
+| `admin` | Full access — `GET`, `POST`, `PUT`, `PATCH`, `DELETE` |
+
+Viewers can monitor metrics, list clients, and view audit logs but cannot disconnect clients, manage bans, or modify configuration.
 
 ### Basic Auth
 
@@ -326,6 +353,25 @@ const admin = createAdminCore({
   },
 });
 ```
+
+## Security
+
+The admin API includes multiple layers of security:
+
+- **Timing-Safe Key Comparison** — API key authentication uses constant-time comparison (`crypto.timingSafeEqual`) to prevent timing attacks
+- **Rate Limiting** — The admin API enforces its own rate limits (default: 100 requests per minute) to prevent brute force attacks
+- **CSRF Protection** — Mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) require a valid `Content-Type` header, preventing simple cross-site request forgery
+- **Body Size Limits** — Request bodies are capped at 1MB to prevent denial-of-service via large payloads
+- **JWT Role Enforcement** — JWT tokens include a `role` claim; `viewer` tokens can only make `GET` requests, `admin` tokens have full access
+- **Audit Logging** — All administrative actions are logged with timestamps, actor, and details
+
+### Security Best Practices
+
+- **Always use HTTPS/WSS in production**
+- **Use strong, unique API keys** — Generate with `openssl rand -base64 32`
+- **Restrict admin API access** — Use firewall rules or reverse proxy
+- **Enable audit logging** — Track all administrative actions
+- **Use viewer tokens for monitoring** — Give `viewer` role to read-only integrations
 
 ## Metrics Collected
 
@@ -344,14 +390,6 @@ const admin = createAdminCore({
 - Messages per second (throughput)
 - Message latency
 - Connection duration
-
-## Security Considerations
-
-- **Always use HTTPS/WSS in production**
-- **Use strong, unique API keys** - Generate with `openssl rand -hex 32`
-- **Restrict admin API access** - Use firewall rules or reverse proxy
-- **Enable audit logging** - Track all administrative actions
-- **Rate limit the admin API** - Prevent brute force attacks
 
 ## License
 

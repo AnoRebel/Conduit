@@ -2,6 +2,13 @@ import { ConduitErrorType, MessageType, SerializationType, TransportType } from 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Conduit, ConduitError, LogLevel, logger, util } from "../src/index.js";
 
+// Store original globals for restoration after tests
+const originalWebSocket = globalThis.WebSocket;
+const originalRTCPeerConnection = globalThis.RTCPeerConnection;
+const originalRTCSessionDescription = globalThis.RTCSessionDescription;
+const originalRTCIceCandidate = globalThis.RTCIceCandidate;
+const originalFetch = globalThis.fetch;
+
 // Mock WebSocket
 class MockWebSocket {
 	static CONNECTING = 0;
@@ -78,41 +85,36 @@ class MockRTCPeerConnection {
 
 describe("Conduit", () => {
 	beforeEach(() => {
-		// Setup mocks - add static properties to WebSocket global
-		const WebSocketMock = MockWebSocket as unknown as typeof WebSocket;
-		vi.stubGlobal("WebSocket", WebSocketMock);
-		vi.stubGlobal("RTCPeerConnection", MockRTCPeerConnection);
-		vi.stubGlobal(
-			"RTCSessionDescription",
-			class {
-				constructor(public description: RTCSessionDescriptionInit) {}
-			}
-		);
-		vi.stubGlobal(
-			"RTCIceCandidate",
-			class {
-				constructor(public candidate: RTCIceCandidateInit) {}
-			}
-		);
+		// Setup mocks via globalThis assignment (bun-compatible)
+		globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+		globalThis.RTCPeerConnection = MockRTCPeerConnection as unknown as typeof RTCPeerConnection;
+		globalThis.RTCSessionDescription = class {
+			constructor(public description: RTCSessionDescriptionInit) {}
+		} as unknown as typeof RTCSessionDescription;
+		globalThis.RTCIceCandidate = class {
+			constructor(public candidate: RTCIceCandidateInit) {}
+		} as unknown as typeof RTCIceCandidate;
 
 		// Mock fetch for API calls
-		vi.stubGlobal(
-			"fetch",
-			vi.fn(() =>
-				Promise.resolve({
-					ok: true,
-					text: () => Promise.resolve("test-id"),
-					json: () => Promise.resolve(["peer1", "peer2"]),
-				})
-			)
-		);
+		globalThis.fetch = vi.fn(() =>
+			Promise.resolve({
+				ok: true,
+				text: () => Promise.resolve("test-id"),
+				json: () => Promise.resolve(["peer1", "peer2"]),
+			})
+		) as unknown as typeof fetch;
 
 		// Disable logging during tests
 		logger.logLevel = LogLevel.Disabled;
 	});
 
 	afterEach(() => {
-		vi.unstubAllGlobals();
+		// Restore original globals (bun-compatible)
+		globalThis.WebSocket = originalWebSocket;
+		globalThis.RTCPeerConnection = originalRTCPeerConnection;
+		globalThis.RTCSessionDescription = originalRTCSessionDescription;
+		globalThis.RTCIceCandidate = originalRTCIceCandidate;
+		globalThis.fetch = originalFetch;
 		vi.clearAllMocks();
 	});
 

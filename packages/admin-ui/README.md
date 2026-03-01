@@ -2,6 +2,8 @@
 
 Vue 3/Nuxt 4 admin dashboard for monitoring and managing Conduit servers.
 
+**Live instance**: [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net)
+
 ## Features
 
 - **Real-time Dashboard** - Live metrics, charts, and status indicators
@@ -35,10 +37,31 @@ Create a `.env` file or set environment variables:
 
 ```bash
 # Admin API endpoint
-NUXT_PUBLIC_ADMIN_API_URL=http://localhost:9000/admin/v1
-
+NUXT_PUBLIC_ADMIN_API_URL=http://localhost:9000/admin
 # WebSocket endpoint for real-time updates
-NUXT_PUBLIC_ADMIN_WS_URL=ws://localhost:9000/admin/v1/ws
+NUXT_PUBLIC_ADMIN_WS_URL=ws://localhost:9000/admin/ws
+```
+
+### Running with the CLI
+
+The easiest way to get the full stack running (server + admin API + dashboard):
+
+```bash
+# Terminal 1: Start the server with admin API
+conduit start --admin --admin-api-key "your-key"
+
+# Terminal 2: Start the admin UI
+cd packages/admin-ui
+bun run dev
+```
+
+Or use Docker Compose to run everything together:
+
+```bash
+cd docker
+export ADMIN_API_KEY=$(openssl rand -base64 32)
+docker compose --profile admin up -d
+# Dashboard at http://localhost:3000
 ```
 
 ## Pages
@@ -59,11 +82,9 @@ Use individual components in your own Vue 3 application:
 ### Installation
 
 ```bash
-npm install @conduit/admin-ui
-# or
 bun add @conduit/admin-ui
 # or
-yarn add @conduit/admin-ui
+npm install @conduit/admin-ui
 ```
 
 ### Plugin Setup
@@ -75,8 +96,8 @@ import { createAdminPlugin } from '@conduit/admin-ui';
 const app = createApp(App);
 
 app.use(createAdminPlugin({
-  apiUrl: 'http://localhost:9000/admin/v1',
-  wsUrl: 'ws://localhost:9000/admin/v1/ws',
+  apiUrl: 'http://localhost:9000/admin',
+  wsUrl: 'ws://localhost:9000/admin/ws',
   apiKey: 'your-api-key',
 }));
 ```
@@ -358,25 +379,30 @@ The output will be in `dist/` directory, ready for npm publishing.
 
 ## Docker
 
+Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node):
+
 ```dockerfile
-FROM oven/bun:1.3 AS builder
+# Builder stage
+FROM imbios/bun-node:1.3.10-24-debian AS builder
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install
+COPY package.json bun.lock* ./
+RUN bun install --ignore-scripts
 COPY . .
+ENV NITRO_PRESET=bun
 RUN bun run build
 
-FROM oven/bun:1.3-alpine
+# Production stage
+FROM imbios/bun-node:1.3.10-24-slim AS production
 WORKDIR /app
 COPY --from=builder /app/.output .output
-ENV NUXT_PUBLIC_ADMIN_API_URL=/admin/v1
+ENV NUXT_PUBLIC_ADMIN_API_URL=/admin
 EXPOSE 3000
 CMD ["bun", "run", ".output/server/index.mjs"]
 ```
 
 ## Requirements
 
-- Node.js 22+ or Bun 1.0+
+- Bun 1.3+ or Node.js 24+
 - Vue 3.5+
 - Modern browser with ES2022 support
 

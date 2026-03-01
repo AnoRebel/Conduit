@@ -1,5 +1,10 @@
 # Conduit
 
+[![CI](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@conduit/server)](https://www.npmjs.com/package/@conduit/server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-436-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
+
 WebRTC peer-to-peer data, video, and audio connections made simple.
 
 Conduit provides an easy-to-use API for creating peer-to-peer connections using WebRTC. It handles the complexity of WebRTC signaling and offers automatic fallback to WebSocket relay when direct connections aren't possible.
@@ -12,8 +17,9 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 - **Multiple Serialization** - Binary, JSON, MessagePack, or raw data
 - **Framework Adapters** - Works with Node.js, Express, Fastify, Hono, and Bun
 - **TypeScript** - Full type definitions included
-- **Cloud Server** - Free cloud server at `conduit.anorebel.net` or self-host
-- **Security** - Rate limiting, input validation, HTTPS enforcement, origin validation
+- **Cloud Server** - Free cloud server at [`conduit.anorebel.net`](https://conduit.anorebel.net) or self-host
+- **Admin Dashboard** - Live monitoring UI at [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net)
+- **Security** - Timing-safe auth, rate limiting, body size limits, CSRF protection, input validation, HTTPS enforcement, origin validation
 
 ## Packages
 
@@ -30,11 +36,9 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 ### Client
 
 ```bash
-npm install conduit
-# or
 bun add conduit
 # or
-yarn add conduit
+npm install conduit
 ```
 
 ```typescript
@@ -70,11 +74,9 @@ conduit.on('connection', (conn) => {
 ### Server
 
 ```bash
-npm install @conduit/server
-# or
 bun add @conduit/server
 # or
-yarn add @conduit/server
+npm install @conduit/server
 ```
 
 ```typescript
@@ -95,9 +97,9 @@ server.listen(9000, () => {
 Or run the CLI:
 
 ```bash
-npx @conduit/server
+bunx @conduit/server start
 # or
-bunx @conduit/server
+npx @conduit/server start
 ```
 
 ## Transport Types
@@ -248,7 +250,34 @@ server.serve();
 
 The `@conduit/admin` package provides monitoring and administration capabilities for your Conduit servers.
 
+### CLI Integration (Recommended)
+
+The simplest way to run the server with admin API is via the CLI:
+
+```bash
+# Start with admin API enabled using CLI flags
+conduit start --admin --admin-api-key "your-secret-key"
+
+# Or use environment variables
+ADMIN_ENABLED=true ADMIN_API_KEY="your-secret-key" conduit start
+
+# Generate a secure API key
+openssl rand -base64 32
+```
+
+The CLI supports all admin configuration via flags and environment variables:
+
+```bash
+conduit start \
+  --admin \
+  --admin-path /admin \
+  --admin-auth-type apiKey \
+  --admin-api-key "$(openssl rand -base64 32)"
+```
+
 ### Embedded Mode
+
+For custom setups, you can embed the admin API in your own Express/Fastify/Hono app:
 
 ```typescript
 import express from 'express';
@@ -267,7 +296,7 @@ const admin = ExpressAdminServer({
   auth: { type: 'apiKey', apiKey: process.env.ADMIN_API_KEY },
 });
 
-app.use('/admin/v1', admin);
+app.use('/admin', admin);
 ```
 
 ### Standalone Dashboard
@@ -282,9 +311,11 @@ bun run dev
 Configure the API endpoint via environment variables:
 
 ```bash
-NUXT_PUBLIC_ADMIN_API_URL=http://localhost:9000/admin/v1
-NUXT_PUBLIC_ADMIN_WS_URL=ws://localhost:9000/admin/v1/ws
+NUXT_PUBLIC_ADMIN_API_URL=http://localhost:9000/admin
+NUXT_PUBLIC_ADMIN_WS_URL=ws://localhost:9000/admin/ws
 ```
+
+The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net).
 
 ### Admin Features
 
@@ -293,7 +324,22 @@ NUXT_PUBLIC_ADMIN_WS_URL=ws://localhost:9000/admin/v1/ws
 - **IP Banning** - Block abusive IP addresses
 - **Audit Logging** - Track all admin actions
 - **Multiple Auth Methods** - API Key, JWT, or Basic authentication
+- **Role-Based Access** - JWT viewers (read-only) vs admins (full access)
 - **Framework Adapters** - Express, Fastify, Hono, or Node.js HTTP
+
+## Security
+
+Conduit includes comprehensive security features for production deployments:
+
+- **Timing-Safe Key Comparison** - API key authentication uses constant-time comparison to prevent timing attacks
+- **Body Size Limits** - Request bodies are capped at 1MB to prevent denial-of-service via large payloads
+- **CSRF Protection** - Content-Type validation on mutating requests prevents cross-site request forgery
+- **Rate Limiting** - Token bucket rate limiting is enforced on both the signaling server and the admin API
+- **JWT Role Enforcement** - JWT tokens carry a `role` claim (`viewer` or `admin`); viewers can only read (`GET`), admins have full access
+- **Input Validation** - Client IDs, tokens, and keys are validated against safe patterns; JSON parsing includes depth limits
+- **HTTPS/WSS Enforcement** - Optional `requireSecure: true` rejects non-HTTPS/WSS connections in production
+- **Origin Validation** - Restrict WebSocket connections to specific origins via `allowedOrigins`
+- **Graceful Shutdown** - Server sends `GOAWAY` messages to clients before shutting down
 
 ## Comparison with Alternatives
 
@@ -406,14 +452,14 @@ const peer = new Peer('my-id');
 
 ```bash
 # Client
-npm install conduit
-# or
 bun add conduit
+# or
+npm install conduit
 
 # Server
-npm install @conduit/server
-# or
 bun add @conduit/server
+# or
+npm install @conduit/server
 ```
 
 ### From GitHub
@@ -422,9 +468,9 @@ You can also install directly from GitHub:
 
 ```bash
 # Install the client from GitHub
-npm install github:AnoRebel/conduit#packages/client
-# or using bun
 bun add github:AnoRebel/conduit
+# or
+npm install github:AnoRebel/conduit#packages/client
 
 # Install the server from GitHub
 npm install github:AnoRebel/conduit#packages/server
@@ -447,6 +493,11 @@ docker compose --profile admin up -d
 ```
 
 ### Docker Images
+
+Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for both Bun and Node.js compatibility:
+
+- **Builder stage**: `imbios/bun-node:1.3.10-24-debian`
+- **Production stage**: `imbios/bun-node:1.3.10-24-slim`
 
 | Image | Description | Port |
 |-------|-------------|------|
@@ -478,14 +529,16 @@ services:
 ### Running with Admin Dashboard
 
 ```bash
-# Set your admin API key
-export ADMIN_API_KEY=your-secure-api-key
+# Generate a secure admin API key
+export ADMIN_API_KEY=$(openssl rand -base64 32)
 
 # Start server with admin API and dashboard
 docker compose --profile admin up -d
 
 # Access the dashboard at http://localhost:3000
 ```
+
+The server-admin container reads `ADMIN_ENABLED`, `ADMIN_API_KEY`, and other `ADMIN_*` env vars automatically via the CLI.
 
 ### Environment Variables
 
@@ -496,31 +549,51 @@ docker compose --profile admin up -d
 | `CONDUIT_KEY` | API key for clients | `conduit` |
 | `ALLOW_DISCOVERY` | Enable peer discovery endpoint | `false` |
 | `ADMIN_ENABLED` | Enable admin API | `false` |
-| `ADMIN_API_KEY` | Admin API authentication key | - |
-| `ADMIN_PATH` | Admin API path prefix | `/admin/v1` |
+| `ADMIN_PATH` | Admin API path prefix | `/admin` |
+| `ADMIN_AUTH_TYPE` | Authentication method (`apiKey`, `jwt`, `basic`) | `apiKey` |
+| `ADMIN_API_KEY` | Admin API authentication key (use `openssl rand -base64 32`) | - |
+| `ADMIN_JWT_SECRET` | Secret for JWT token signing/verification | - |
+| `ADMIN_BASIC_USER` | Username for Basic authentication | - |
+| `ADMIN_BASIC_PASS` | Password for Basic authentication | - |
 
 ## Development
 
-This is a Bun monorepo. To get started:
+This is a Bun monorepo with [lefthook](https://github.com/evilmartians/lefthook) git hooks for automated quality checks.
 
 ```bash
-# Install dependencies
+# Install dependencies (also installs git hooks via lefthook)
 bun install
 
 # Build all packages
 bun run build
 
-# Run tests
+# Run tests (436 tests across all packages)
 bun run test
 
 # Type checking
 bun run typecheck
 
-# Run linting
+# Run linting (Biome)
 bun run lint
 
 # Format code
 bun run format
+
+# Full validation (lint + format check + typecheck + build + test)
+bun run lint && bun run format:check && bun run typecheck && bun run build && bun run test
+```
+
+### Git Hooks
+
+Git hooks are managed by [lefthook](https://github.com/evilmartians/lefthook) and run automatically:
+
+- **Pre-commit**: Lint and format staged files (via Biome)
+- **Pre-push**: Type checking and build verification
+
+Hooks are installed automatically when you run `bun install` (via the `prepare` script). To install manually:
+
+```bash
+bunx lefthook install
 ```
 
 ### Project Structure
@@ -534,16 +607,17 @@ conduit/
 │   ├── admin/       # Admin API and monitoring
 │   └── admin-ui/    # Vue 3/Nuxt 4 dashboard
 ├── docker/          # Docker configurations
-└── .github/         # CI/CD workflows
+├── .github/         # CI/CD workflows
+└── lefthook.yml     # Git hook configuration
 ```
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines before submitting a pull request.
+Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) before submitting a pull request.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 

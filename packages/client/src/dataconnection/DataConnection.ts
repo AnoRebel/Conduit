@@ -220,8 +220,7 @@ export class DataConnection
 				serializedData = JSON.stringify(data);
 			} else if (this.serialization === SerializationType.Binary) {
 				const binaryPack = await import("peerjs-js-binarypack");
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const packed = await binaryPack.pack(data as any);
+				const packed = await binaryPack.pack(data as import("peerjs-js-binarypack").Packable);
 				// Handle SharedArrayBuffer by converting to ArrayBuffer
 				if (packed instanceof SharedArrayBuffer) {
 					const temp = new Uint8Array(packed);

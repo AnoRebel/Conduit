@@ -1,14 +1,95 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { AdminRateLimitConfig } from "../config.js";
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,
 	error,
+	forbidden,
 	notFound,
 	type Route,
 	type RouteContext,
 	type RouteResponse,
 	unauthorized,
 } from "../routes/index.js";
+
+/** Maximum allowed request body size (1MB) to prevent DoS attacks. */
+const MAX_BODY_SIZE = 1024 * 1024;
+
+// ============================================================================
+// Rate Limiting
+// ============================================================================
+
+interface RateLimitState {
+	tokens: number;
+	lastRefill: number;
+}
+
+interface RateLimiter {
+	isAllowed(clientId: string): boolean;
+	destroy(): void;
+}
+
+function createRateLimiter(maxRequests: number, windowMs: number): RateLimiter {
+	const clients = new Map<string, RateLimitState>();
+
+	// Clean up old entries periodically
+	const cleanup = setInterval(() => {
+		const now = Date.now();
+		for (const [key, state] of clients) {
+			if (now - state.lastRefill > windowMs * 2) {
+				clients.delete(key);
+			}
+		}
+	}, windowMs);
+
+	// Allow cleanup interval to not keep process alive
+	if (cleanup.unref) cleanup.unref();
+
+	return {
+		isAllowed(clientId: string): boolean {
+			const now = Date.now();
+			let state = clients.get(clientId);
+
+			if (!state) {
+				state = { tokens: maxRequests - 1, lastRefill: now };
+				clients.set(clientId, state);
+				return true;
+			}
+
+			// Refill tokens based on elapsed time
+			const elapsed = now - state.lastRefill;
+			const tokensToAdd = Math.floor((elapsed / windowMs) * maxRequests);
+			if (tokensToAdd > 0) {
+				state.tokens = Math.min(maxRequests, state.tokens + tokensToAdd);
+				state.lastRefill = now;
+			}
+
+			if (state.tokens > 0) {
+				state.tokens--;
+				return true;
+			}
+
+			return false;
+		},
+		destroy() {
+			clearInterval(cleanup);
+			clients.clear();
+		},
+	};
+}
+
+function createRateLimiterFromConfig(rateLimitConfig: AdminRateLimitConfig): RateLimiter | null {
+	if (!rateLimitConfig.enabled) {
+		return null;
+	}
+	return createRateLimiter(rateLimitConfig.maxRequests, rateLimitConfig.windowMs);
+}
+
+function getClientIp(req: IncomingMessage): string {
+	const forwarded = req.headers["x-forwarded-for"];
+	const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+	return forwardedValue?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+}
 
 export interface NodeAdminServerOptions {
 	admin: AdminCore;
@@ -27,6 +108,9 @@ export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdmi
 	const config = admin.config;
 	const routes = createRoutes();
 	const basePath = `${config.path}/${config.apiVersion}`;
+
+	// Initialize rate limiter from config
+	const rateLimiter = createRateLimiterFromConfig(config.rateLimit);
 
 	// Compile route patterns
 	const compiledRoutes = routes.map(route => ({
@@ -58,6 +142,27 @@ export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdmi
 
 		const { route, params } = match;
 
+		// Rate limiting
+		if (rateLimiter) {
+			const clientIp = getClientIp(req);
+			if (!rateLimiter.isAllowed(clientIp)) {
+				sendResponse(res, error("Too many requests", 429));
+				return;
+			}
+		}
+
+		// CSRF protection: require JSON content-type for mutating requests
+		if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+			const contentType = req.headers["content-type"];
+			if (contentType && !contentType.includes("application/json")) {
+				sendResponse(res, {
+					status: 415,
+					body: { error: "Content-Type must be application/json" },
+				});
+				return;
+			}
+		}
+
 		// Handle authentication
 		let authResult = { valid: false, error: "Not authenticated" } as ReturnType<
 			typeof admin.auth.authenticateRequest
@@ -70,6 +175,13 @@ export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdmi
 
 			if (!authResult.valid) {
 				sendResponse(res, unauthorized(authResult.error));
+				return;
+			}
+
+			// Role-based access control: write operations require admin role
+			const isWriteMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+			if (isWriteMethod && authResult.role === "viewer") {
+				sendResponse(res, forbidden("Insufficient permissions. Admin role required."));
 				return;
 			}
 		} else {
@@ -88,8 +200,13 @@ export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdmi
 		if (["POST", "PUT", "PATCH"].includes(method)) {
 			try {
 				body = await parseBody(req);
-			} catch (_err) {
-				sendResponse(res, error("Invalid JSON body"));
+			} catch (err) {
+				const message =
+					err instanceof Error && err.message === "Request body too large"
+						? "Request body too large"
+						: "Invalid JSON body";
+				const status = message === "Request body too large" ? 413 : 400;
+				sendResponse(res, { status, body: { error: message } });
 				return;
 			}
 		}
@@ -171,8 +288,15 @@ function findRoute(
 function parseBody(req: IncomingMessage): Promise<unknown> {
 	return new Promise((resolve, reject) => {
 		const chunks: Buffer[] = [];
+		let totalSize = 0;
 
 		req.on("data", (chunk: Buffer) => {
+			totalSize += chunk.length;
+			if (totalSize > MAX_BODY_SIZE) {
+				req.destroy();
+				reject(new Error("Request body too large"));
+				return;
+			}
 			chunks.push(chunk);
 		});
 

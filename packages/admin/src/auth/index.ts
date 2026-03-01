@@ -8,6 +8,7 @@ import { SessionManager } from "./session.js";
 export interface AuthResult {
 	valid: boolean;
 	userId?: string;
+	role?: "admin" | "viewer";
 	session?: AuthSession;
 	error?: string;
 }
@@ -101,7 +102,7 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 			if (authValue.startsWith("Basic ")) {
 				const credentials = authValue.slice(6);
 				const result = validateBasicAuth(credentials);
-				if (result.valid) return result;
+				if (result.valid) return { ...result, role: result.role ?? "admin" };
 			}
 		}
 
@@ -111,7 +112,7 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 
 		if (apiKeyValue) {
 			const result = validateApiKey(apiKeyValue);
-			if (result.valid) return result;
+			if (result.valid) return { ...result, role: result.role ?? "admin" };
 		}
 
 		// Try session cookie
@@ -122,7 +123,7 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 			const sessionMatch = cookieValue.match(/admin_session=([^;]+)/);
 			if (sessionMatch?.[1]) {
 				const result = validateSession(sessionMatch[1]);
-				if (result.valid) return result;
+				if (result.valid) return { ...result, role: result.role ?? "admin" };
 			}
 		}
 

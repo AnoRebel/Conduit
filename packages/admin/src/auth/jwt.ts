@@ -22,6 +22,7 @@ export class JWTAuth {
 			return {
 				valid: true,
 				userId: decoded.sub,
+				role: decoded.role ?? "admin",
 			};
 		} catch (error) {
 			if (error instanceof jwt.TokenExpiredError) {

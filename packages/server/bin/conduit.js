@@ -22,6 +22,10 @@ program
 	.option("--expire-timeout <ms>", "Message expire timeout in ms", "5000")
 	.option("--cors <origin>", "CORS origin (use * for all)", "*")
 	.option("--no-relay", "Disable WebSocket relay transport")
+	.option("--admin", "Enable admin API")
+	.option("--admin-path <path>", "Admin API path prefix", "/admin")
+	.option("--admin-auth-type <type>", "Admin auth type (apiKey, jwt, basic)", "apiKey")
+	.option("--admin-api-key <key>", "Admin API key")
 	.action(async options => {
 		const port = parseInt(options.port, 10);
 		const host = options.host;
@@ -34,13 +38,23 @@ program
 		const corsOrigin = options.cors === "*" ? true : options.cors;
 		const relayEnabled = options.relay !== false;
 
+		// Resolve admin settings: env vars take precedence over CLI flags
+		const adminEnabled =
+			env("ADMIN_ENABLED") === "true" || env("ADMIN_ENABLED") === "1" || options.admin === true;
+		const adminPath = env("ADMIN_PATH") || options.adminPath;
+		const adminAuthType = env("ADMIN_AUTH_TYPE") || options.adminAuthType;
+		const adminApiKey = env("ADMIN_API_KEY") || options.adminApiKey;
+		const adminJwtSecret = env("ADMIN_JWT_SECRET");
+		const adminBasicUser = env("ADMIN_BASIC_USER");
+		const adminBasicPass = env("ADMIN_BASIC_PASS");
+
 		console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                   Conduit Server v1.0.0                   ║
 ╚═══════════════════════════════════════════════════════════╝
 `);
 
-		const server = createConduitServer({
+		const conduitServer = createConduitServer({
 			config: {
 				port,
 				host,
@@ -64,12 +78,109 @@ program
 			},
 		});
 
-		server.listen(port, host, () => {
+		// Set up admin API if enabled
+		if (adminEnabled) {
+			try {
+				const { createAdminConfig, createAdminCore, createNodeAdminServer, createAdminWSServer } =
+					await import("@conduit/admin");
+
+				// Build auth config from env/CLI options
+				const authMethods = [adminAuthType].filter(Boolean);
+				const authConfig = {
+					methods: authMethods,
+					apiKey: adminApiKey,
+					jwtSecret: adminJwtSecret,
+					basicCredentials:
+						adminBasicUser && adminBasicPass
+							? { username: adminBasicUser, password: adminBasicPass }
+							: undefined,
+				};
+
+				const adminConfig = createAdminConfig({
+					path: adminPath,
+					auth: authConfig,
+				});
+
+				const adminCore = createAdminCore({ config: adminConfig });
+				adminCore.attachToServer(conduitServer.core);
+
+				const adminServer = createNodeAdminServer({ admin: adminCore });
+				const adminWS = createAdminWSServer({ admin: adminCore });
+
+				const adminBasePath = adminServer.basePath;
+				const adminWSPath = `${adminBasePath}/ws`;
+
+				// Import ws for admin WebSocket upgrade handling
+				const { WebSocketServer } = await import("ws");
+				const adminWSS = new WebSocketServer({ noServer: true });
+
+				// Intercept HTTP requests: prepend admin handler before the conduit handler
+				// Remove existing request listeners, add admin-aware handler, then re-add originals
+				const existingRequestListeners = conduitServer.server.listeners("request").slice();
+				conduitServer.server.removeAllListeners("request");
+
+				conduitServer.server.on("request", (req, res) => {
+					const url = req.url || "";
+					const pathname = url.split("?")[0] || "";
+
+					if (pathname.startsWith(adminBasePath)) {
+						adminServer.handleRequest(req, res);
+						return;
+					}
+
+					// Fall through to original conduit handler(s)
+					for (const listener of existingRequestListeners) {
+						listener.call(conduitServer.server, req, res);
+					}
+				});
+
+				// Intercept WebSocket upgrade: prepend admin WS handler
+				const existingUpgradeListeners = conduitServer.server.listeners("upgrade").slice();
+				conduitServer.server.removeAllListeners("upgrade");
+
+				conduitServer.server.on("upgrade", (request, socket, head) => {
+					const url = request.url || "";
+					const pathname = url.split("?")[0] || "";
+
+					if (pathname === adminWSPath || pathname === `${adminWSPath}/`) {
+						adminWSS.handleUpgrade(request, socket, head, ws => {
+							adminWS.handleConnection(ws, request);
+						});
+						return;
+					}
+
+					// Fall through to original conduit upgrade handler(s)
+					for (const listener of existingUpgradeListeners) {
+						listener.call(conduitServer.server, request, socket, head);
+					}
+				});
+
+				console.log(`Admin API enabled at ${adminBasePath}`);
+				console.log(`Admin WS at ${adminWSPath}`);
+				console.log(`Admin auth: ${adminAuthType}`);
+
+				// Extend shutdown to clean up admin resources
+				const originalClose = conduitServer.close.bind(conduitServer);
+				conduitServer.close = callback => {
+					adminWS.close();
+					adminCore.destroy();
+					originalClose(callback);
+				};
+			} catch (err) {
+				console.error("Failed to initialize admin API:", err);
+				console.error("Make sure @conduit/admin is installed. Continuing without admin API...");
+			}
+		}
+
+		conduitServer.listen(port, host, () => {
 			console.log(`Server listening on ${host}:${port}`);
 			console.log(`Path: ${path}`);
 			console.log(`Key: ${key}`);
 			console.log(`Discovery: ${allowDiscovery ? "enabled" : "disabled"}`);
 			console.log(`Relay: ${relayEnabled ? "enabled" : "disabled"}`);
+			if (adminEnabled) {
+				console.log(`Admin: enabled`);
+			}
 			console.log("");
 			console.log("Press Ctrl+C to stop the server");
 		});
@@ -77,7 +188,7 @@ program
 		// Graceful shutdown
 		process.on("SIGINT", () => {
 			console.log("\nShutting down server...");
-			server.close(() => {
+			conduitServer.close(() => {
 				console.log("Server stopped");
 				process.exit(0);
 			});
@@ -85,7 +196,7 @@ program
 
 		process.on("SIGTERM", () => {
 			console.log("\nShutting down server...");
-			server.close(() => {
+			conduitServer.close(() => {
 				console.log("Server stopped");
 				process.exit(0);
 			});
@@ -182,3 +293,9 @@ program
 	});
 
 program.parse();
+
+/** Read an environment variable, returning undefined if not set or empty */
+function env(name) {
+	const value = process.env[name];
+	return value && value.trim() !== "" ? value.trim() : undefined;
+}

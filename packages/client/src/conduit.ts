@@ -208,7 +208,9 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		switch (type) {
 			case MessageType.OPEN:
 				this._open = true;
-				this.emit("open", this._id!);
+				if (this._id) {
+					this.emit("open", this._id);
+				}
 				break;
 
 			case MessageType.ERROR: {
@@ -223,7 +225,9 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 
 			case MessageType.LEAVE:
 				logger.log("Remote conduit left:", src);
-				this._cleanupRemote(src!);
+				if (src) {
+					this._cleanupRemote(src);
+				}
 				break;
 
 			case MessageType.EXPIRE:
