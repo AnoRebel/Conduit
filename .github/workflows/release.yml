@@ -139,19 +139,24 @@ jobs:
 
           ### Installation
 
+          #### npm
           \`\`\`bash
-          # Install from npm
           npm install conduit@$VERSION
           npm install @conduit/server@$VERSION
+          \`\`\`
 
-          # Or install from GitHub
-          npm install github:AnoRebel/conduit#v$VERSION
+          #### JSR
+          \`\`\`bash
+          deno add jsr:@conduit/client@$VERSION
+          deno add jsr:@conduit/server@$VERSION
+          # or with npx
+          npx jsr add @conduit/client@$VERSION
+          npx jsr add @conduit/server@$VERSION
           \`\`\`
 
           ### Docker
 
           \`\`\`bash
-          # Pull the latest Docker images
           docker pull ghcr.io/anorebel/conduit/server:$VERSION
           docker pull ghcr.io/anorebel/conduit/server-admin:$VERSION
           docker pull ghcr.io/anorebel/conduit/admin-ui:$VERSION
@@ -159,13 +164,13 @@ jobs:
 
           ### Packages
 
-          | Package | Version |
-          |---------|---------|
-          | \`conduit\` (client) | $VERSION |
-          | \`@conduit/server\` | $VERSION |
-          | \`@conduit/shared\` | $VERSION |
-          | \`@conduit/admin\` | $VERSION |
-          | \`@conduit/admin-ui\` | $VERSION |
+          | Package | npm | JSR |
+          |---------|-----|-----|
+          | \`conduit\` (client) | [npm](https://www.npmjs.com/package/conduit) | [jsr](https://jsr.io/@conduit/client) |
+          | \`@conduit/server\` | [npm](https://www.npmjs.com/package/@conduit/server) | [jsr](https://jsr.io/@conduit/server) |
+          | \`@conduit/shared\` | [npm](https://www.npmjs.com/package/@conduit/shared) | [jsr](https://jsr.io/@conduit/shared) |
+          | \`@conduit/admin\` | [npm](https://www.npmjs.com/package/@conduit/admin) | [jsr](https://jsr.io/@conduit/admin) |
+          | \`@conduit/admin-ui\` | [npm](https://www.npmjs.com/package/@conduit/admin-ui) | - |
 
           EOF
 
@@ -206,6 +211,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The [Publish workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/publish.yml) will automatically publish to npm." >> $GITHUB_STEP_SUMMARY
+          echo "The following workflows will be triggered automatically:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The [Docker workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/docker.yml) will build and push Docker images." >> $GITHUB_STEP_SUMMARY
+          echo "1. **[Publish to npm & JSR](${{ github.server_url }}/${{ github.repository }}/actions/workflows/publish.yml)** - Publishes packages to npm and JSR" >> $GITHUB_STEP_SUMMARY
+          echo "2. **[Docker Build](${{ github.server_url }}/${{ github.repository }}/actions/workflows/docker.yml)** - Builds and pushes Docker images" >> $GITHUB_STEP_SUMMARY
