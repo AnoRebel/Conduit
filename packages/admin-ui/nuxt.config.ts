@@ -14,7 +14,10 @@ export default defineNuxtConfig({
 	css: ["~/assets/css/main.css"],
 
 	vite: {
-		plugins: [...tailwindcss()],
+		// @tailwindcss/vite is built against a different rollup version than Nuxt resolves,
+		// causing a Plugin type mismatch. This cast is safe — it works at runtime.
+		// Track: https://github.com/tailwindlabs/tailwindcss/issues
+		plugins: tailwindcss() as never[],
 	},
 
 	runtimeConfig: {

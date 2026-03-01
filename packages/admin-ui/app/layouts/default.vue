@@ -238,12 +238,14 @@ function onTourSkip() {
 		</div>
 	</div>
 
-	<!-- Tour Guide Manager -->
-	<TourGuideManager
-		ref="tourManagerRef"
-		:steps="currentSteps"
-		highlight
-		@complete="onTourComplete"
-		@skip="onTourSkip"
-	/>
+	<!-- Tour Guide Manager (client-only: registered via v-tour-guide.client plugin) -->
+	<ClientOnly>
+		<TourGuideManager
+			ref="tourManagerRef"
+			:steps="currentSteps"
+			highlight
+			@complete="onTourComplete"
+			@skip="onTourSkip"
+		/>
+	</ClientOnly>
 </template>
