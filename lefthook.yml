@@ -12,9 +12,12 @@ pre-commit:
       run: bunx biome format --no-errors-on-unmatched {staged_files}
 
 pre-push:
+  parallel: true
   jobs:
     - name: typecheck
+      glob: "*.{ts,tsx,vue}"
       run: bun run typecheck
 
     - name: build
+      glob: "*.{ts,tsx,vue,js,jsx,json}"
       run: bun run build
