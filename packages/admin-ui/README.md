@@ -6,14 +6,18 @@ Vue 3/Nuxt 4 admin dashboard for monitoring and managing Conduit servers.
 
 ## Features
 
-- **Real-time Dashboard** - Live metrics, charts, and status indicators
-- **Client Management** - View, search, and disconnect clients
-- **Ban Management** - Ban/unban clients and IP addresses
-- **Metrics Visualization** - Interactive charts for throughput, latency, and connections
-- **Audit Log** - View and filter administrative actions
-- **Dark/Light Theme** - Automatic theme switching based on system preference
-- **Responsive Design** - Works on desktop and mobile
-- **Embeddable Components** - Use individual components in your own Vue app
+- **Real-time Dashboard** - Live metrics, mini activity charts, and status indicators
+- **Client Management** - DataTable with search, pagination, sorting, and context menus
+- **Ban Management** - Ban/unban clients and IPs with stats cards and type filters
+- **Metrics Visualization** - Theme-reactive Chart.js charts for throughput, latency, and connections
+- **Audit Log** - Filterable DataTable with pagination and action type filters
+- **Socket.IO-style Connection** - Dynamic server connection dialog (URL, auth type, credentials)
+- **Dark/Light Theme** - System-aware theme with smooth transitions
+- **Floating Header & Footer** - Glass-morphism header and pill footer with scroll behavior
+- **Responsive Design** - Sidebar layout that works on desktop and mobile
+- **Tour Guide** - First-visit onboarding tours for each page
+- **Sonner Notifications** - Rich toast notifications for all actions
+- **VueUse Integration** - Leverages VueUse composables throughout
 
 ## Quick Start
 
@@ -72,245 +76,20 @@ docker compose --profile admin up -d
 | `/clients` | Client list with search and filtering |
 | `/clients/:id` | Detailed view of a specific client |
 | `/metrics` | Detailed metrics charts and historical data |
+| `/bans` | Ban management with stats, search, and type filters |
 | `/audit` | Audit log with filtering by action type |
 | `/settings` | Dashboard settings and preferences |
 
-## Embedding Components
+## Connection Dialog
 
-Use individual components in your own Vue 3 application:
+The admin UI features a Socket.IO Admin-style connection dialog that lets you connect to any Conduit server dynamically. No hardcoded server URLs needed.
 
-### Installation
+On first visit, the connection dialog prompts for:
+- **Server URL** — The admin API endpoint (e.g., `https://conduit.anorebel.net/admin/v1`)
+- **Auth Type** — API Key, Basic, or None
+- **Credentials** — API key or username/password depending on auth type
 
-```bash
-bun add @conduit/admin-ui
-# or
-npm install @conduit/admin-ui
-```
-
-### Plugin Setup
-
-```typescript
-import { createApp } from 'vue';
-import { createAdminPlugin } from '@conduit/admin-ui';
-
-const app = createApp(App);
-
-app.use(createAdminPlugin({
-  apiUrl: 'http://localhost:9000/admin',
-  wsUrl: 'ws://localhost:9000/admin/ws',
-  apiKey: 'your-api-key',
-}));
-```
-
-### Using Components
-
-```vue
-<template>
-  <div>
-    <!-- Full dashboard -->
-    <AdminDashboard />
-
-    <!-- Or individual components -->
-    <ServerStatus />
-    <ClientList />
-    <MetricsChart metric="throughput" />
-    <BanManager />
-    <AuditLog :limit="50" />
-  </div>
-</template>
-
-<script setup>
-import {
-  AdminDashboard,
-  ServerStatus,
-  ClientList,
-  MetricsChart,
-  BanManager,
-  AuditLog,
-} from '@conduit/admin-ui/components';
-</script>
-```
-
-## Available Components
-
-### AdminDashboard
-
-Complete dashboard with all features.
-
-```vue
-<AdminDashboard />
-```
-
-### ServerStatus
-
-Server status card with uptime, version, and health indicators.
-
-```vue
-<ServerStatus />
-```
-
-### ClientList
-
-Paginated list of connected clients with search and actions.
-
-```vue
-<ClientList
-  :page-size="20"
-  :show-actions="true"
-/>
-```
-
-### ClientDetails
-
-Detailed view of a single client.
-
-```vue
-<ClientDetails :client-id="clientId" />
-```
-
-### MetricsChart
-
-Interactive chart for a specific metric.
-
-```vue
-<MetricsChart
-  metric="throughput"
-  :duration="'1h'"
-  :refresh-interval="5000"
-/>
-```
-
-Available metrics: `throughput`, `latency`, `connections`, `messages`, `errors`
-
-### BanManager
-
-Interface for managing bans.
-
-```vue
-<BanManager />
-```
-
-### AuditLog
-
-Paginated audit log with filtering.
-
-```vue
-<AuditLog
-  :limit="50"
-  :action-filter="'disconnect_client'"
-/>
-```
-
-### QuickActions
-
-Common admin actions in a compact format.
-
-```vue
-<QuickActions />
-```
-
-### SettingsPanel
-
-User preferences and dashboard settings.
-
-```vue
-<SettingsPanel />
-```
-
-## Composables
-
-Use the underlying composables directly for custom integrations:
-
-### useAdminApi
-
-```typescript
-import { useAdminApi } from '@conduit/admin-ui';
-
-const api = useAdminApi();
-
-// Fetch data
-const status = await api.getStatus();
-const clients = await api.getClients();
-const metrics = await api.getMetrics();
-
-// Perform actions
-await api.disconnectClient('client-id');
-await api.banClient('client-id', 'Abuse');
-await api.banIP('192.168.1.100', 'Spam');
-```
-
-### useAdminWebSocket
-
-```typescript
-import { useAdminWebSocket } from '@conduit/admin-ui';
-
-const ws = useAdminWebSocket();
-
-// Subscribe to events
-ws.subscribe(['metrics', 'clients']);
-
-// Listen for updates
-ws.on('metrics', (data) => {
-  console.log('New metrics:', data);
-});
-
-ws.on('clients', (data) => {
-  console.log('Client event:', data);
-});
-```
-
-### useMetrics
-
-```typescript
-import { useMetrics } from '@conduit/admin-ui';
-
-const metrics = useMetrics();
-
-// Access reactive metrics data
-const throughput = computed(() => metrics.throughput.value);
-const latency = computed(() => metrics.latency.value);
-const connections = computed(() => metrics.connections.value);
-
-// Refresh metrics
-await metrics.refresh();
-```
-
-### useColorMode
-
-```typescript
-import { useColorMode } from '@conduit/admin-ui';
-
-const { colorMode, setColorMode, toggleColorMode } = useColorMode();
-
-// Get current mode
-console.log(colorMode.value); // 'light' | 'dark' | 'system'
-
-// Set mode
-setColorMode('dark');
-
-// Toggle between light and dark
-toggleColorMode();
-```
-
-## Pinia Store
-
-Access the admin store directly:
-
-```typescript
-import { useAdminStore } from '@conduit/admin-ui';
-
-const store = useAdminStore();
-
-// State
-console.log(store.status);
-console.log(store.clients);
-console.log(store.metrics);
-
-// Actions
-await store.fetchStatus();
-await store.fetchClients();
-await store.disconnectClient('id');
-```
+Connection settings are persisted in `localStorage` for subsequent visits. You can change the connection at any time from the header or sidebar.
 
 ## Theming
 
@@ -349,55 +128,54 @@ bun run dev
 # Type check
 bun run typecheck
 
-# Build for production
+# Build for production (SSR)
 bun run build
 
 # Preview production build
 bun run preview
 
-# Build as library for embedding
-bun run build:lib
+# Build as static SPA
+bun run generate
 ```
 
 ## Building for Production
 
-### As Standalone App
+### As Standalone App (SSR)
 
 ```bash
 bun run build
 ```
 
-The output will be in `.output/` directory. Deploy to any Node.js host or static hosting with SSR support.
+The output will be in `.output/` directory. Deploy with `bun run .output/server/index.mjs`.
 
-### As Embeddable Library
+### As Static SPA
 
 ```bash
-bun run build:lib
+bun run generate
 ```
 
-The output will be in `dist/` directory, ready for npm publishing.
+The output will be in `.output/public/` directory. Deploy to any static hosting, or use the embedded admin UI feature to serve from the Conduit server itself:
+
+```bash
+conduit start --admin --admin-api-key "your-key" --admin-ui .output/public
+```
 
 ## Docker
 
-Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node):
+```bash
+# Build and run with Docker
+docker build -f docker/Dockerfile.admin-ui -t conduit-admin-ui .
+docker run -p 3000:3000 \
+  -e NUXT_PUBLIC_ADMIN_API_URL=https://your-server.com/admin/v1 \
+  -e NUXT_PUBLIC_ADMIN_WS_URL=wss://your-server.com/admin/v1/ws \
+  conduit-admin-ui
+```
 
-```dockerfile
-# Builder stage
-FROM imbios/bun-node:1.3.10-24-debian AS builder
-WORKDIR /app
-COPY package.json bun.lock* ./
-RUN bun install --ignore-scripts
-COPY . .
-ENV NITRO_PRESET=bun
-RUN bun run build
+Or use the all-in-one image that bundles server + admin API + admin UI:
 
-# Production stage
-FROM imbios/bun-node:1.3.10-24-slim AS production
-WORKDIR /app
-COPY --from=builder /app/.output .output
-ENV NUXT_PUBLIC_ADMIN_API_URL=/admin
-EXPOSE 3000
-CMD ["bun", "run", ".output/server/index.mjs"]
+```bash
+docker compose --profile all-in-one up -d
+# UI at http://localhost:9000/ui
 ```
 
 ## Requirements

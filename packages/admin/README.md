@@ -22,6 +22,7 @@ npm install @conduit/admin
 - **Framework Adapters** - Express, Fastify, Hono, or standalone Node.js HTTP
 - **WebSocket Support** - Real-time updates via WebSocket subscriptions
 - **Standalone Mode** - Connect to multiple remote servers from a single dashboard
+- **SQLite Persistence** - Optional embedded database for bans, audit logs, and metrics (using `bun:sqlite`)
 
 ## Quick Start
 
@@ -174,6 +175,71 @@ interface AdminConfig {
   };
 }
 ```
+
+## Persistence
+
+By default, the admin API stores all data in-memory. For production deployments, enable SQLite persistence to survive server restarts.
+
+### Setup
+
+```typescript
+import { createPersistenceStore } from '@conduit/admin/persistence';
+import { createAdminCore } from '@conduit/admin';
+
+// Create SQLite persistence store
+const store = createPersistenceStore({
+  type: 'sqlite',
+  dbPath: './conduit.db',
+});
+
+const admin = createAdminCore({
+  auth: { type: 'apiKey', apiKey: 'secret-key' },
+  persistence: store,
+});
+```
+
+### CLI Usage
+
+The simplest way to enable persistence is via the CLI:
+
+```bash
+conduit start --admin --admin-api-key "your-key" --db ./conduit.db
+
+# Or with environment variable
+ADMIN_DB_PATH=./conduit.db conduit start --admin
+```
+
+### What Gets Persisted
+
+| Data | Without `--db` | With `--db` |
+|------|---------------|-------------|
+| Bans (client ID & IP) | In-memory, lost on restart | SQLite, persistent |
+| Audit logs | In-memory, capped at `maxEntries` | SQLite, permanent |
+| Metrics history | In-memory, limited retention | SQLite, queryable |
+
+### Store Interface
+
+Implement custom persistence by conforming to the `PersistenceStore` interface:
+
+```typescript
+interface PersistenceStore {
+  // Bans
+  getBans(): Promise<Ban[]>;
+  addBan(ban: Ban): Promise<void>;
+  removeBan(type: string, value: string): Promise<void>;
+  clearBans(): Promise<void>;
+
+  // Audit
+  getAuditLogs(options?: { limit?: number; offset?: number; action?: string }): Promise<AuditEntry[]>;
+  addAuditLog(entry: AuditEntry): Promise<void>;
+  clearAuditLogs(): Promise<void>;
+
+  // Lifecycle
+  close(): Promise<void>;
+}
+```
+
+The SQLite store uses WAL mode for concurrent read/write performance, indexed queries, and Bun's built-in `bun:sqlite` driver (no native dependencies needed).
 
 ## REST API Endpoints
 

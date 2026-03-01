@@ -99,10 +99,10 @@ const displayServerUrl = computed(() => {
 	}
 });
 
-// Scroll tracking with VueUse — target the SidebarInset <main> element via $el
+// Scroll tracking with VueUse — target the scrollable content div
 const sidebarInsetRef = ref<InstanceType<typeof SidebarInset> | null>(null);
-const scrollTarget = computed(() => sidebarInsetRef.value?.$el as HTMLElement | undefined);
-const { y: scrollY } = useScroll(scrollTarget);
+const scrollContentRef = ref<HTMLElement | null>(null);
+const { y: scrollY } = useScroll(scrollContentRef);
 
 // Header becomes floating after scrolling 20px
 const isHeaderFloating = computed(() => scrollY.value > 20);
@@ -271,112 +271,114 @@ function onTourSkip() {
 			<SidebarRail />
 		</Sidebar>
 
-		<!-- Main content area -->
-		<SidebarInset ref="sidebarInsetRef" class="overflow-auto">
-			<!-- Flex column to push footer to bottom when content is short -->
-			<div class="flex min-h-screen flex-col">
-				<!-- Header -->
-				<header
-					v-motion
-					:initial="{ opacity: 0, y: -10 }"
-					:enter="{ opacity: 1, y: 0, transition: { duration: 300, delay: 100 } }"
-					:class="[
-						'sticky top-0 z-40 flex h-16 shrink-0 items-center gap-4 px-4 sm:px-6 transition-all duration-300 ease-out',
-						isHeaderFloating
-							? 'mx-2 sm:mx-4 mt-2 rounded-xl bg-card/70 backdrop-blur-xl border shadow-lg'
-							: 'bg-transparent backdrop-blur-sm border-b border-transparent',
-					]"
-				>
-					<!-- Sidebar trigger -->
-					<SidebarTrigger class="-ml-1" />
+		<!-- Main content area — flex column keeps header on top, content scrolls independently -->
+		<SidebarInset ref="sidebarInsetRef" class="flex h-svh flex-col overflow-hidden">
+			<!-- Header — fixed at top of inset, never scrolls away -->
+			<header
+				v-motion
+				:initial="{ opacity: 0, y: -10 }"
+				:enter="{ opacity: 1, y: 0, transition: { duration: 300, delay: 100 } }"
+				:class="[
+					'z-40 flex h-16 shrink-0 items-center gap-4 px-4 sm:px-6 transition-all duration-300 ease-out',
+					isHeaderFloating
+						? 'mx-2 sm:mx-4 mt-2 rounded-xl bg-card/70 backdrop-blur-xl border shadow-lg'
+						: 'bg-background/80 backdrop-blur-sm border-b border-border/50',
+				]"
+			>
+				<!-- Sidebar trigger -->
+				<SidebarTrigger class="-ml-1" />
 
-					<Separator orientation="vertical" class="mr-2 h-4" />
+				<Separator orientation="vertical" class="mr-2 h-4" />
 
-					<!-- Page title -->
-					<div class="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-						<span class="font-medium text-foreground">{{ currentPageTitle }}</span>
-					</div>
-
-					<div class="flex-1" />
-
-					<!-- Connection badge -->
-					<TooltipProvider v-if="connection.isConfigured.value">
-						<Tooltip>
-							<TooltipTrigger as-child>
-								<Button
-									variant="ghost"
-									size="sm"
-									class="gap-1.5 text-xs text-muted-foreground max-w-40"
-									@click="showConnectionSheet = true"
-								>
-									<Cable class="h-3.5 w-3.5 shrink-0" />
-									<span class="truncate hidden sm:inline">{{ displayServerUrl }}</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Change connection</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-
-					<!-- Tour button -->
-					<TourButton />
-
-					<Separator orientation="vertical" class="h-6" />
-
-					<!-- Dark mode toggle -->
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger as-child>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									data-tour-guide="theme-toggle"
-									@click="toggleDarkMode"
-								>
-									<Sun v-if="colorMode.value === 'dark'" class="h-5 w-5" />
-									<Moon v-else class="h-5 w-5" />
-									<span class="sr-only">Toggle theme</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								{{ colorMode.value === 'dark' ? 'Light mode' : 'Dark mode' }}
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				</header>
-
-				<!-- Page content — flex-1 ensures it fills remaining space -->
-				<div class="flex-1 p-4 sm:p-6 pb-24">
-					<slot />
+				<!-- Page title -->
+				<div class="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+					<span class="font-medium text-foreground">{{ currentPageTitle }}</span>
 				</div>
 
-				<!-- Footer sentinel for intersection observer -->
-				<div ref="footerSentinelRef" class="h-1" />
+				<div class="flex-1" />
 
-				<!-- Footer — always at bottom thanks to flex column layout -->
-				<footer
-					:class="[
-						'transition-all duration-300 ease-out',
-						isAtBottom
-							? 'relative bg-card border-t px-4 sm:px-6 py-4'
-							: 'fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-card/70 backdrop-blur-xl border shadow-lg rounded-full px-6 py-2',
-					]"
-				>
-					<div
+				<!-- Connection badge -->
+				<TooltipProvider v-if="connection.isConfigured.value">
+					<Tooltip>
+						<TooltipTrigger as-child>
+							<Button
+								variant="ghost"
+								size="sm"
+								class="gap-1.5 text-xs text-muted-foreground max-w-40"
+								@click="showConnectionSheet = true"
+							>
+								<Cable class="h-3.5 w-3.5 shrink-0" />
+								<span class="truncate hidden sm:inline">{{ displayServerUrl }}</span>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>Change connection</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+
+				<!-- Tour button -->
+				<TourButton />
+
+				<Separator orientation="vertical" class="h-6" />
+
+				<!-- Dark mode toggle -->
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger as-child>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								data-tour-guide="theme-toggle"
+								@click="toggleDarkMode"
+							>
+								<Sun v-if="colorMode.value === 'dark'" class="h-5 w-5" />
+								<Moon v-else class="h-5 w-5" />
+								<span class="sr-only">Toggle theme</span>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>
+							{{ colorMode.value === 'dark' ? 'Light mode' : 'Dark mode' }}
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+			</header>
+
+			<!-- Scrollable content area — this is the only part that scrolls -->
+			<div ref="scrollContentRef" class="flex-1 overflow-y-auto">
+				<div class="flex min-h-full flex-col">
+					<!-- Page content -->
+					<div class="flex-1 p-4 sm:p-6 pb-24">
+						<slot />
+					</div>
+
+					<!-- Footer sentinel for intersection observer -->
+					<div ref="footerSentinelRef" class="h-1" />
+
+					<!-- Footer — always at bottom thanks to flex column layout -->
+					<footer
 						:class="[
-							'flex items-center gap-4 text-muted-foreground',
-							isAtBottom ? 'justify-between' : 'justify-center',
+							'transition-all duration-300 ease-out',
+							isAtBottom
+								? 'relative bg-card border-t px-4 sm:px-6 py-4'
+								: 'fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-card/70 backdrop-blur-xl border shadow-lg rounded-full px-6 py-2',
 						]"
 					>
-						<p class="text-xs">Conduit Admin v1.0.0</p>
-						<template v-if="isAtBottom">
-							<div class="flex items-center gap-4 text-xs">
-								<a href="https://github.com/AnoRebel/Conduit#readme" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Documentation</a>
-								<a href="https://github.com/AnoRebel/Conduit" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">GitHub</a>
-								<a href="https://github.com/AnoRebel/Conduit/issues" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Support</a>
-							</div>
-						</template>
-					</div>
-				</footer>
+						<div
+							:class="[
+								'flex items-center gap-4 text-muted-foreground',
+								isAtBottom ? 'justify-between' : 'justify-center',
+							]"
+						>
+							<p class="text-xs">Conduit Admin v1.0.0</p>
+							<template v-if="isAtBottom">
+								<div class="flex items-center gap-4 text-xs">
+									<a href="https://github.com/AnoRebel/Conduit#readme" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Documentation</a>
+									<a href="https://github.com/AnoRebel/Conduit" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">GitHub</a>
+									<a href="https://github.com/AnoRebel/Conduit/issues" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Support</a>
+								</div>
+							</template>
+						</div>
+					</footer>
+				</div>
 			</div>
 		</SidebarInset>
 	</SidebarProvider>

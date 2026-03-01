@@ -90,6 +90,10 @@ conduit start \
 | `--admin-path <path>` | Admin API path prefix | `/admin` |
 | `--admin-auth-type <type>` | Auth type (`apiKey`, `jwt`, `basic`) | `apiKey` |
 | `--admin-api-key <key>` | Admin API key | - |
+| `--auth <mode>` | Auth mode for signaling (`key` or `none`) | `key` |
+| `--db <path>` | SQLite database path for admin persistence | - |
+| `--admin-ui <dir>` | Serve admin UI static files from directory | - |
+| `--admin-ui-path <path>` | URL path for admin UI | `/ui` |
 
 #### Environment Variables
 
@@ -104,6 +108,11 @@ The CLI also reads these environment variables (env vars take precedence over CL
 | `ADMIN_JWT_SECRET` | Secret for JWT token signing/verification | - |
 | `ADMIN_BASIC_USER` | Username for Basic authentication | - |
 | `ADMIN_BASIC_PASS` | Password for Basic authentication | - |
+| `ADMIN_CORS_ORIGINS` | Allowed CORS origins for admin API | `*` |
+| `AUTH_MODE` | Signaling auth mode (`key` or `none`) | `key` |
+| `ADMIN_DB_PATH` | SQLite database file path for persistence | - |
+| `ADMIN_UI_DIR` | Directory with admin UI static files | - |
+| `ADMIN_UI_PATH` | URL path to serve admin UI at | `/ui` |
 
 Example with environment variables:
 
@@ -132,6 +141,50 @@ conduit start --admin --admin-api-key "your-key"
 # Admin REST API available at http://localhost:9000/admin/*
 # Admin WebSocket at ws://localhost:9000/admin/ws
 ```
+
+### Embedded Admin UI
+
+Serve the admin dashboard directly from the Conduit server process:
+
+```bash
+# Build the admin UI as a static SPA
+cd packages/admin-ui
+bun run generate
+
+# Start the server with embedded UI
+conduit start \
+  --admin \
+  --admin-api-key "your-key" \
+  --admin-ui ./packages/admin-ui/.output/public \
+  --admin-ui-path /ui
+
+# Dashboard at http://localhost:9000/ui
+# Admin API at http://localhost:9000/admin/v1
+```
+
+The embedded UI serves static files with SPA fallback, cache headers, MIME detection, and directory traversal prevention.
+
+### Optional Authentication
+
+The signaling server can run with or without key authentication:
+
+```bash
+# Default: key authentication required
+conduit start --auth key --key "your-secret-key"
+
+# No authentication: open access (useful for development)
+conduit start --auth none
+```
+
+### SQLite Persistence
+
+Enable optional SQLite persistence for bans, audit logs, and metrics history:
+
+```bash
+conduit start --admin --admin-api-key "your-key" --db ./conduit.db
+```
+
+When `--db` is specified, the admin API uses `bun:sqlite` to persist bans, audit logs, and metrics history across server restarts. Without `--db`, all data is stored in-memory.
 
 ## Framework Adapters
 
@@ -226,6 +279,9 @@ interface ServerConfig {
   cleanupOutMsgs: number; // Cleanup interval in ms (default: 1000)
   corsOrigin: string | string[] | boolean; // CORS origin (default: true)
   allowedOrigins?: string[]; // WebSocket origin whitelist (default: undefined = allow all)
+  auth?: {
+    mode: 'key' | 'none';  // Auth mode (default: 'key')
+  };
   proxied: boolean | string; // Behind proxy (default: false)
   requireSecure: boolean; // Require HTTPS/WSS (default: false)
   relay: {
@@ -290,7 +346,7 @@ const server = createConduitServer({
 
 ## Docker
 
-Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for both Bun and Node.js compatibility:
+Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for the builder stage and [`oven/bun`](https://hub.docker.com/r/oven/bun) for production:
 
 ```dockerfile
 # Builder stage
@@ -302,7 +358,7 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM imbios/bun-node:1.3.10-24-slim AS production
+FROM oven/bun:1.3.10-slim AS production
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/bin ./bin

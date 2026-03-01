@@ -25,11 +25,12 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 
 | Package | Description |
 |---------|-------------|
-| [`conduit`](./packages/client) | Browser/Node.js client library |
+| [`@conduit/client`](./packages/client) | Browser/Node.js client library |
 | [`@conduit/server`](./packages/server) | Signaling server |
 | [`@conduit/shared`](./packages/shared) | Shared types and enums |
 | [`@conduit/admin`](./packages/admin) | Admin API and monitoring tools |
 | [`@conduit/admin-ui`](./packages/admin-ui) | Vue 3/Nuxt 4 admin dashboard |
+| [`conduit-go`](./packages/go-client) | Go client library |
 
 ## Quick Start
 
@@ -273,6 +274,12 @@ conduit start \
   --admin-path /admin \
   --admin-auth-type apiKey \
   --admin-api-key "$(openssl rand -base64 32)"
+
+# With optional auth mode and SQLite persistence
+conduit start --admin --admin-api-key "your-key" --auth none --db ./conduit.db
+
+# With embedded admin UI (serve dashboard from same process)
+conduit start --admin --admin-api-key "your-key" --admin-ui ./admin-ui-dist --admin-ui-path /ui
 ```
 
 ### Embedded Mode
@@ -319,13 +326,17 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 
 ### Admin Features
 
-- **Real-time Monitoring** - Live metrics, throughput, latency
-- **Client Management** - View, disconnect, and ban clients
-- **IP Banning** - Block abusive IP addresses
-- **Audit Logging** - Track all admin actions
+- **Real-time Monitoring** - Live metrics, throughput, latency, theme-reactive charts
+- **Client Management** - View, disconnect, and ban clients with DataTables
+- **IP Banning** - Block abusive IP addresses with SQLite persistence
+- **Audit Logging** - Track all admin actions with permanent storage
 - **Multiple Auth Methods** - API Key, JWT, or Basic authentication
 - **Role-Based Access** - JWT viewers (read-only) vs admins (full access)
 - **Framework Adapters** - Express, Fastify, Hono, or Node.js HTTP
+- **SQLite Persistence** - Optional embedded database for bans, audit logs, and metrics (`bun:sqlite`)
+- **Optional Auth Mode** - Run signaling with or without key authentication (`--auth key|none`)
+- **Embedded Admin UI** - Serve the dashboard directly from the server process
+- **Socket.IO-style Connection** - Dynamic server connection dialog in the admin UI
 
 ## Security
 
@@ -494,16 +505,17 @@ docker compose --profile admin up -d
 
 ### Docker Images
 
-Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for both Bun and Node.js compatibility:
+Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for the builder stage and [`oven/bun`](https://hub.docker.com/r/oven/bun) for production:
 
 - **Builder stage**: `imbios/bun-node:1.3.10-24-debian`
-- **Production stage**: `imbios/bun-node:1.3.10-24-slim`
+- **Production stage**: `oven/bun:1.3.10-slim`
 
 | Image | Description | Port |
 |-------|-------------|------|
 | `server` | Signaling server only | 9000 |
 | `server-admin` | Server with Admin API | 9000 |
 | `admin-ui` | Admin Dashboard (Nuxt) | 3000 |
+| `all-in-one` | Server + Admin API + Embedded UI | 9000 |
 
 ### Using Docker Compose
 
@@ -540,6 +552,18 @@ docker compose --profile admin up -d
 
 The server-admin container reads `ADMIN_ENABLED`, `ADMIN_API_KEY`, and other `ADMIN_*` env vars automatically via the CLI.
 
+### All-in-One Deployment
+
+Run the server, admin API, and dashboard in a single container:
+
+```bash
+docker compose --profile all-in-one up -d
+
+# Access the server at http://localhost:9000
+# Admin API at http://localhost:9000/admin/v1
+# Admin UI at http://localhost:9000/ui
+```
+
 ### Environment Variables
 
 | Variable | Description | Default |
@@ -555,6 +579,11 @@ The server-admin container reads `ADMIN_ENABLED`, `ADMIN_API_KEY`, and other `AD
 | `ADMIN_JWT_SECRET` | Secret for JWT token signing/verification | - |
 | `ADMIN_BASIC_USER` | Username for Basic authentication | - |
 | `ADMIN_BASIC_PASS` | Password for Basic authentication | - |
+| `ADMIN_CORS_ORIGINS` | Allowed CORS origins for admin API | `*` |
+| `AUTH_MODE` | Signaling auth mode (`key` or `none`) | `key` |
+| `ADMIN_DB_PATH` | SQLite database file path for persistence | - |
+| `ADMIN_UI_DIR` | Directory with admin UI static files | - |
+| `ADMIN_UI_PATH` | URL path to serve admin UI at | `/ui` |
 
 ## Development
 
@@ -605,7 +634,8 @@ conduit/
 │   ├── server/      # WebRTC signaling server
 │   ├── shared/      # Shared types and enums
 │   ├── admin/       # Admin API and monitoring
-│   └── admin-ui/    # Vue 3/Nuxt 4 dashboard
+│   ├── admin-ui/    # Vue 3/Nuxt 4 dashboard
+│   └── go-client/   # Go client library
 ├── docker/          # Docker configurations
 ├── .github/         # CI/CD workflows
 └── lefthook.yml     # Git hook configuration
