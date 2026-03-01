@@ -92,7 +92,11 @@
           "correctness": {
             "noUnusedVariables": "off",
             "noUnusedImports": "off",
-            "useHookAtTopLevel": "off"
+            "useHookAtTopLevel": "off",
+            "noVueDuplicateKeys": "off"
+          },
+          "suspicious": {
+            "noDocumentCookie": "off"
           }
         }
       }

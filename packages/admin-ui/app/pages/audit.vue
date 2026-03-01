@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Copy, Filter, RefreshCw } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -110,6 +111,7 @@ async function refresh() {
 	isLoading.value = true;
 	await store.fetchAuditLog();
 	isLoading.value = false;
+	toast.success("Audit log refreshed");
 }
 
 function formatDetails(details: unknown) {
@@ -121,6 +123,7 @@ const { copy } = useClipboard();
 
 function copyToClipboard(text: string) {
 	copy(text);
+	toast.success("Copied to clipboard");
 }
 
 function copyEntryAsJson(entry: {
@@ -132,6 +135,7 @@ function copyEntryAsJson(entry: {
 }) {
 	const json = JSON.stringify(entry, null, 2);
 	copy(json);
+	toast.success("Entry copied as JSON");
 }
 </script>
 
@@ -139,7 +143,13 @@ function copyEntryAsJson(entry: {
 	<div>
 		<PageBreadcrumb :items="breadcrumbItems" />
 
-		<div class="flex items-center justify-between mb-6" data-tour-guide="audit-header">
+		<div
+			v-motion
+			:initial="{ opacity: 0, y: -10 }"
+			:enter="{ opacity: 1, y: 0, transition: { duration: 300 } }"
+			class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4"
+			data-tour-guide="audit-header"
+		>
 			<div>
 				<h1 class="text-2xl font-bold text-foreground">Audit Log</h1>
 				<p class="text-muted-foreground">Track administrative actions</p>
@@ -151,7 +161,13 @@ function copyEntryAsJson(entry: {
 		</div>
 
 		<!-- Filter -->
-		<div class="mb-6 flex items-center gap-4" data-tour-guide="audit-filters">
+		<div
+			v-motion
+			:initial="{ opacity: 0, y: -8 }"
+			:enter="{ opacity: 1, y: 0, transition: { duration: 300, delay: 100 } }"
+			class="mb-6 flex items-center gap-4"
+			data-tour-guide="audit-filters"
+		>
 			<Filter class="h-5 w-5 text-muted-foreground" />
 			<Select v-model="selectedAction">
 				<SelectTrigger class="w-[200px]">
@@ -166,88 +182,103 @@ function copyEntryAsJson(entry: {
 		</div>
 
 		<!-- Audit log table -->
-		<Card data-tour-guide="audit-list">
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Timestamp</TableHead>
-						<TableHead>Action</TableHead>
-						<TableHead>User</TableHead>
-						<TableHead>Details</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					<!-- Loading state -->
-					<template v-if="isLoading">
-						<TableRow v-for="i in 5" :key="i">
-							<TableCell><Skeleton class="h-4 w-32" /></TableCell>
-							<TableCell><Skeleton class="h-5 w-24" /></TableCell>
-							<TableCell><Skeleton class="h-4 w-20" /></TableCell>
-							<TableCell><Skeleton class="h-4 w-40" /></TableCell>
+		<Card
+			v-motion
+			:initial="{ opacity: 0, y: 12 }"
+			:enter="{ opacity: 1, y: 0, transition: { duration: 350, delay: 150 } }"
+			data-tour-guide="audit-list"
+		>
+			<div class="overflow-x-auto">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Timestamp</TableHead>
+							<TableHead>Action</TableHead>
+							<TableHead class="hidden sm:table-cell">User</TableHead>
+							<TableHead class="hidden md:table-cell">Details</TableHead>
 						</TableRow>
-					</template>
+					</TableHeader>
+					<TableBody>
+						<!-- Loading state -->
+						<template v-if="isLoading">
+							<TableRow v-for="i in 5" :key="i">
+								<TableCell><Skeleton class="h-4 w-32" /></TableCell>
+								<TableCell><Skeleton class="h-5 w-24" /></TableCell>
+								<TableCell class="hidden sm:table-cell"><Skeleton class="h-4 w-20" /></TableCell>
+								<TableCell class="hidden md:table-cell"><Skeleton class="h-4 w-40" /></TableCell>
+							</TableRow>
+						</template>
 
-					<!-- Data -->
-					<template v-else>
-						<ContextMenu v-for="entry in paginatedEntries" :key="entry.id">
-							<ContextMenuTrigger as-child>
-								<TableRow class="cursor-context-menu">
-									<TableCell class="text-muted-foreground whitespace-nowrap">
-										{{ formatTime(entry.timestamp) }}
-									</TableCell>
-									<TableCell>
-										<Badge :variant="getActionVariant(entry.action)">
-											{{ formatAction(entry.action) }}
-										</Badge>
-									</TableCell>
-									<TableCell class="font-mono text-sm">
-										{{ entry.userId }}
-									</TableCell>
-									<TableCell>
-										<TooltipProvider v-if="entry.details">
-											<Tooltip>
-												<TooltipTrigger as-child>
-													<code class="text-xs bg-muted px-2 py-1 rounded cursor-help max-w-[200px] truncate block">
-														{{ JSON.stringify(entry.details) }}
-													</code>
-												</TooltipTrigger>
-												<TooltipContent side="bottom" class="max-w-md">
-													<pre class="text-xs">{{ formatDetails(entry.details) }}</pre>
-												</TooltipContent>
-											</Tooltip>
-										</TooltipProvider>
-										<span v-else class="text-muted-foreground">-</span>
-									</TableCell>
-								</TableRow>
-							</ContextMenuTrigger>
-							<ContextMenuContent>
-								<ContextMenuItem @click="copyToClipboard(entry.userId)">
-									<Copy class="h-4 w-4" />
-									Copy User ID
-								</ContextMenuItem>
-								<ContextMenuItem @click="copyToClipboard(entry.action)">
-									<Copy class="h-4 w-4" />
-									Copy Action
-								</ContextMenuItem>
-								<ContextMenuSeparator />
-								<ContextMenuItem @click="copyEntryAsJson(entry)">
-									<Copy class="h-4 w-4" />
-									Copy Entry as JSON
-								</ContextMenuItem>
-							</ContextMenuContent>
-						</ContextMenu>
+						<!-- Data -->
+						<template v-else>
+							<ContextMenu v-for="(entry, index) in paginatedEntries" :key="entry.id">
+								<ContextMenuTrigger as-child>
+									<TableRow
+										v-motion
+										:initial="{ opacity: 0, x: -10 }"
+										:visible-once="{ opacity: 1, x: 0, transition: { duration: 250, delay: index * 40 } }"
+										class="cursor-context-menu"
+									>
+										<TableCell class="text-muted-foreground whitespace-nowrap">
+											{{ formatTime(entry.timestamp) }}
+										</TableCell>
+										<TableCell>
+											<Badge :variant="getActionVariant(entry.action)">
+												{{ formatAction(entry.action) }}
+											</Badge>
+										</TableCell>
+										<TableCell class="font-mono text-sm hidden sm:table-cell">
+											{{ entry.userId }}
+										</TableCell>
+										<TableCell class="hidden md:table-cell">
+											<TooltipProvider v-if="entry.details">
+												<Tooltip>
+													<TooltipTrigger as-child>
+														<code class="text-xs bg-muted px-2 py-1 rounded cursor-help max-w-[200px] truncate block">
+															{{ JSON.stringify(entry.details) }}
+														</code>
+													</TooltipTrigger>
+													<TooltipContent side="bottom" class="max-w-md">
+														<pre class="text-xs">{{ formatDetails(entry.details) }}</pre>
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
+											<span v-else class="text-muted-foreground">-</span>
+										</TableCell>
+									</TableRow>
+								</ContextMenuTrigger>
+								<ContextMenuContent>
+									<ContextMenuItem @click="copyToClipboard(entry.userId)">
+										<Copy class="h-4 w-4" />
+										Copy User ID
+									</ContextMenuItem>
+									<ContextMenuItem @click="copyToClipboard(entry.action)">
+										<Copy class="h-4 w-4" />
+										Copy Action
+									</ContextMenuItem>
+									<ContextMenuSeparator />
+									<ContextMenuItem @click="copyEntryAsJson(entry)">
+										<Copy class="h-4 w-4" />
+										Copy Entry as JSON
+									</ContextMenuItem>
+								</ContextMenuContent>
+							</ContextMenu>
 
-						<TableEmpty v-if="filteredEntries.length === 0" :colspan="4">
-							No audit entries found
-						</TableEmpty>
-					</template>
-				</TableBody>
-			</Table>
+							<TableEmpty v-if="filteredEntries.length === 0" :colspan="4">
+								No audit entries found
+							</TableEmpty>
+						</template>
+					</TableBody>
+				</Table>
+			</div>
 
 			<!-- Pagination -->
 			<div
 				v-if="totalPages > 1"
-				class="flex items-center justify-between border-t px-4 py-3"
+				v-motion
+				:initial="{ opacity: 0 }"
+				:enter="{ opacity: 1, transition: { duration: 300, delay: 200 } }"
+				class="flex flex-col sm:flex-row items-center justify-between border-t px-4 py-3 gap-3"
 			>
 				<p class="text-sm text-muted-foreground">
 					Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to

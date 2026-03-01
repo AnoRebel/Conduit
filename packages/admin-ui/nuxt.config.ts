@@ -9,7 +9,14 @@ export default defineNuxtConfig({
 		compatibilityVersion: 5,
 	},
 
-	modules: ["@pinia/nuxt", "@vueuse/nuxt", "shadcn-nuxt", "@nuxt/icon", "@nuxt/image"],
+	modules: [
+		"@pinia/nuxt",
+		"@vueuse/nuxt",
+		"shadcn-nuxt",
+		"@nuxt/icon",
+		"@nuxt/image",
+		"@vueuse/motion/nuxt",
+	],
 
 	css: ["~/assets/css/main.css"],
 

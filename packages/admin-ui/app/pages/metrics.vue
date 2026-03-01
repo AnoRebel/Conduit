@@ -12,6 +12,7 @@ import {
 } from "chart.js";
 import { Copy, Download, RefreshCw } from "lucide-vue-next";
 import { Line } from "vue-chartjs";
+import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -141,6 +142,7 @@ async function refresh() {
 	isLoading.value = true;
 	await store.fetchMetricsHistory(selectedDuration.value);
 	isLoading.value = false;
+	toast.success("Metrics refreshed");
 }
 
 const { copy } = useClipboard();
@@ -167,6 +169,7 @@ function copyChartData(chartType: "throughput" | "connections" | "memory") {
 	};
 
 	copy(JSON.stringify(data, null, 2));
+	toast.success("Chart data copied");
 }
 
 function exportChartAsCSV(chartType: "throughput" | "connections" | "memory") {
@@ -192,6 +195,7 @@ function exportChartAsCSV(chartType: "throughput" | "connections" | "memory") {
 	a.download = `${chartType}-metrics.csv`;
 	a.click();
 	URL.revokeObjectURL(url);
+	toast.success("CSV exported");
 }
 
 function copyCurrentStats() {
@@ -204,6 +208,37 @@ function copyCurrentStats() {
 		totalErrors: store.metrics?.errors.total ?? 0,
 	};
 	copy(JSON.stringify(stats, null, 2));
+	toast.success("Stats copied");
+}
+
+// Chart card configs for staggered animation
+const chartCards = [
+	{ key: "throughput", title: "Message Throughput", tourGuide: "throughput-chart" },
+	{ key: "connections", title: "Connected Clients", tourGuide: "connections-chart" },
+	{ key: "memory", title: "Memory Usage", tourGuide: undefined },
+] as const;
+
+// Stats items for stagger
+const statsItems = computed(() => [
+	{ label: "Connected Clients", value: store.metrics?.clients.connected ?? 0 },
+	{ label: "Peak Clients", value: store.metrics?.clients.peak ?? 0 },
+	{ label: "Messages Relayed", value: store.metrics?.messages.relayed?.toLocaleString() ?? 0 },
+	{ label: "Throughput", value: `${store.metrics?.messages.throughputPerSecond ?? 0} msg/s` },
+	{ label: "Rate Limit Rejections", value: store.metrics?.rateLimit.rejections ?? 0 },
+	{ label: "Total Errors", value: store.metrics?.errors.total ?? 0 },
+]);
+
+function getChartDataForCard(key: string) {
+	switch (key) {
+		case "throughput":
+			return throughputData.value;
+		case "connections":
+			return connectionsData.value;
+		case "memory":
+			return memoryData.value;
+		default:
+			return throughputData.value;
+	}
 }
 </script>
 
@@ -211,13 +246,26 @@ function copyCurrentStats() {
 	<div>
 		<PageBreadcrumb :items="breadcrumbItems" />
 
-		<div class="flex items-center justify-between mb-6" data-tour-guide="metrics-header">
+		<div
+			v-motion
+			:initial="{ opacity: 0, y: -10 }"
+			:enter="{ opacity: 1, y: 0, transition: { duration: 300 } }"
+			class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4"
+			data-tour-guide="metrics-header"
+		>
 			<div>
 				<h1 class="text-2xl font-bold text-foreground">Metrics</h1>
 				<p class="text-muted-foreground">Server performance over time</p>
 			</div>
 			<div class="flex items-center gap-4">
-				<ToggleGroup v-model="selectedDuration" type="single" variant="outline">
+				<ToggleGroup
+					v-model="selectedDuration"
+					v-motion
+					:initial="{ opacity: 0 }"
+					:enter="{ opacity: 1, transition: { duration: 300, delay: 100 } }"
+					type="single"
+					variant="outline"
+				>
 					<ToggleGroupItem v-for="d in durations" :key="d.value" :value="d.value">
 						{{ d.label }}
 					</ToggleGroupItem>
@@ -230,13 +278,19 @@ function copyCurrentStats() {
 		</div>
 
 		<!-- Charts grid -->
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-			<!-- Throughput -->
-			<ContextMenu>
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+			<!-- Chart cards with staggered animation -->
+			<ContextMenu v-for="(card, index) in chartCards" :key="card.key">
 				<ContextMenuTrigger as-child>
-					<Card data-tour-guide="throughput-chart" class="cursor-context-menu">
+					<Card
+						v-motion
+						:initial="{ opacity: 0, scale: 0.95 }"
+						:visible-once="{ opacity: 1, scale: 1, transition: { duration: 350, delay: index * 100 } }"
+						:data-tour-guide="card.tourGuide"
+						class="cursor-context-menu"
+					>
 						<CardHeader>
-							<CardTitle>Message Throughput</CardTitle>
+							<CardTitle>{{ card.title }}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div class="h-64">
@@ -244,7 +298,7 @@ function copyCurrentStats() {
 									<Skeleton class="h-full w-full" />
 								</template>
 								<template v-else-if="store.metricsHistory.length > 0">
-									<Line :data="throughputData" :options="chartOptions" />
+									<Line :data="getChartDataForCard(card.key)" :options="chartOptions" />
 								</template>
 								<div
 									v-else
@@ -257,85 +311,11 @@ function copyCurrentStats() {
 					</Card>
 				</ContextMenuTrigger>
 				<ContextMenuContent>
-					<ContextMenuItem @click="copyChartData('throughput')">
+					<ContextMenuItem @click="copyChartData(card.key)">
 						<Copy class="h-4 w-4" />
 						Copy Data as JSON
 					</ContextMenuItem>
-					<ContextMenuItem @click="exportChartAsCSV('throughput')">
-						<Download class="h-4 w-4" />
-						Export as CSV
-					</ContextMenuItem>
-				</ContextMenuContent>
-			</ContextMenu>
-
-			<!-- Connections -->
-			<ContextMenu>
-				<ContextMenuTrigger as-child>
-					<Card data-tour-guide="connections-chart" class="cursor-context-menu">
-						<CardHeader>
-							<CardTitle>Connected Clients</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div class="h-64">
-								<template v-if="isLoading">
-									<Skeleton class="h-full w-full" />
-								</template>
-								<template v-else-if="store.metricsHistory.length > 0">
-									<Line :data="connectionsData" :options="chartOptions" />
-								</template>
-								<div
-									v-else
-									class="flex items-center justify-center h-full text-muted-foreground"
-								>
-									No data available
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				</ContextMenuTrigger>
-				<ContextMenuContent>
-					<ContextMenuItem @click="copyChartData('connections')">
-						<Copy class="h-4 w-4" />
-						Copy Data as JSON
-					</ContextMenuItem>
-					<ContextMenuItem @click="exportChartAsCSV('connections')">
-						<Download class="h-4 w-4" />
-						Export as CSV
-					</ContextMenuItem>
-				</ContextMenuContent>
-			</ContextMenu>
-
-			<!-- Memory -->
-			<ContextMenu>
-				<ContextMenuTrigger as-child>
-					<Card class="cursor-context-menu">
-						<CardHeader>
-							<CardTitle>Memory Usage</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div class="h-64">
-								<template v-if="isLoading">
-									<Skeleton class="h-full w-full" />
-								</template>
-								<template v-else-if="store.metricsHistory.length > 0">
-									<Line :data="memoryData" :options="chartOptions" />
-								</template>
-								<div
-									v-else
-									class="flex items-center justify-center h-full text-muted-foreground"
-								>
-									No data available
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				</ContextMenuTrigger>
-				<ContextMenuContent>
-					<ContextMenuItem @click="copyChartData('memory')">
-						<Copy class="h-4 w-4" />
-						Copy Data as JSON
-					</ContextMenuItem>
-					<ContextMenuItem @click="exportChartAsCSV('memory')">
+					<ContextMenuItem @click="exportChartAsCSV(card.key)">
 						<Download class="h-4 w-4" />
 						Export as CSV
 					</ContextMenuItem>
@@ -345,52 +325,31 @@ function copyCurrentStats() {
 			<!-- Current Stats -->
 			<ContextMenu>
 				<ContextMenuTrigger as-child>
-					<Card data-tour-guide="error-stats" class="cursor-context-menu">
+					<Card
+						v-motion
+						:initial="{ opacity: 0, scale: 0.95 }"
+						:visible-once="{ opacity: 1, scale: 1, transition: { duration: 350, delay: 300 } }"
+						data-tour-guide="error-stats"
+						class="cursor-context-menu"
+					>
 						<CardHeader>
 							<CardTitle>Current Statistics</CardTitle>
 						</CardHeader>
 						<CardContent class="space-y-4">
-							<div class="flex justify-between items-center">
-								<span class="text-muted-foreground">Connected Clients</span>
-								<span class="text-xl font-semibold">
-									{{ store.metrics?.clients.connected ?? 0 }}
-								</span>
-							</div>
-							<Separator />
-							<div class="flex justify-between items-center">
-								<span class="text-muted-foreground">Peak Clients</span>
-								<span class="text-xl font-semibold">
-									{{ store.metrics?.clients.peak ?? 0 }}
-								</span>
-							</div>
-							<Separator />
-							<div class="flex justify-between items-center">
-								<span class="text-muted-foreground">Messages Relayed</span>
-								<span class="text-xl font-semibold">
-									{{ store.metrics?.messages.relayed?.toLocaleString() ?? 0 }}
-								</span>
-							</div>
-							<Separator />
-							<div class="flex justify-between items-center">
-								<span class="text-muted-foreground">Throughput</span>
-								<span class="text-xl font-semibold">
-									{{ store.metrics?.messages.throughputPerSecond ?? 0 }} msg/s
-								</span>
-							</div>
-							<Separator />
-							<div class="flex justify-between items-center">
-								<span class="text-muted-foreground">Rate Limit Rejections</span>
-								<span class="text-xl font-semibold">
-									{{ store.metrics?.rateLimit.rejections ?? 0 }}
-								</span>
-							</div>
-							<Separator />
-							<div class="flex justify-between items-center">
-								<span class="text-muted-foreground">Total Errors</span>
-								<span class="text-xl font-semibold">
-									{{ store.metrics?.errors.total ?? 0 }}
-								</span>
-							</div>
+							<template v-for="(item, index) in statsItems" :key="item.label">
+								<div
+									v-motion
+									:initial="{ opacity: 0, x: -8 }"
+									:visible-once="{ opacity: 1, x: 0, transition: { duration: 250, delay: 350 + index * 50 } }"
+									class="flex justify-between items-center"
+								>
+									<span class="text-muted-foreground">{{ item.label }}</span>
+									<span class="text-xl font-semibold">
+										{{ item.value }}
+									</span>
+								</div>
+								<Separator v-if="index < statsItems.length - 1" />
+							</template>
 						</CardContent>
 					</Card>
 				</ContextMenuTrigger>

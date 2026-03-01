@@ -10,6 +10,7 @@ import {
 	RefreshCw,
 	UserX,
 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -91,6 +92,7 @@ async function fetchClientDetails() {
 		client.value = result;
 	} catch {
 		client.value = null;
+		toast.error("Failed to load client details");
 	} finally {
 		isLoading.value = false;
 	}
@@ -98,12 +100,14 @@ async function fetchClientDetails() {
 
 async function confirmDisconnect() {
 	await store.disconnectClient(clientId.value);
+	toast.success("Client disconnected");
 	disconnectDialogOpen.value = false;
 	router.push("/clients");
 }
 
 async function confirmBan() {
 	await store.banClient(clientId.value, banReason.value || undefined);
+	toast.success("Client banned");
 	banDialogOpen.value = false;
 	banReason.value = "";
 	router.push("/clients");
@@ -129,11 +133,13 @@ const { copy } = useClipboard();
 
 function copyToClipboard(text: string) {
 	copy(text);
+	toast.success("Copied to clipboard");
 }
 
 function copyClientAsJson() {
 	if (client.value) {
 		copy(JSON.stringify(client.value, null, 2));
+		toast.success("Client data copied as JSON");
 	}
 }
 </script>
@@ -142,7 +148,12 @@ function copyClientAsJson() {
 	<div>
 		<PageBreadcrumb :items="breadcrumbItems" />
 
-		<div class="flex items-center justify-between mb-6">
+		<div
+			v-motion
+			:initial="{ opacity: 0, y: -10 }"
+			:enter="{ opacity: 1, y: 0, transition: { duration: 300 } }"
+			class="flex items-center justify-between mb-6"
+		>
 			<div class="flex items-center gap-4">
 				<Button variant="ghost" size="icon-sm" @click="router.push('/clients')">
 					<ArrowLeft class="h-5 w-5" />
@@ -190,7 +201,12 @@ function copyClientAsJson() {
 
 		<!-- Loading state -->
 		<template v-if="isLoading">
-			<div class="grid gap-6 md:grid-cols-2">
+			<div
+				v-motion
+				:initial="{ opacity: 0 }"
+				:enter="{ opacity: 1, transition: { duration: 300 } }"
+				class="grid gap-6 md:grid-cols-2"
+			>
 				<Card>
 					<CardHeader>
 						<Skeleton class="h-5 w-32" />
@@ -217,7 +233,11 @@ function copyClientAsJson() {
 
 		<!-- Not found -->
 		<template v-else-if="!client">
-			<Card>
+			<Card
+				v-motion
+				:initial="{ opacity: 0, scale: 0.95 }"
+				:enter="{ opacity: 1, scale: 1, transition: { duration: 350 } }"
+			>
 				<CardContent class="py-12 text-center">
 					<p class="text-muted-foreground">Client not found or has disconnected.</p>
 					<Button variant="outline" class="mt-4" @click="router.push('/clients')">
@@ -231,9 +251,18 @@ function copyClientAsJson() {
 		<template v-else>
 			<ContextMenu>
 				<ContextMenuTrigger as-child>
-					<div class="grid gap-6 md:grid-cols-2 cursor-context-menu">
+					<div
+						v-motion
+						:initial="{ opacity: 0 }"
+						:enter="{ opacity: 1, transition: { duration: 300 } }"
+						class="grid gap-6 md:grid-cols-2 cursor-context-menu"
+					>
 						<!-- Connection Info -->
-						<Card>
+						<Card
+							v-motion
+							:initial="{ opacity: 0, y: 16 }"
+							:visible-once="{ opacity: 1, y: 0, transition: { duration: 350 } }"
+						>
 							<CardHeader>
 								<CardTitle class="flex items-center gap-2">
 									<Globe class="h-5 w-5" />
@@ -276,7 +305,11 @@ function copyClientAsJson() {
 						</Card>
 
 						<!-- Message Stats -->
-						<Card>
+						<Card
+							v-motion
+							:initial="{ opacity: 0, y: 16 }"
+							:visible-once="{ opacity: 1, y: 0, transition: { duration: 350, delay: 100 } }"
+						>
 							<CardHeader>
 								<CardTitle class="flex items-center gap-2">
 									<MessageSquare class="h-5 w-5" />
@@ -309,7 +342,13 @@ function copyClientAsJson() {
 						</Card>
 
 						<!-- Additional Info -->
-						<Card v-if="client.userAgent" class="md:col-span-2">
+						<Card
+							v-if="client.userAgent"
+							v-motion
+							:initial="{ opacity: 0, y: 16 }"
+							:visible-once="{ opacity: 1, y: 0, transition: { duration: 350, delay: 200 } }"
+							class="md:col-span-2"
+						>
 							<CardHeader>
 								<CardTitle class="flex items-center gap-2">
 									<Clock class="h-5 w-5" />

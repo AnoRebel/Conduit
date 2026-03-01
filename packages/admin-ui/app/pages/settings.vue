@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Key, Save, Trash2, Users } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
 	AlertDialog,
@@ -63,12 +64,15 @@ async function saveRateLimits() {
 		});
 		saveMessage.value = "Rate limits updated successfully";
 		saveSuccess.value = true;
+		toast.success("Rate limits updated successfully");
 	} catch (e) {
-		saveMessage.value = e instanceof Error ? e.message : "Failed to save settings";
+		const msg = e instanceof Error ? e.message : "Failed to save settings";
+		saveMessage.value = msg;
 		saveSuccess.value = false;
+		toast.error(msg);
 	} finally {
 		isSaving.value = false;
-		setTimeout(() => {
+		useTimeoutFn(() => {
 			saveMessage.value = "";
 		}, 3000);
 	}
@@ -76,6 +80,7 @@ async function saveRateLimits() {
 
 function confirmClearApiKey() {
 	localStorage.removeItem("adminApiKey");
+	toast.success("API key cleared");
 	window.location.reload();
 }
 
@@ -84,8 +89,9 @@ async function confirmClearBans() {
 		await api.fetchApi("/bans", { method: "DELETE" });
 		await store.fetchBans();
 		clearBansDialogOpen.value = false;
+		toast.success("All bans cleared");
 	} catch {
-		// Handle error
+		toast.error("Failed to clear bans");
 	}
 }
 
@@ -93,6 +99,7 @@ async function confirmDisconnectAll() {
 	await api.disconnectAllClients();
 	await store.fetchClients();
 	disconnectAllDialogOpen.value = false;
+	toast.success("All clients disconnected");
 }
 </script>
 
@@ -100,14 +107,25 @@ async function confirmDisconnectAll() {
 	<div>
 		<PageBreadcrumb :items="breadcrumbItems" />
 
-		<div class="mb-6" data-tour-guide="settings-header">
+		<div
+			v-motion
+			:initial="{ opacity: 0, y: -10 }"
+			:enter="{ opacity: 1, y: 0, transition: { duration: 300 } }"
+			class="mb-6"
+			data-tour-guide="settings-header"
+		>
 			<h1 class="text-2xl font-bold text-foreground">Settings</h1>
 			<p class="text-muted-foreground">Configure server and admin settings</p>
 		</div>
 
 		<div class="space-y-6">
 			<!-- Rate Limiting -->
-			<Card data-tour-guide="api-settings">
+			<Card
+				v-motion
+				:initial="{ opacity: 0, y: 16 }"
+				:visible-once="{ opacity: 1, y: 0, transition: { duration: 350 } }"
+				data-tour-guide="api-settings"
+			>
 				<CardHeader>
 					<CardTitle>Rate Limiting</CardTitle>
 					<CardDescription>
@@ -115,7 +133,7 @@ async function confirmDisconnectAll() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-6">
-					<div class="flex items-center justify-between">
+					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 						<div class="space-y-0.5">
 							<Label>Enable Rate Limiting</Label>
 							<p class="text-sm text-muted-foreground">
@@ -155,7 +173,7 @@ async function confirmDisconnectAll() {
 						</div>
 					</div>
 
-					<div class="flex items-center gap-4">
+					<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
 						<Button :disabled="isSaving" @click="saveRateLimits">
 							<Save class="h-4 w-4" />
 							{{ isSaving ? "Saving..." : "Save Changes" }}
@@ -172,7 +190,12 @@ async function confirmDisconnectAll() {
 			</Card>
 
 			<!-- Authentication -->
-			<Card data-tour-guide="appearance-settings">
+			<Card
+				v-motion
+				:initial="{ opacity: 0, y: 16 }"
+				:visible-once="{ opacity: 1, y: 0, transition: { duration: 350, delay: 75 } }"
+				data-tour-guide="appearance-settings"
+			>
 				<CardHeader>
 					<CardTitle>Authentication</CardTitle>
 					<CardDescription>
@@ -180,7 +203,7 @@ async function confirmDisconnectAll() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<div class="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+					<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border bg-muted/50 gap-4">
 						<div class="flex items-center gap-3">
 							<Key class="h-5 w-5 text-muted-foreground" />
 							<div>
@@ -198,7 +221,12 @@ async function confirmDisconnectAll() {
 			</Card>
 
 			<!-- Danger Zone -->
-			<Card class="border-destructive/50">
+			<Card
+				v-motion
+				:initial="{ opacity: 0, y: 16 }"
+				:visible-once="{ opacity: 1, y: 0, transition: { duration: 350, delay: 150 } }"
+				class="border-destructive/50 transition-shadow duration-200 hover:shadow-md hover:shadow-destructive/10"
+			>
 				<CardHeader>
 					<CardTitle class="text-destructive">Danger Zone</CardTitle>
 					<CardDescription>
@@ -206,7 +234,7 @@ async function confirmDisconnectAll() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent class="space-y-4">
-					<div class="flex items-center justify-between p-4 rounded-lg border border-destructive/30">
+					<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border border-destructive/30 gap-4">
 						<div>
 							<p class="text-sm font-medium">Clear All Bans</p>
 							<p class="text-xs text-muted-foreground">
@@ -219,7 +247,7 @@ async function confirmDisconnectAll() {
 						</Button>
 					</div>
 
-					<div class="flex items-center justify-between p-4 rounded-lg border border-destructive/30">
+					<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border border-destructive/30 gap-4">
 						<div>
 							<p class="text-sm font-medium">Disconnect All Clients</p>
 							<p class="text-xs text-muted-foreground">

@@ -11,23 +11,16 @@ export function useAdminApi() {
 	const config = useRuntimeConfig();
 	const baseUrl = config.public.adminApiUrl;
 
-	const apiKey = useState<string>("apiKey", () => "");
+	// useLocalStorage auto-persists and hydrates — replaces manual get/setItem
+	const apiKey = useLocalStorage<string>("adminApiKey", "");
 	const isAuthenticated = computed(() => !!apiKey.value);
 
 	function setApiKey(key: string) {
 		apiKey.value = key;
-		if (import.meta.client) {
-			localStorage.setItem("adminApiKey", key);
-		}
 	}
 
 	function loadApiKey() {
-		if (import.meta.client) {
-			const stored = localStorage.getItem("adminApiKey");
-			if (stored) {
-				apiKey.value = stored;
-			}
-		}
+		// No-op: useLocalStorage auto-hydrates from storage on init
 	}
 
 	async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
