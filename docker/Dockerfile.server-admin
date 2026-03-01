@@ -36,17 +36,14 @@ COPY --from=builder /app/packages/admin/package.json ./node_modules/@conduit/adm
 # Copy production dependencies from builder
 COPY --from=builder /app/node_modules ./node_modules
 
-# Environment variables - Server
+# Non-sensitive environment defaults
 ENV PORT=9000
 ENV HOST=0.0.0.0
-ENV CONDUIT_KEY=conduit
 ENV ALLOW_DISCOVERY=false
-
-# Environment variables - Admin API (enabled by default in this image)
 ENV ADMIN_ENABLED=true
 ENV ADMIN_PATH=/admin/v1
-ENV ADMIN_AUTH_TYPE=apiKey
-ENV ADMIN_API_KEY=
+# Sensitive values must be provided at runtime via docker run --env or compose
+# CONDUIT_KEY, ADMIN_AUTH_TYPE, ADMIN_API_KEY
 
 # Expose port
 EXPOSE ${PORT}
@@ -55,5 +52,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/ || exit 1
 
-# Run server with admin API
-CMD ["bun", "run", "dist/bin/conduit.js", "start", "--port", "${PORT}", "--host", "${HOST}", "--key", "${CONDUIT_KEY}"]
+# Run server with admin API (shell form to expand env vars at runtime)
+CMD bun run dist/bin/conduit.js start --port "${PORT}" --host "${HOST}" --key "${CONDUIT_KEY:-conduit}"
