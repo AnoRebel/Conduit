@@ -21,8 +21,8 @@ COPY packages/admin packages/admin
 # Build packages in order: shared -> server -> admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
-# Production stage — alpine for minimal image size (~109MB base)
-FROM oven/bun:1.3.10-alpine AS production
+# Production stage — debian slim for glibc compatibility (bun+musl has networking issues)
+FROM oven/bun:1.3.10-slim AS production
 
 WORKDIR /app
 
@@ -54,10 +54,6 @@ ENV ADMIN_PATH=/admin
 
 # Expose port
 EXPOSE ${PORT}
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget -q --spider http://localhost:${PORT}/ || exit 1
 
 # Run server with admin API
 CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --key \"${CONDUIT_KEY:-conduit}\""]
