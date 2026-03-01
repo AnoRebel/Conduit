@@ -14,19 +14,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const store = useAdminStore();
-const api = useAdminApi();
-const apiKeyInput = ref("");
+const connection = useConnection();
 
-// Initialize on mount
+// Initialize on mount if already configured
 onMounted(async () => {
-	api.loadApiKey();
-	if (api.isAuthenticated.value) {
+	if (connection.isConfigured.value) {
 		await store.initialize();
 	}
 });
@@ -34,6 +30,10 @@ onMounted(async () => {
 onUnmounted(() => {
 	store.cleanup();
 });
+
+function onConnected() {
+	// Store initializes inside ConnectionDialog already
+}
 
 // Computed values
 const uptime = computed(() => {
@@ -58,14 +58,6 @@ const memoryPercent = computed(() => {
 	if (!store.metrics?.memory) return 0;
 	return ((store.metrics.memory.heapUsed / store.metrics.memory.heapTotal) * 100).toFixed(1);
 });
-
-async function handleLogin() {
-	if (apiKeyInput.value) {
-		api.setApiKey(apiKeyInput.value);
-		await store.initialize();
-		toast.success("Authenticated successfully");
-	}
-}
 
 async function refreshClients() {
 	await store.fetchClients();
@@ -124,41 +116,11 @@ const statsCards = computed(() => [
 
 <template>
 	<div>
-		<!-- Auth check -->
-		<div
-			v-if="!api.isAuthenticated.value"
-			class="flex items-center justify-center min-h-[60vh]"
-		>
-			<Card
-				v-motion
-				:initial="{ opacity: 0, scale: 0.95 }"
-				:enter="{ opacity: 1, scale: 1, transition: { duration: 350, ease: 'easeOut' } }"
-				class="w-full max-w-md"
-			>
-				<CardHeader>
-					<CardTitle class="text-xl">Authentication Required</CardTitle>
-					<CardDescription>
-						Enter your API key to access the admin dashboard.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<form class="space-y-4" @submit.prevent="handleLogin">
-						<div class="space-y-2">
-							<Label for="apiKey">API Key</Label>
-							<Input
-								id="apiKey"
-								v-model="apiKeyInput"
-								type="password"
-								placeholder="Enter your API key"
-							/>
-						</div>
-						<Button type="submit" class="w-full">
-							Connect
-						</Button>
-					</form>
-				</CardContent>
-			</Card>
-		</div>
+		<!-- Connection dialog when not configured -->
+		<ConnectionDialog
+			v-if="!connection.isConfigured.value"
+			@connected="onConnected"
+		/>
 
 		<!-- Dashboard content -->
 		<div v-else>
@@ -186,7 +148,7 @@ const statsCards = computed(() => [
 			<template v-if="store.isLoading">
 				<!-- Loading state with skeletons -->
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-					<Card v-for="i in 4" :key="i">
+					<Card v-for="i in 4" :key="i" class="min-w-0">
 						<CardHeader class="pb-2">
 							<Skeleton class="h-4 w-24" />
 						</CardHeader>
@@ -216,26 +178,27 @@ const statsCards = computed(() => [
 						v-motion
 						:initial="{ opacity: 0, y: 20 }"
 						:visible-once="{ opacity: 1, y: 0, transition: { duration: 350, delay: index * 75 } }"
+						class="min-w-0 overflow-hidden"
 						:data-tour-guide="card.tourGuide"
 					>
-						<CardHeader class="flex flex-row items-center justify-between pb-2">
-							<CardDescription>{{ card.label }}</CardDescription>
-							<div class="p-2 rounded-lg" :class="card.iconBg">
+						<CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
+							<CardDescription class="truncate">{{ card.label }}</CardDescription>
+							<div class="p-2 rounded-lg shrink-0" :class="card.iconBg">
 								<component :is="card.icon" class="h-4 w-4" :class="card.iconColor" />
 							</div>
 						</CardHeader>
 						<CardContent>
-							<div class="text-3xl font-bold">
+							<div class="text-2xl sm:text-3xl font-bold truncate">
 								{{ card.value }}
 							</div>
-							<p class="text-xs text-muted-foreground mt-1">
+							<p class="text-xs text-muted-foreground mt-1 truncate">
 								{{ card.sub }}
 							</p>
 						</CardContent>
 					</Card>
 				</div>
 
-				<!-- Quick Actions & Recent Activity -->
+				<!-- Quick Actions & Server Status -->
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-6">
 					<!-- Quick Actions -->
 					<Card

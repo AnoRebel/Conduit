@@ -6,8 +6,7 @@ export interface AdminWSMessage {
 }
 
 export function useAdminWebSocket() {
-	const config = useRuntimeConfig();
-	const { apiKey } = useAdminApi();
+	const connection = useConnection();
 
 	const ws = ref<WebSocket | null>(null);
 	const isConnected = ref(false);
@@ -28,7 +27,8 @@ export function useAdminWebSocket() {
 	};
 
 	function connect() {
-		if (!config.public.adminWsUrl) {
+		const wsUrl = connection.wsUrl.value;
+		if (!wsUrl) {
 			console.warn("WebSocket URL not configured");
 			return;
 		}
@@ -37,9 +37,16 @@ export function useAdminWebSocket() {
 			return;
 		}
 
-		const url = new URL(config.public.adminWsUrl);
-		if (apiKey.value) {
-			url.searchParams.set("apiKey", apiKey.value);
+		const url = new URL(wsUrl);
+
+		// Add auth params based on auth type
+		const settings = connection.settings.value;
+		if (settings.authType === "apiKey" && settings.apiKey) {
+			url.searchParams.set("apiKey", settings.apiKey);
+		} else if (settings.authType === "basic" && settings.username) {
+			// Basic auth can be passed as query params for WebSocket
+			url.searchParams.set("username", settings.username);
+			url.searchParams.set("password", settings.password);
 		}
 
 		ws.value = new WebSocket(url.toString());

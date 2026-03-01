@@ -8,30 +8,37 @@ import type {
 } from "~/types";
 
 export function useAdminApi() {
-	const config = useRuntimeConfig();
-	const baseUrl = config.public.adminApiUrl;
+	const connection = useConnection();
 
-	// useLocalStorage auto-persists and hydrates — replaces manual get/setItem
-	const apiKey = useLocalStorage<string>("adminApiKey", "");
-	const isAuthenticated = computed(() => !!apiKey.value);
+	// Backward-compat: isAuthenticated is true when we have URL + credentials
+	const isAuthenticated = computed(() => connection.isConfigured.value);
 
+	/**
+	 * @deprecated Use connection.saveSettings({ apiKey }) instead.
+	 * Kept for backward compat with existing code paths.
+	 */
 	function setApiKey(key: string) {
-		apiKey.value = key;
+		connection.saveSettings({ apiKey: key, authType: "apiKey" });
 	}
 
+	/**
+	 * @deprecated No-op — useConnection auto-hydrates from localStorage.
+	 */
 	function loadApiKey() {
-		// No-op: useLocalStorage auto-hydrates from storage on init
+		// No-op: useLocalStorage auto-hydrates
 	}
 
 	async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+		const baseUrl = connection.serverUrl.value;
+		if (!baseUrl) {
+			throw new Error("Server URL not configured");
+		}
+
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
+			...connection.getAuthHeaders(),
 			...(options.headers as Record<string, string>),
 		};
-
-		if (apiKey.value) {
-			headers["X-API-Key"] = apiKey.value;
-		}
 
 		const response = await fetch(`${baseUrl}${endpoint}`, {
 			...options,
@@ -149,7 +156,6 @@ export function useAdminApi() {
 	}
 
 	return {
-		apiKey: readonly(apiKey),
 		isAuthenticated,
 		setApiKey,
 		loadApiKey,

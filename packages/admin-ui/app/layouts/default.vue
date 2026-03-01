@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	BarChart3,
+	Cable,
 	Circle,
 	FileText,
 	LayoutDashboard,
@@ -9,8 +10,16 @@ import {
 	Sun,
 	Users,
 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "@/components/ui/sheet";
 import {
 	Sidebar,
 	SidebarContent,
@@ -32,6 +41,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 const colorMode = useColorMode();
 const route = useRoute();
+const connection = useConnection();
+const store = useAdminStore();
+
+// Connection sheet state
+const showConnectionSheet = ref(false);
 
 const navigation = [
 	{ name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -71,6 +85,18 @@ const currentPageTitle = computed(() => {
 	return nav?.name ?? "Dashboard";
 });
 
+// Display-friendly server URL
+const displayServerUrl = computed(() => {
+	const url = connection.serverUrl.value;
+	if (!url) return "Not connected";
+	try {
+		const parsed = new URL(url);
+		return parsed.host;
+	} catch {
+		return url;
+	}
+});
+
 // Scroll tracking with VueUse — target the SidebarInset <main> element via $el
 const sidebarInsetRef = ref<InstanceType<typeof SidebarInset> | null>(null);
 const scrollTarget = computed(() => sidebarInsetRef.value?.$el as HTMLElement | undefined);
@@ -99,6 +125,21 @@ onUnmounted(() => {
 	stop();
 });
 
+// Handle connection change from sheet
+async function onConnectionChanged() {
+	showConnectionSheet.value = false;
+	store.cleanup();
+	await store.initialize();
+	toast.success("Reconnected to server");
+}
+
+// Disconnect and show connection dialog
+function handleDisconnect() {
+	store.cleanup();
+	connection.clearSettings();
+	toast.info("Disconnected from server");
+}
+
 // Tour guide setup
 const { currentSteps, hasTourForCurrentPage, hasSeenCurrentTour, markTourAsSeen, setTourManager } =
 	useTour();
@@ -119,18 +160,15 @@ watch(tourManagerRef, manager => {
 });
 
 // Auto-start tour for first-time visitors on each page (only when authenticated)
-const store = useAdminStore();
-const api = useAdminApi();
-
 watch(
 	() => route.path,
 	async () => {
 		await nextTick();
-		// Only auto-start tour when authenticated — otherwise the tour overlay
-		// blocks pointer events on the auth form
+		// Only auto-start tour when connected — otherwise the tour overlay
+		// blocks pointer events on the connection form
 		useTimeoutFn(() => {
 			if (
-				api.isAuthenticated.value &&
+				connection.isConfigured.value &&
 				hasTourForCurrentPage.value &&
 				!hasSeenCurrentTour.value &&
 				tourManagerRef.value
@@ -191,33 +229,40 @@ function onTourSkip() {
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger as-child>
-								<Circle
-									:class="[
-										'h-3 w-3 shrink-0 fill-current',
-										store.isConnected ? 'text-green-500' : 'text-red-500',
-									]"
-								/>
+								<button
+									class="flex items-center gap-2 min-w-0 w-full"
+									@click="showConnectionSheet = true"
+								>
+									<Circle
+										:class="[
+											'h-3 w-3 shrink-0 fill-current',
+											store.isConnected ? 'text-green-500' : 'text-red-500',
+										]"
+									/>
+									<div class="flex flex-col overflow-hidden transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
+										<span class="text-xs font-medium text-sidebar-foreground/80 truncate">
+											{{ store.isConnected ? displayServerUrl : 'Disconnected' }}
+										</span>
+										<span v-if="store.status" class="text-[10px] text-sidebar-foreground/50 truncate">
+											v{{ store.status.version || '?' }} · {{ formatUptime(store.status.uptime) }}
+										</span>
+									</div>
+								</button>
 							</TooltipTrigger>
 							<TooltipContent side="right">
 								<div class="text-xs space-y-1">
 									<p class="font-medium">{{ store.isConnected ? 'Connected' : 'Disconnected' }}</p>
+									<p class="text-muted-foreground">{{ displayServerUrl }}</p>
 									<template v-if="store.status">
 										<p>Version: {{ store.status.version || 'unknown' }}</p>
 										<p>Uptime: {{ formatUptime(store.status.uptime) }}</p>
 										<p>Clients: {{ store.status.clients?.connected ?? 0 }}/{{ store.status.clients?.total ?? 0 }}</p>
 									</template>
+									<p class="text-muted-foreground/70 mt-1">Click to change connection</p>
 								</div>
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
-					<div class="flex flex-col overflow-hidden transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
-						<span class="text-xs font-medium text-sidebar-foreground/80 truncate">
-							{{ store.isConnected ? 'Connected' : 'Disconnected' }}
-						</span>
-						<span v-if="store.status" class="text-[10px] text-sidebar-foreground/50 truncate">
-							v{{ store.status.version || '?' }} · {{ formatUptime(store.status.uptime) }}
-						</span>
-					</div>
 				</div>
 			</SidebarFooter>
 
@@ -251,6 +296,24 @@ function onTourSkip() {
 					</div>
 
 					<div class="flex-1" />
+
+					<!-- Connection badge -->
+					<TooltipProvider v-if="connection.isConfigured.value">
+						<Tooltip>
+							<TooltipTrigger as-child>
+								<Button
+									variant="ghost"
+									size="sm"
+									class="gap-1.5 text-xs text-muted-foreground max-w-40"
+									@click="showConnectionSheet = true"
+								>
+									<Cable class="h-3.5 w-3.5 shrink-0" />
+									<span class="truncate hidden sm:inline">{{ displayServerUrl }}</span>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Change connection</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 
 					<!-- Tour button -->
 					<TourButton />
@@ -315,6 +378,31 @@ function onTourSkip() {
 			</div>
 		</SidebarInset>
 	</SidebarProvider>
+
+	<!-- Connection Settings Sheet -->
+	<Sheet v-model:open="showConnectionSheet">
+		<SheetContent side="right" class="w-full sm:max-w-lg overflow-y-auto">
+			<SheetHeader>
+				<SheetTitle>Connection Settings</SheetTitle>
+				<SheetDescription>
+					Change the server connection or credentials.
+				</SheetDescription>
+			</SheetHeader>
+			<div class="mt-6">
+				<ConnectionDialog @connected="onConnectionChanged" />
+				<div v-if="connection.isConfigured.value" class="mt-4 flex justify-center">
+					<Button
+						variant="ghost"
+						size="sm"
+						class="text-destructive hover:text-destructive"
+						@click="handleDisconnect"
+					>
+						Disconnect
+					</Button>
+				</div>
+			</div>
+		</SheetContent>
+	</Sheet>
 
 	<Toaster rich-colors />
 
