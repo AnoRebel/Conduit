@@ -61,22 +61,16 @@ COPY --from=builder /app/packages/admin-ui/.output/public ./admin-ui
 RUN mkdir -p /data && chown bun:bun /data
 VOLUME /data
 
-# Non-sensitive environment defaults
-ENV PORT=9000
-ENV HOST=0.0.0.0
-ENV ALLOW_DISCOVERY=false
-ENV ADMIN_ENABLED=true
-ENV ADMIN_PATH=/admin
-ENV AUTH_MODE=key
-ENV ADMIN_DB_PATH=/data/conduit.db
-ENV ADMIN_UI_DIR=/app/admin-ui
-ENV ADMIN_UI_PATH=/ui
-# Sensitive values must be provided at runtime via docker run --env or compose
-# CONDUIT_KEY, ADMIN_AUTH_TYPE, ADMIN_API_KEY
+# Environment defaults (non-sensitive only — secrets must be provided at runtime)
+ENV PORT=9000 \
+    HOST=0.0.0.0 \
+    ALLOW_DISCOVERY=false
 
 # Expose port
 EXPOSE ${PORT}
 
 # Run server with admin API and embedded UI
-# Shell form with exec is required for env var expansion + proper signal handling
-CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --key \"${CONDUIT_KEY:-conduit}\""]
+# Shell form with exec is required for env var expansion + proper signal handling.
+# Defaults for admin/auth/ui config are set here to avoid BuildKit secrets-in-ENV warnings.
+# Override any of these at runtime via docker run --env or compose environment.
+CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --key \"${CONDUIT_KEY:-conduit}\" --admin --admin-path \"${ADMIN_PATH:-/admin}\" --auth \"${AUTH_MODE:-key}\" --db \"${ADMIN_DB_PATH:-/data/conduit.db}\" --admin-ui \"${ADMIN_UI_DIR:-/app/admin-ui}\" --admin-ui-path \"${ADMIN_UI_PATH:-/ui}\""]

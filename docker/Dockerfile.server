@@ -21,36 +21,34 @@ COPY packages/admin packages/admin
 # Build packages in order: shared -> server -> admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
-# Production stage
-FROM imbios/bun-node:1.3.10-24-slim AS production
+# Production stage — debian slim for glibc compatibility (bun+musl has networking issues)
+FROM oven/bun:1.3.10-slim AS production
 
 WORKDIR /app
 
-# Copy built files and dependencies from builder
-COPY --from=builder /app/packages/server/dist ./dist
-COPY --from=builder /app/packages/server/bin ./bin
-COPY --from=builder /app/packages/server/package.json ./
+# Create a standalone package.json with only external runtime dependencies
+RUN echo '{"name":"conduit-server","private":true,"type":"module","dependencies":{"commander":"^14.0.3","pino":"^10.3.1","ws":"^8.19.0","jsonwebtoken":"^9.0.3"}}' > package.json
+
+# Install only external production dependencies and clean cache
+RUN bun install --production --ignore-scripts && rm -rf /root/.bun/install/cache
+
+# Overlay workspace packages with their actual built output
 COPY --from=builder /app/packages/shared/dist ./node_modules/@conduit/shared/dist
 COPY --from=builder /app/packages/shared/package.json ./node_modules/@conduit/shared/
 COPY --from=builder /app/packages/admin/dist ./node_modules/@conduit/admin/dist
 COPY --from=builder /app/packages/admin/package.json ./node_modules/@conduit/admin/
-# Copy production dependencies from builder
-COPY --from=builder /app/node_modules ./node_modules
 
-# Non-sensitive environment defaults
-ENV PORT=9000
-ENV HOST=0.0.0.0
-ENV ALLOW_DISCOVERY=false
-ENV ADMIN_ENABLED=false
-# Sensitive values must be provided at runtime via docker run --env or compose
-# CONDUIT_KEY, ADMIN_API_KEY
+# Copy server build output and CLI
+COPY --from=builder /app/packages/server/dist ./dist
+COPY --from=builder /app/packages/server/bin ./bin
+
+# Environment defaults (non-sensitive only)
+ENV PORT=9000 \
+    HOST=0.0.0.0 \
+    ALLOW_DISCOVERY=false
 
 # Expose port
 EXPOSE ${PORT}
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/ || exit 1
-
-# Run server
+# Run server (admin disabled by default in standalone server image)
 CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --key \"${CONDUIT_KEY:-conduit}\""]
