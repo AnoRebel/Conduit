@@ -156,6 +156,14 @@ jobs:
       - name: Test
         run: bun run test
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Go tests
+        run: go test ./... -race -count=1
+        working-directory: packages/go-client
+
   release:
     name: Create Release
     needs: [prepare, test]
@@ -262,6 +270,11 @@ jobs:
           echo "deno add jsr:@conduit/server@$VERSION" >> RELEASE_NOTES.md
           echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
+          echo "#### Go" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          echo "go get github.com/AnoRebel/conduit-go@v$VERSION" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
           echo "### Docker" >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           echo '```bash' >> RELEASE_NOTES.md
@@ -284,6 +297,9 @@ jobs:
               cd "packages/$pkg/dist" && zip -r "../../../release-assets/conduit-$pkg-$VERSION.zip" . && cd ../../..
             fi
           done
+
+          # Archive Go client source
+          tar -czvf "release-assets/conduit-go-client-$VERSION.tar.gz" -C packages/go-client .
 
           ls -la release-assets/
 
