@@ -1,4 +1,4 @@
-name: Publish to NPM
+name: Publish to NPM & JSR
 
 on:
   release:
@@ -8,9 +8,12 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  BUN_VERSION: "1.3.8"
+
 jobs:
-  publish:
-    name: Publish NPM Packages
+  publish-npm:
+    name: Publish to NPM
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -19,7 +22,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.8"
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -97,7 +100,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create publish summary
+      - name: Create NPM publish summary
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           echo "## NPM Packages Published!" >> $GITHUB_STEP_SUMMARY
@@ -111,3 +114,76 @@ jobs:
           echo "| \`@conduit/server\` | [npm](https://www.npmjs.com/package/@conduit/server) |" >> $GITHUB_STEP_SUMMARY
           echo "| \`@conduit/admin\` | [npm](https://www.npmjs.com/package/@conduit/admin) |" >> $GITHUB_STEP_SUMMARY
           echo "| \`@conduit/admin-ui\` | [npm](https://www.npmjs.com/package/@conduit/admin-ui) |" >> $GITHUB_STEP_SUMMARY
+
+  publish-jsr:
+    name: Publish to JSR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update JSR package versions
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+
+          # Update jsr.json version in each package
+          for pkg in shared client server admin; do
+            if [ -f "packages/$pkg/jsr.json" ]; then
+              # Use node to properly update JSON
+              node -e "
+                const fs = require('fs');
+                const path = 'packages/$pkg/jsr.json';
+                const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+                pkg.version = '$VERSION';
+                fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+              "
+              echo "Updated packages/$pkg/jsr.json to version $VERSION"
+            fi
+          done
+
+      - name: Publish @conduit/shared to JSR
+        run: cd packages/shared && deno publish --allow-slow-types
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.JSR_TOKEN }}
+
+      - name: Publish @conduit/client to JSR
+        run: cd packages/client && deno publish --allow-slow-types
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.JSR_TOKEN }}
+
+      - name: Publish @conduit/server to JSR
+        run: cd packages/server && deno publish --allow-slow-types
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.JSR_TOKEN }}
+
+      - name: Publish @conduit/admin to JSR
+        run: cd packages/admin && deno publish --allow-slow-types
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.JSR_TOKEN }}
+
+      - name: Create JSR publish summary
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          echo "## JSR Packages Published!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version: $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Link |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| \`@conduit/shared\` | [jsr](https://jsr.io/@conduit/shared) |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`@conduit/client\` | [jsr](https://jsr.io/@conduit/client) |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`@conduit/server\` | [jsr](https://jsr.io/@conduit/server) |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`@conduit/admin\` | [jsr](https://jsr.io/@conduit/admin) |" >> $GITHUB_STEP_SUMMARY
