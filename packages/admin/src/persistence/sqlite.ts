@@ -2,6 +2,9 @@ import { Database } from "bun:sqlite";
 import type { AuditAction, AuditEntry, BanEntry } from "../types.js";
 import type { PersistenceStore } from "./index.js";
 
+/** Generic row shape returned by bun:sqlite `.all()` / `.get()` */
+type Row = Record<string, unknown>;
+
 /**
  * SQLite persistence store using bun:sqlite (built into Bun, zero deps).
  * Provides durable storage for bans and audit logs that survives restarts.
@@ -58,7 +61,7 @@ export class SQLiteStore implements PersistenceStore {
 	}
 
 	getBans(): BanEntry[] {
-		const rows = this.db.prepare("SELECT id, type, reason, banned_at FROM bans").all();
+		const rows = this.db.prepare("SELECT id, type, reason, banned_at FROM bans").all() as Row[];
 		return rows.map(mapBanRow);
 	}
 
@@ -91,50 +94,55 @@ export class SQLiteStore implements PersistenceStore {
 
 	getAuditEntries(limit?: number): AuditEntry[] {
 		if (limit) {
-			return this.db
-				.prepare("SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?")
-				.all(limit)
-				.map(mapAuditRow);
+			return (
+				this.db
+					.prepare("SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?")
+					.all(limit) as Row[]
+			).map(mapAuditRow);
 		}
-		return this.db
-			.prepare("SELECT * FROM audit_log ORDER BY timestamp DESC")
-			.all()
-			.map(mapAuditRow);
+		return (this.db.prepare("SELECT * FROM audit_log ORDER BY timestamp DESC").all() as Row[]).map(
+			mapAuditRow
+		);
 	}
 
 	getAuditEntriesByUser(userId: string, limit?: number): AuditEntry[] {
 		if (limit) {
-			return this.db
-				.prepare("SELECT * FROM audit_log WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?")
-				.all(userId, limit)
-				.map(mapAuditRow);
+			return (
+				this.db
+					.prepare("SELECT * FROM audit_log WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?")
+					.all(userId, limit) as Row[]
+			).map(mapAuditRow);
 		}
-		return this.db
-			.prepare("SELECT * FROM audit_log WHERE user_id = ? ORDER BY timestamp DESC")
-			.all(userId)
-			.map(mapAuditRow);
+		return (
+			this.db
+				.prepare("SELECT * FROM audit_log WHERE user_id = ? ORDER BY timestamp DESC")
+				.all(userId) as Row[]
+		).map(mapAuditRow);
 	}
 
 	getAuditEntriesByAction(action: AuditAction, limit?: number): AuditEntry[] {
 		if (limit) {
-			return this.db
-				.prepare("SELECT * FROM audit_log WHERE action = ? ORDER BY timestamp DESC LIMIT ?")
-				.all(action, limit)
-				.map(mapAuditRow);
+			return (
+				this.db
+					.prepare("SELECT * FROM audit_log WHERE action = ? ORDER BY timestamp DESC LIMIT ?")
+					.all(action, limit) as Row[]
+			).map(mapAuditRow);
 		}
-		return this.db
-			.prepare("SELECT * FROM audit_log WHERE action = ? ORDER BY timestamp DESC")
-			.all(action)
-			.map(mapAuditRow);
+		return (
+			this.db
+				.prepare("SELECT * FROM audit_log WHERE action = ? ORDER BY timestamp DESC")
+				.all(action) as Row[]
+		).map(mapAuditRow);
 	}
 
 	getAuditEntriesInRange(startTime: number, endTime: number): AuditEntry[] {
-		return this.db
-			.prepare(
-				"SELECT * FROM audit_log WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC"
-			)
-			.all(startTime, endTime)
-			.map(mapAuditRow);
+		return (
+			this.db
+				.prepare(
+					"SELECT * FROM audit_log WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC"
+				)
+				.all(startTime, endTime) as Row[]
+		).map(mapAuditRow);
 	}
 
 	clearAudit(): void {
