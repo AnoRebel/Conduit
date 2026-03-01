@@ -142,9 +142,8 @@ function handleDisconnect() {
 	toast.info("Disconnected from server");
 }
 
-// Tour guide setup
-const { currentSteps, hasTourForCurrentPage, hasSeenCurrentTour, markTourAsSeen, setTourManager } =
-	useTour();
+// Tour guide setup — manual start only (via TourButton)
+const { currentSteps, markTourAsSeen, setTourManager } = useTour();
 
 const tourManagerRef = ref<{
 	startTourGuide: () => void;
@@ -160,27 +159,6 @@ watch(tourManagerRef, manager => {
 		setTourManager(manager);
 	}
 });
-
-// Auto-start tour for first-time visitors on each page (only when authenticated)
-watch(
-	() => route.path,
-	async () => {
-		await nextTick();
-		// Only auto-start tour when connected — otherwise the tour overlay
-		// blocks pointer events on the connection form
-		useTimeoutFn(() => {
-			if (
-				connection.isConfigured.value &&
-				hasTourForCurrentPage.value &&
-				!hasSeenCurrentTour.value &&
-				tourManagerRef.value
-			) {
-				tourManagerRef.value.startTourGuide();
-			}
-		}, 500);
-	},
-	{ immediate: true }
-);
 
 function onTourComplete() {
 	markTourAsSeen();
@@ -415,7 +393,8 @@ function onTourSkip() {
 		<TourGuideManager
 			ref="tourManagerRef"
 			:steps="currentSteps"
-			highlight
+			scroll-to-view
+			allow-skip
 			@complete="onTourComplete"
 			@skip="onTourSkip"
 		/>

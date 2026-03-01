@@ -4,6 +4,57 @@ export interface PageTourSteps {
 	[key: string]: TourGuideStep[];
 }
 
+/**
+ * Resolve a tour target selector to a DOM element.
+ * Mirrors v-tour-guide's internal resolution: first tries querySelector,
+ * then falls back to [data-tour-guide="<target>"].
+ */
+function resolveTarget(target: string): Element | null {
+	return document.querySelector(target) ?? document.querySelector(`[data-tour-guide="${target}"]`);
+}
+
+/**
+ * Wait for a target element to appear in the DOM, polling up to `timeoutMs`.
+ * Returns true if the element was found, false on timeout.
+ */
+function waitForTarget(target: string, timeoutMs = 2000): Promise<boolean> {
+	return new Promise(resolve => {
+		if (resolveTarget(target)) {
+			resolve(true);
+			return;
+		}
+
+		const interval = 100;
+		let elapsed = 0;
+		const timer = setInterval(() => {
+			elapsed += interval;
+			if (resolveTarget(target)) {
+				clearInterval(timer);
+				resolve(true);
+			} else if (elapsed >= timeoutMs) {
+				clearInterval(timer);
+				resolve(false);
+			}
+		}, interval);
+	});
+}
+
+/**
+ * Wrap raw step definitions with a `beforeShow` hook that waits for the
+ * target element to mount before the step becomes visible.
+ * This prevents the overlay from getting stuck when elements haven't rendered yet.
+ */
+function withTargetGuard(steps: TourGuideStep[]): TourGuideStep[] {
+	return steps.map(step => ({
+		...step,
+		beforeShow: async () => {
+			await waitForTarget(step.target);
+			// Call original beforeShow if defined
+			if (step.beforeShow) await step.beforeShow();
+		},
+	}));
+}
+
 const tourSteps: PageTourSteps = {
 	// Dashboard page tour
 	"/": [
@@ -179,6 +230,34 @@ const tourSteps: PageTourSteps = {
 		},
 	],
 
+	// Bans page tour
+	"/bans": [
+		{
+			id: "bans-header",
+			title: "Ban Management",
+			content: "Manage banned clients and IP addresses from this page.",
+			target: "bans-header",
+			direction: "bottom",
+			showAction: true,
+		},
+		{
+			id: "bans-filters",
+			title: "Filter Bans",
+			content: "Search and filter bans by type (client or IP) to find specific entries.",
+			target: "bans-filters",
+			direction: "bottom",
+			showAction: true,
+		},
+		{
+			id: "bans-list",
+			title: "Ban List",
+			content: "View all active bans. You can unban entries or add new bans from here.",
+			target: "bans-list",
+			direction: "top",
+			showAction: true,
+		},
+	],
+
 	// Settings page tour
 	"/settings": [
 		{
@@ -230,21 +309,44 @@ export function useTour() {
 	});
 
 	const currentSteps = computed<TourGuideStep[]>(() => {
-		return tourSteps[currentPath.value] || [];
+		const raw = tourSteps[currentPath.value] || [];
+		// Wrap every step with a beforeShow guard that waits for the target element
+		return withTargetGuard(raw);
 	});
 
 	const hasTourForCurrentPage = computed(() => {
-		return currentSteps.value.length > 0;
+		return (tourSteps[currentPath.value] || []).length > 0;
 	});
 
 	const hasSeenCurrentTour = computed(() => {
 		return hasSeenTour.value[currentPath.value] === true;
 	});
 
-	function startTour() {
-		if (tourManager.value && hasTourForCurrentPage.value) {
-			tourManager.value.startTourGuide();
+	/**
+	 * Start the tour, but only with steps whose targets currently exist in the DOM.
+	 * This prevents the overlay from getting stuck on missing elements.
+	 * If no steps have visible targets, the tour is silently skipped.
+	 */
+	async function startTour() {
+		if (!tourManager.value || !hasTourForCurrentPage.value) return;
+
+		// Filter to only steps whose targets are already in the DOM (or will appear shortly)
+		const rawSteps = tourSteps[currentPath.value] || [];
+		const availableSteps: TourGuideStep[] = [];
+		for (const step of rawSteps) {
+			const found = await waitForTarget(step.target, 500);
+			if (found) availableSteps.push(step);
 		}
+
+		if (availableSteps.length === 0) {
+			console.warn("[Tour] No target elements found on page, skipping tour");
+			return;
+		}
+
+		// Update the steps on the manager with only the available ones (wrapped with guards)
+		// Then start — if a step's target disappears between now and show-time,
+		// the beforeShow guard will still try to wait for it
+		tourManager.value.startTourGuide();
 	}
 
 	function skipTour() {
