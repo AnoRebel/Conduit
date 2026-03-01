@@ -1,5 +1,5 @@
 # Multi-stage build for Conduit server with Admin API enabled
-FROM oven/bun:1.3.9 AS builder
+FROM imbios/bun-node:1.3.10-24-debian AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ COPY packages/admin packages/admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
 # Production stage
-FROM oven/bun:1.3.9-alpine AS production
+FROM imbios/bun-node:1.3.10-24-slim AS production
 
 WORKDIR /app
 
@@ -53,5 +53,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/ || exit 1
 
-# Run server with admin API (shell form to expand env vars at runtime)
-CMD bun run bin/conduit.js start --port "${PORT}" --host "${HOST}" --key "${CONDUIT_KEY:-conduit}"
+# Run server with admin API
+CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --key \"${CONDUIT_KEY:-conduit}\""]

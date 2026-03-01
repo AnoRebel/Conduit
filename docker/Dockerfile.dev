@@ -1,13 +1,7 @@
 # Development Dockerfile with all tools
-FROM oven/bun:1.3.9
+FROM imbios/bun-node:1.3.10-24-debian
 
 WORKDIR /app
-
-# Install minimal system dependencies
-RUN apt-get update && apt-get install -y \
-    wget \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package.json bun.lock* ./
