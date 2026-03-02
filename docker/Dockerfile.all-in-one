@@ -4,7 +4,7 @@
 # The admin-ui is built as a static SPA and served by the Conduit server
 # at /ui (configurable via ADMIN_UI_PATH). No separate UI deployment needed.
 
-FROM imbios/bun-node:1.3.10-24-debian AS builder
+FROM imbios/bun-node:1-25.7.0-debian AS builder
 
 WORKDIR /app
 
