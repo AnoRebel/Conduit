@@ -15,14 +15,12 @@ export default defineConfig({
 	build: {
 		target: ["chrome83", "edge83", "firefox80", "safari15"],
 		lib: {
-			entry: resolve(__dirname, "src/index.ts"),
-			name: "Conduit",
-			formats: ["es", "cjs", "umd"],
-			fileName: format => {
-				if (format === "es") return "conduit.js";
-				if (format === "cjs") return "conduit.cjs";
-				return "conduit.umd.js";
+			entry: {
+				conduit: resolve(__dirname, "src/index.ts"),
+				"peerjs-compat": resolve(__dirname, "src/peerjs-compat.ts"),
+				msgpack: resolve(__dirname, "src/msgpack.ts"),
 			},
+			formats: ["es", "cjs"],
 		},
 		sourcemap: true,
 		minify: "terser",

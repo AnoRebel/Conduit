@@ -5,11 +5,10 @@
   "type": "module",
   "main": "./dist/conduit.cjs",
   "module": "./dist/conduit.js",
-  "types": "./dist/index.d.ts",
-  "browser": "./dist/conduit.umd.js",
+  "types": "./dist/conduit.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/conduit.d.ts",
       "import": "./dist/conduit.js",
       "require": "./dist/conduit.cjs"
     },
@@ -20,7 +19,8 @@
     },
     "./msgpack": {
       "types": "./dist/msgpack.d.ts",
-      "import": "./dist/msgpack.js"
+      "import": "./dist/msgpack.js",
+      "require": "./dist/msgpack.cjs"
     }
   },
   "files": [
