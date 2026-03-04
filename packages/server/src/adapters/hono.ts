@@ -65,6 +65,9 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 			return c.text("", 200);
 		}
 
+		// Whether auth-less routes are available
+		const noAuth = config.auth.mode === "none";
+
 		// Route requests
 		const basePath = config.path.endsWith("/") ? config.path.slice(0, -1) : config.path;
 
@@ -72,11 +75,14 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 			return c.json({ name: "Conduit Server", version: "2.0.0" });
 		}
 
-		if (pathname === `${basePath}/${config.key}/id`) {
+		if (pathname === `${basePath}/${config.key}/id` || (noAuth && pathname === `${basePath}/id`)) {
 			return c.text(core.generateClientId());
 		}
 
-		if (pathname === `${basePath}/${config.key}/conduits`) {
+		if (
+			pathname === `${basePath}/${config.key}/conduits` ||
+			(noAuth && pathname === `${basePath}/conduits`)
+		) {
 			if (config.allowDiscovery) {
 				return c.json(core.realm.getClientIds());
 			}
@@ -88,8 +94,9 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 
 	function getRoutes() {
 		const basePath = config.path.endsWith("/") ? config.path.slice(0, -1) : config.path;
+		const noAuth = config.auth.mode === "none";
 
-		return [
+		const routes = [
 			{
 				path: basePath,
 				method: "GET",
@@ -111,6 +118,29 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 				},
 			},
 		];
+
+		// When auth mode is "none", also expose routes without key prefix
+		if (noAuth) {
+			routes.push(
+				{
+					path: `${basePath}/id`,
+					method: "GET",
+					handler: (c: HonoContext) => c.text(core.generateClientId()),
+				},
+				{
+					path: `${basePath}/conduits`,
+					method: "GET",
+					handler: (c: HonoContext) => {
+						if (config.allowDiscovery) {
+							return c.json(core.realm.getClientIds());
+						}
+						return c.json({ error: "Conduit discovery is disabled" }, 401);
+					},
+				}
+			);
+		}
+
+		return routes;
 	}
 
 	return {

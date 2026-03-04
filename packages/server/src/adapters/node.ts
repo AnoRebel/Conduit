@@ -74,7 +74,7 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 		if (pathname === config.path || pathname === `${config.path}/`) {
 			// Health check
 			res.writeHead(200, { "Content-Type": "application/json" });
-			res.end(JSON.stringify({ name: "Conduit Server", version: "1.0.0" }));
+			res.end(JSON.stringify({ name: "Conduit Server", version: "2.0.0" }));
 		} else if (
 			pathname === `${config.path}${config.key}/id` ||
 			pathname === `${config.path}/${config.key}/id` ||

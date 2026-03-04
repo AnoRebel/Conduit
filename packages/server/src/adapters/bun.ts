@@ -94,13 +94,14 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 						const id = url.searchParams.get("id");
 						const token = url.searchParams.get("token");
 
-						if (!key || !id || !token) {
+						// key is required when auth mode is "key", optional when "none"
+						if ((!key && config.auth.mode === "key") || !id || !token) {
 							return new Response("Missing parameters", { status: 400 });
 						}
 
 						// @ts-expect-error - Bun's server.upgrade signature
 						const upgraded = server.upgrade(request, {
-							data: { id, token, key } satisfies WebSocketData,
+							data: { id, token, key: key || config.key } satisfies WebSocketData,
 						});
 
 						if (upgraded) {
@@ -111,6 +112,9 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 					}
 				}
 
+				// Whether auth-less routes are available
+				const noAuth = config.auth.mode === "none";
+
 				// Route HTTP requests
 				if (pathname === config.path || pathname === `${config.path}/`) {
 					return new Response(JSON.stringify({ name: "Conduit Server", version: "2.0.0" }), {
@@ -120,7 +124,8 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 
 				if (
 					pathname === `${config.path}${config.key}/id` ||
-					pathname === `${config.path}/${config.key}/id`
+					pathname === `${config.path}/${config.key}/id` ||
+					(noAuth && (pathname === `${config.path}id` || pathname === `${config.path}/id`))
 				) {
 					return new Response(core.generateClientId(), {
 						headers: { ...corsHeaders, "Content-Type": "text/plain" },
@@ -129,7 +134,9 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 
 				if (
 					pathname === `${config.path}${config.key}/conduits` ||
-					pathname === `${config.path}/${config.key}/conduits`
+					pathname === `${config.path}/${config.key}/conduits` ||
+					(noAuth &&
+						(pathname === `${config.path}conduits` || pathname === `${config.path}/conduits`))
 				) {
 					if (config.allowDiscovery) {
 						return new Response(JSON.stringify(core.realm.getClientIds()), {
