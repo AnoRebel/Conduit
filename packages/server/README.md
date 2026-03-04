@@ -230,10 +230,10 @@ fastify.listen({ port: 9000 });
 ```typescript
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { honoConduitAdapter } from '@conduit/server/adapters/hono';
+import { createConduitMiddleware } from '@conduit/server/adapters/hono';
 
 const app = new Hono();
-const conduit = honoConduitAdapter({
+const conduit = createConduitMiddleware({
   config: { path: '/' },
 });
 
@@ -309,23 +309,18 @@ interface ServerConfig {
 | `GET /{key}/conduits` | List connected conduits (if discovery enabled) |
 | `WS /{path}/conduit` | WebSocket connection for signaling |
 
-## Events
+## Lifecycle Callbacks
 
-The server core emits events for monitoring:
+The server core supports callbacks for monitoring client connections:
 
 ```typescript
-const server = createConduitServer();
-
-server.core.on('connection', (client) => {
-  console.log('Client connected:', client.id);
-});
-
-server.core.on('disconnect', (client) => {
-  console.log('Client disconnected:', client.id);
-});
-
-server.core.on('message', (client, message) => {
-  console.log('Message from', client.id, message);
+const server = createConduitServer({
+  onClientConnect: (client) => {
+    console.log('Client connected:', client.id);
+  },
+  onClientDisconnect: (clientId) => {
+    console.log('Client disconnected:', clientId);
+  },
 });
 ```
 

@@ -48,7 +48,8 @@ The CLI handles all wiring: creates the admin core, mounts HTTP routes, sets up 
 ```typescript
 import express from 'express';
 import { ExpressConduitServer } from '@conduit/server';
-import { ExpressAdminServer } from '@conduit/admin/adapters/express';
+import { createAdminCore } from '@conduit/admin';
+import { createExpressAdminMiddleware } from '@conduit/admin/adapters/express';
 
 const app = express();
 const server = app.listen(9000);
@@ -58,16 +59,17 @@ const conduit = ExpressConduitServer(server, {
   config: { path: '/conduit' },
 });
 
-// Create admin API
-const admin = ExpressAdminServer({
-  serverCore: conduit.core,
+// Create admin core and attach to signaling server
+const adminCore = createAdminCore({
   auth: {
     type: 'apiKey',
     apiKey: process.env.ADMIN_API_KEY || 'secret-key',
   },
 });
+adminCore.attachToServer(conduit.core);
 
-app.use('/admin', admin);
+// Mount admin middleware
+app.use('/admin', createExpressAdminMiddleware({ admin: adminCore }));
 ```
 
 ### Embedded with Fastify
@@ -75,7 +77,8 @@ app.use('/admin', admin);
 ```typescript
 import Fastify from 'fastify';
 import { fastifyConduitPlugin } from '@conduit/server/adapters/fastify';
-import { fastifyAdminPlugin } from '@conduit/admin/adapters/fastify';
+import { createAdminCore } from '@conduit/admin';
+import { createFastifyAdminPlugin } from '@conduit/admin/adapters/fastify';
 
 const fastify = Fastify();
 
@@ -84,11 +87,14 @@ await fastify.register(fastifyConduitPlugin, {
   config: { path: '/' },
 });
 
-// Register Admin API
-await fastify.register(fastifyAdminPlugin, {
-  prefix: '/admin',
-  serverCore: fastify.conduit.core,
+// Create admin core
+const adminCore = createAdminCore({
   auth: { type: 'apiKey', apiKey: 'secret-key' },
+});
+
+// Register Admin plugin
+await fastify.register(createFastifyAdminPlugin({ admin: adminCore }), {
+  prefix: '/admin',
 });
 
 fastify.listen({ port: 9000 });
@@ -98,43 +104,42 @@ fastify.listen({ port: 9000 });
 
 ```typescript
 import { Hono } from 'hono';
-import { honoConduitAdapter } from '@conduit/server/adapters/hono';
-import { honoAdminAdapter } from '@conduit/admin/adapters/hono';
+import { createConduitMiddleware } from '@conduit/server/adapters/hono';
+import { createAdminCore } from '@conduit/admin';
+import { createHonoAdminMiddleware } from '@conduit/admin/adapters/hono';
 
 const app = new Hono();
 
-const conduit = honoConduitAdapter({ config: { path: '/' } });
-const admin = honoAdminAdapter({
-  serverCore: conduit.core,
+const conduit = createConduitMiddleware({ config: { path: '/' } });
+const adminCore = createAdminCore({
   auth: { type: 'apiKey', apiKey: 'secret-key' },
 });
+adminCore.attachToServer(conduit.core);
 
-app.route('/conduit', conduit.routes);
-app.route('/admin', admin);
+app.use('/conduit/*', conduit.middleware);
+app.use('/admin/*', createHonoAdminMiddleware({ admin: adminCore }));
 ```
 
 ### Standalone Node.js HTTP
 
 ```typescript
-import http from 'http';
-import { NodeAdminServer } from '@conduit/admin/adapters/node';
 import { createConduitServer } from '@conduit/server';
+import { createAdminCore } from '@conduit/admin';
+import { createNodeAdminServer } from '@conduit/admin/adapters/node';
 
 const conduit = createConduitServer({ config: { port: 9000 } });
 
-const adminHandler = NodeAdminServer({
-  serverCore: conduit.core,
+// Create admin core and attach to signaling server
+const adminCore = createAdminCore({
   auth: { type: 'apiKey', apiKey: 'secret-key' },
 });
+adminCore.attachToServer(conduit.core);
 
-// Handle admin requests at /admin/*
-http.createServer((req, res) => {
-  if (req.url?.startsWith('/admin')) {
-    adminHandler(req, res);
-  } else {
-    // Handle other requests
-  }
-}).listen(9000);
+// Create standalone admin HTTP server
+const adminServer = createNodeAdminServer({ admin: adminCore });
+adminServer.listen(9001, () => {
+  console.log('Admin API running on port 9001');
+});
 ```
 
 ## Configuration

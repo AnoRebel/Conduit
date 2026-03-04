@@ -230,12 +230,12 @@ fastify.listen({ port: 9000 });
 
 ```typescript
 import { Hono } from 'hono';
-import { honoConduitAdapter } from '@conduit/server/adapters/hono';
+import { createConduitMiddleware } from '@conduit/server/adapters/hono';
 
 const app = new Hono();
-const conduit = honoConduitAdapter({ config: { path: '/' } });
+const conduit = createConduitMiddleware({ config: { path: '/' } });
 
-app.route('/', conduit.routes);
+app.use('/*', conduit.middleware);
 ```
 
 ### Bun
@@ -289,7 +289,8 @@ For custom setups, you can embed the admin API in your own Express/Fastify/Hono 
 ```typescript
 import express from 'express';
 import { ExpressConduitServer } from '@conduit/server';
-import { ExpressAdminServer } from '@conduit/admin/adapters/express';
+import { createExpressAdminMiddleware } from '@conduit/admin/adapters/express';
+import { createAdminCore } from '@conduit/admin';
 
 const app = express();
 const server = app.listen(9000);
@@ -297,13 +298,14 @@ const server = app.listen(9000);
 // Create Conduit server
 const conduit = ExpressConduitServer(server, { config: { path: '/conduit' } });
 
-// Attach admin API
-const admin = ExpressAdminServer({
-  serverCore: conduit.core,
+// Create admin core and attach to server
+const adminCore = createAdminCore({
   auth: { type: 'apiKey', apiKey: process.env.ADMIN_API_KEY },
 });
+adminCore.attachToServer(conduit.core);
 
-app.use('/admin', admin);
+// Mount admin middleware
+app.use('/admin', createExpressAdminMiddleware({ admin: adminCore }));
 ```
 
 ### Standalone Dashboard
