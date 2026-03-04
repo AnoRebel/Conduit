@@ -24,10 +24,8 @@ export default defineNuxtConfig({
 	css: ["~/assets/css/main.css"],
 
 	vite: {
-		// @tailwindcss/vite is built against a different rollup version than Nuxt resolves,
-		// causing a Plugin type mismatch. This cast is safe — it works at runtime.
-		// Track: https://github.com/tailwindlabs/tailwindcss/issues
-		plugins: tailwindcss() as never[],
+		// biome-ignore lint/suspicious/noExplicitAny: vite/rollup type mismatch — fixed in next Nuxt release
+		plugins: [tailwindcss() as any],
 	},
 
 	runtimeConfig: {
@@ -68,7 +66,7 @@ export default defineNuxtConfig({
 	// Robots configuration
 	robots: {
 		allow: "/",
-		sitemap: ["https://tujengeconstruction.com/sitemap.xml"],
+		sitemap: ["https://conduit-ui.anorebel.net/sitemap.xml"],
 	},
 
 	umami: {

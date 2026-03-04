@@ -27,7 +27,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.server-admin
     ports:
-      - "9000:9000"
+      - "9001:9000"
     environment:
       - PORT=9000
       - HOST=0.0.0.0
