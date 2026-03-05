@@ -3,6 +3,12 @@ name: Docker
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g., v1.0.0)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,11 +19,24 @@ jobs:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
     steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.tag.outputs.TAG }}
 
       - name: Extract version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          TAG="${{ steps.tag.outputs.TAG }}"
+          echo "VERSION=${TAG#v}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -32,16 +51,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker meta for server
-        id: meta-server
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/server
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Compute image tags
+        id: tags
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          MAJOR="${VERSION%%.*}"
+          MINOR="${VERSION%.*}"
+          REPO="ghcr.io/${{ github.repository }}"
+
+          for image in server server-admin admin-ui all-in-one; do
+            TAGS="${REPO}/${image}:${VERSION}"
+            TAGS="${TAGS},${REPO}/${image}:${MINOR}"
+            TAGS="${TAGS},${REPO}/${image}:${MAJOR}"
+            TAGS="${TAGS},${REPO}/${image}:latest"
+            echo "${image//-/_}_tags=${TAGS}" >> $GITHUB_OUTPUT
+          done
 
       - name: Build and push server
         uses: docker/build-push-action@v6
@@ -50,21 +74,9 @@ jobs:
           file: docker/Dockerfile.server
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-server.outputs.tags }}
-          labels: ${{ steps.meta-server.outputs.labels }}
+          tags: ${{ steps.tags.outputs.server_tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Docker meta for server-admin
-        id: meta-server-admin
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/server-admin
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push server-admin
         uses: docker/build-push-action@v6
@@ -73,21 +85,9 @@ jobs:
           file: docker/Dockerfile.server-admin
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-server-admin.outputs.tags }}
-          labels: ${{ steps.meta-server-admin.outputs.labels }}
+          tags: ${{ steps.tags.outputs.server_admin_tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Docker meta for admin-ui
-        id: meta-admin-ui
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/admin-ui
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push admin-ui
         uses: docker/build-push-action@v6
@@ -96,21 +96,9 @@ jobs:
           file: docker/Dockerfile.admin-ui
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-admin-ui.outputs.tags }}
-          labels: ${{ steps.meta-admin-ui.outputs.labels }}
+          tags: ${{ steps.tags.outputs.admin_ui_tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Docker meta for all-in-one
-        id: meta-all-in-one
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/all-in-one
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push all-in-one
         uses: docker/build-push-action@v6
@@ -119,8 +107,7 @@ jobs:
           file: docker/Dockerfile.all-in-one
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-all-in-one.outputs.tags }}
-          labels: ${{ steps.meta-all-in-one.outputs.labels }}
+          tags: ${{ steps.tags.outputs.all_in_one_tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

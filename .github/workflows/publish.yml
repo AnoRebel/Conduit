@@ -3,6 +3,12 @@ name: Publish to JSR
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g., v1.0.0)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -72,9 +78,18 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ steps.tag.outputs.TAG }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -82,7 +97,9 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          TAG="${{ steps.tag.outputs.TAG }}"
+          echo "VERSION=${TAG#v}" >> $GITHUB_OUTPUT
 
       - name: Update JSR package versions
         run: |
