@@ -1,15 +1,16 @@
 # Conduit Client
 
+[![JSR @conduit/client](https://jsr.io/badges/@conduit/client)](https://jsr.io/@conduit/client)
+
 WebRTC peer-to-peer data, video, and audio connections for browsers and Node.js.
 
 ## Installation
 
 ```bash
-npm install @conduit/client
+# JSR (recommended)
+bunx jsr add @conduit/client
 # or
-bun add @conduit/client
-# or
-yarn add @conduit/client
+npx jsr add @conduit/client
 ```
 
 ## Usage

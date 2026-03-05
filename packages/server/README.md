@@ -1,13 +1,16 @@
 # @conduit/server
 
+[![JSR @conduit/server](https://jsr.io/badges/@conduit/server)](https://jsr.io/@conduit/server)
+
 WebRTC signaling server for Conduit peer-to-peer connections.
 
 ## Installation
 
 ```bash
-bun add @conduit/server
+# JSR (recommended)
+bunx jsr add @conduit/server
 # or
-npm install @conduit/server
+npx jsr add @conduit/server
 ```
 
 ## Quick Start

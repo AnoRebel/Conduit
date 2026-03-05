@@ -1,7 +1,8 @@
 # Conduit
 
 [![CI](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@conduit/server)](https://www.npmjs.com/package/@conduit/server)
+[![JSR @conduit/server](https://jsr.io/badges/@conduit/server)](https://jsr.io/@conduit/server)
+[![JSR @conduit/client](https://jsr.io/badges/@conduit/client)](https://jsr.io/@conduit/client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-469-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
 
@@ -23,23 +24,23 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 
 ## Packages
 
-| Package | Description |
-|---------|-------------|
-| [`@conduit/client`](./packages/client) | Browser/Node.js client library |
-| [`@conduit/server`](./packages/server) | Signaling server |
-| [`@conduit/shared`](./packages/shared) | Shared types and enums |
-| [`@conduit/admin`](./packages/admin) | Admin API and monitoring tools |
-| [`@conduit/admin-ui`](./packages/admin-ui) | Vue 3/Nuxt 4 admin dashboard |
-| [`conduit-go`](./packages/go-client) | Go client library |
+| Package | Description | Registry |
+|---------|-------------|----------|
+| [`@conduit/client`](./packages/client) | Browser/Node.js client library | [![JSR](https://jsr.io/badges/@conduit/client)](https://jsr.io/@conduit/client) |
+| [`@conduit/server`](./packages/server) | Signaling server | [![JSR](https://jsr.io/badges/@conduit/server)](https://jsr.io/@conduit/server) |
+| [`@conduit/shared`](./packages/shared) | Shared types and enums | [![JSR](https://jsr.io/badges/@conduit/shared)](https://jsr.io/@conduit/shared) |
+| [`@conduit/admin`](./packages/admin) | Admin API and monitoring tools | [![JSR](https://jsr.io/badges/@conduit/admin)](https://jsr.io/@conduit/admin) |
+| [`@conduit/admin-ui`](./packages/admin-ui) | Vue 3/Nuxt 4 admin dashboard | — |
+| [`conduit-go`](./packages/go-client) | Go client library | — |
 
 ## Quick Start
 
 ### Client
 
 ```bash
-bun add @conduit/client
+bunx jsr add @conduit/client
 # or
-npm install @conduit/client
+npx jsr add @conduit/client
 ```
 
 ```typescript
@@ -75,9 +76,9 @@ conduit.on('connection', (conn) => {
 ### Server
 
 ```bash
-bun add @conduit/server
+bunx jsr add @conduit/server
 # or
-npm install @conduit/server
+npx jsr add @conduit/server
 ```
 
 ```typescript
@@ -467,14 +468,14 @@ const peer = new Peer('my-id');
 
 ```bash
 # Client
-bun add @conduit/client
+bunx jsr add @conduit/client
 # or
-npm install @conduit/client
+npx jsr add @conduit/client
 
 # Server
-bun add @conduit/server
+bunx jsr add @conduit/server
 # or
-npm install @conduit/server
+npx jsr add @conduit/server
 ```
 
 ### From GitHub

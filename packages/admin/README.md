@@ -1,13 +1,16 @@
 # @conduit/admin
 
+[![JSR @conduit/admin](https://jsr.io/badges/@conduit/admin)](https://jsr.io/@conduit/admin)
+
 Admin API and monitoring tools for Conduit servers.
 
 ## Installation
 
 ```bash
-bun add @conduit/admin
+# JSR (recommended)
+bunx jsr add @conduit/admin
 # or
-npm install @conduit/admin
+npx jsr add @conduit/admin
 ```
 
 ## Features
