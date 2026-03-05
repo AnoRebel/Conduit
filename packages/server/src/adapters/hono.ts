@@ -14,6 +14,7 @@
  * ```
  */
 
+import { VERSION } from "@conduit/shared";
 import type { ServerConfig } from "../config.js";
 import {
 	type ConduitServerCore,
@@ -72,7 +73,7 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 		const basePath = config.path.endsWith("/") ? config.path.slice(0, -1) : config.path;
 
 		if (pathname === basePath || pathname === `${basePath}/`) {
-			return c.json({ name: "Conduit Server", version: "2.0.0" });
+			return c.json({ name: "Conduit Server", version: VERSION });
 		}
 
 		if (pathname === `${basePath}/${config.key}/id` || (noAuth && pathname === `${basePath}/id`)) {
@@ -100,7 +101,7 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 			{
 				path: basePath,
 				method: "GET",
-				handler: (c: HonoContext) => c.json({ name: "Conduit Server", version: "2.0.0" }),
+				handler: (c: HonoContext) => c.json({ name: "Conduit Server", version: VERSION }),
 			},
 			{
 				path: `${basePath}/${config.key}/id`,

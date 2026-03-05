@@ -13,6 +13,7 @@
  */
 
 import { parse as parseUrl } from "node:url";
+import { VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
 import { type CreateConduitServerCoreOptions, createConduitServerCore } from "../core/index.js";
@@ -71,11 +72,11 @@ export async function fastifyConduitPlugin(
 	const basePath = config.path.endsWith("/") ? config.path.slice(0, -1) : config.path;
 
 	fastify.get(basePath, (_request, reply) => {
-		reply.send({ name: "Conduit Server", version: "2.0.0" });
+		reply.send({ name: "Conduit Server", version: VERSION });
 	});
 
 	fastify.get(`${basePath}/`, (_request, reply) => {
-		reply.send({ name: "Conduit Server", version: "2.0.0" });
+		reply.send({ name: "Conduit Server", version: VERSION });
 	});
 
 	fastify.get(`${basePath}/${config.key}/id`, (_request, reply) => {

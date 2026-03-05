@@ -1,3 +1,5 @@
+// Version - Single source of truth for Conduit version
+
 // Enums - Re-export all enum types and values
 export {
 	ConduitErrorType,
@@ -8,6 +10,7 @@ export {
 	SocketEventType,
 	TransportType,
 } from "./enums.js";
+export { VERSION } from "./version.js";
 
 // ============================================================================
 // Types - All type exports for external consumption

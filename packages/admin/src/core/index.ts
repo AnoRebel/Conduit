@@ -1,4 +1,4 @@
-import type { IMessage } from "@conduit/shared";
+import { type IMessage, VERSION } from "@conduit/shared";
 import { type AuthManager, createAuthManager } from "../auth/index.js";
 import type { AdminConfig } from "../config.js";
 import { createMetricsCollector, type MetricsCollector } from "../metrics/collector.js";
@@ -99,7 +99,7 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		return {
 			running: serverCore !== null,
 			uptime: Date.now() - startTime,
-			version: "1.0.0", // Would come from package.json
+			version: VERSION,
 			clients: snapshot.clients,
 			messages: snapshot.messages,
 			memory: snapshot.memory,

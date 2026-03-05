@@ -221,9 +221,9 @@ jobs:
             fi
           done
 
-          # Update client version.ts fallback
-          sed -i "s/: \".*\";/: \"$VERSION\";/" packages/client/src/version.ts
-          echo "  → Updated packages/client/src/version.ts"
+          # Update shared version.ts (single source of truth)
+          sed -i "s/export const VERSION = \".*\"/export const VERSION = \"$VERSION\"/" packages/shared/src/version.ts
+          echo "  → Updated packages/shared/src/version.ts"
 
           # Update server CLI version display
           sed -i "s/Conduit Server v[0-9]\+\.[0-9]\+\.[0-9]\+[^\"]*/Conduit Server v$VERSION/" packages/server/bin/conduit.js

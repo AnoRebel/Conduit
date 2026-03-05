@@ -16,6 +16,7 @@
 
 import type { Server } from "node:http";
 import { parse as parseUrl } from "node:url";
+import { VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
 import { type CreateConduitServerCoreOptions, createConduitServerCore } from "../core/index.js";
@@ -118,7 +119,7 @@ export function ExpressConduitServer(
 
 		// Route requests
 		if (pathname === "/" || pathname === "") {
-			res.json({ name: "Conduit Server", version: "2.0.0" });
+			res.json({ name: "Conduit Server", version: VERSION });
 			return;
 		}
 

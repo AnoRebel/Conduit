@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { parse as parseUrl } from "node:url";
-import { MessageType } from "@conduit/shared";
+import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
 import {
@@ -74,7 +74,7 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 		if (pathname === config.path || pathname === `${config.path}/`) {
 			// Health check
 			res.writeHead(200, { "Content-Type": "application/json" });
-			res.end(JSON.stringify({ name: "Conduit Server", version: "2.0.0" }));
+			res.end(JSON.stringify({ name: "Conduit Server", version: VERSION }));
 		} else if (
 			pathname === `${config.path}${config.key}/id` ||
 			pathname === `${config.path}/${config.key}/id` ||

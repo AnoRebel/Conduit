@@ -9,6 +9,7 @@
  * ```
  */
 
+import { VERSION } from "@conduit/shared";
 import type { ServerConfig } from "../config.js";
 import {
 	type ConduitServerCore,
@@ -117,7 +118,7 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 
 				// Route HTTP requests
 				if (pathname === config.path || pathname === `${config.path}/`) {
-					return new Response(JSON.stringify({ name: "Conduit Server", version: "2.0.0" }), {
+					return new Response(JSON.stringify({ name: "Conduit Server", version: VERSION }), {
 						headers: { ...corsHeaders, "Content-Type": "application/json" },
 					});
 				}
