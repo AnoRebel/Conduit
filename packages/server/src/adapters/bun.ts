@@ -9,7 +9,7 @@
  * ```
  */
 
-import { VERSION } from "@conduit/shared";
+import { MessageType, VERSION } from "@conduit/shared";
 import type { ServerConfig } from "../config.js";
 import {
 	type ConduitServerCore,
@@ -38,6 +38,7 @@ export interface BunConduitServer {
 	readonly core: ConduitServerCore;
 	serve(): BunServer;
 	getServeOptions(): BunServeOptions;
+	close(): void;
 }
 
 interface BunServeOptions {
@@ -74,6 +75,18 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 
 				// Set CORS headers
 				const corsHeaders = getCorsHeaders(config);
+
+				// HTTPS enforcement check
+				if (config.requireSecure) {
+					const proto = request.headers.get("x-forwarded-proto");
+					const isSecure = proto === "https" || url.protocol === "https:";
+					if (!isSecure) {
+						return new Response(JSON.stringify({ error: "HTTPS required" }), {
+							status: 403,
+							headers: { ...corsHeaders, "Content-Type": "application/json" },
+						});
+					}
+				}
 
 				// Handle preflight
 				if (request.method === "OPTIONS") {
@@ -202,10 +215,40 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 		return Bun.serve(getServeOptions());
 	}
 
+	function close(): void {
+		// Send GOAWAY message to all clients before closing
+		const goawayMessage = JSON.stringify({
+			type: MessageType.GOAWAY,
+			payload: { msg: "Server is shutting down" },
+		});
+
+		for (const [ws] of clients) {
+			try {
+				ws.send(goawayMessage);
+			} catch {
+				// Ignore send errors during shutdown
+			}
+		}
+
+		// Give clients a moment to receive the message before closing
+		setTimeout(() => {
+			for (const [ws] of clients) {
+				try {
+					ws.close(1001, "Server shutdown");
+				} catch {
+					// Ignore close errors during shutdown
+				}
+			}
+			clients.clear();
+			core.stop();
+		}, 100);
+	}
+
 	return {
 		core,
 		serve,
 		getServeOptions,
+		close,
 	};
 }
 

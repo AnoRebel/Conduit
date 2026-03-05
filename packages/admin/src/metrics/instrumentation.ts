@@ -20,7 +20,7 @@ export interface InstrumentableServerCore {
 export interface InstrumentationHooks {
 	onConnectionOpened?: (clientId: string) => void;
 	onConnectionClosed?: (clientId: string) => void;
-	onMessageRelayed?: () => void;
+	onMessageRelayed?: (clientId: string) => void;
 	onMessageQueued?: () => void;
 	onRateLimitHit?: () => void;
 	onRateLimitRejection?: () => void;
@@ -62,13 +62,14 @@ export function instrumentServerCore(
 		...args: unknown[]
 	): void => {
 		const startTime = performance.now();
+		const client = args[0] as { id: string } | undefined;
 
 		try {
 			originalHandleMessage(...args);
 
 			// Message was processed (relayed or queued)
 			collector.messagesRelayed.increment();
-			hooks?.onMessageRelayed?.();
+			hooks?.onMessageRelayed?.(client?.id ?? "unknown");
 
 			// Record latency
 			const latencyMs = performance.now() - startTime;
@@ -133,11 +134,12 @@ export function createMetricsProxy<T extends InstrumentableServerCore>(
 			if (prop === "handleMessage" && typeof value === "function") {
 				return (...args: unknown[]): void => {
 					const startTime = performance.now();
+					const client = args[0] as { id: string } | undefined;
 
 					try {
 						value.apply(target, args);
 						collector.messagesRelayed.increment();
-						hooks?.onMessageRelayed?.();
+						hooks?.onMessageRelayed?.(client?.id ?? "unknown");
 
 						const latencyMs = performance.now() - startTime;
 						collector.latency.record(latencyMs);

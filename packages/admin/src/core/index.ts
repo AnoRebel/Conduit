@@ -93,6 +93,15 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 	// Start time for uptime calculation
 	const startTime = Date.now();
 
+	// Per-client tracking for real metrics
+	interface ClientTrackingData {
+		connectedAt: number;
+		messagesReceived: number;
+		messagesSent: number;
+		lastActivity: number;
+	}
+	const clientTracking = new Map<string, ClientTrackingData>();
+
 	function getServerStatus(): ServerStatus {
 		const snapshot = metrics.getSnapshot();
 
@@ -106,6 +115,27 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		};
 	}
 
+	function trackClientConnect(clientId: string): void {
+		clientTracking.set(clientId, {
+			connectedAt: Date.now(),
+			messagesReceived: 0,
+			messagesSent: 0,
+			lastActivity: Date.now(),
+		});
+	}
+
+	function trackClientDisconnect(clientId: string): void {
+		clientTracking.delete(clientId);
+	}
+
+	function trackClientMessage(clientId: string): void {
+		const data = clientTracking.get(clientId);
+		if (data) {
+			data.messagesReceived++;
+			data.lastActivity = Date.now();
+		}
+	}
+
 	function getClientList(): ClientInfo[] {
 		if (!serverCore) {
 			return [];
@@ -116,13 +146,14 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 
 		return clientIds.map(id => {
 			const client = serverCore?.realm.getClient(id);
+			const tracking = clientTracking.get(id);
 			return {
 				id,
 				connected: !!client,
-				connectedAt: now, // Would need to track this in instrumentation
-				messagesReceived: 0, // Would need per-client tracking
-				messagesSent: 0,
-				lastActivity: now,
+				connectedAt: tracking?.connectedAt ?? now,
+				messagesReceived: tracking?.messagesReceived ?? 0,
+				messagesSent: tracking?.messagesSent ?? 0,
+				lastActivity: tracking?.lastActivity ?? now,
 			};
 		});
 	}
@@ -137,16 +168,19 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 			return null;
 		}
 
+		const tracking = clientTracking.get(id);
+		const now = Date.now();
+
 		return {
 			id: client.id,
 			connected: true,
-			connectedAt: Date.now(), // Would need tracking
-			messagesReceived: 0,
-			messagesSent: 0,
-			lastActivity: Date.now(),
-			ip: undefined, // Would need socket access
+			connectedAt: tracking?.connectedAt ?? now,
+			messagesReceived: tracking?.messagesReceived ?? 0,
+			messagesSent: tracking?.messagesSent ?? 0,
+			lastActivity: tracking?.lastActivity ?? now,
+			ip: undefined,
 			userAgent: undefined,
-			queuedMessages: 0, // Would need message queue access
+			queuedMessages: 0,
 		};
 	}
 
@@ -268,13 +302,16 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		// Sync current state
 		syncRealmToMetrics(core, metrics);
 
-		// Instrument the server
+		// Instrument the server with per-client tracking
 		uninstrument = instrumentServerCore(core, metrics, {
-			onConnectionOpened: _clientId => {
-				// Could emit WebSocket event here
+			onConnectionOpened: clientId => {
+				trackClientConnect(clientId);
 			},
-			onConnectionClosed: _clientId => {
-				// Could emit WebSocket event here
+			onConnectionClosed: clientId => {
+				trackClientDisconnect(clientId);
+			},
+			onMessageRelayed: clientId => {
+				trackClientMessage(clientId);
 			},
 			onError: _type => {
 				// Could emit WebSocket event here

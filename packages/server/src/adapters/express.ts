@@ -14,9 +14,9 @@
  * ```
  */
 
-import type { Server } from "node:http";
+import type { IncomingMessage, Server } from "node:http";
 import { parse as parseUrl } from "node:url";
-import { VERSION } from "@conduit/shared";
+import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
 import { type CreateConduitServerCoreOptions, createConduitServerCore } from "../core/index.js";
@@ -42,6 +42,21 @@ type ExpressMiddleware = (req: Request, res: Response, next: NextFunction) => vo
 
 export interface ExpressAdapterOptions extends CreateConduitServerCoreOptions {}
 
+export interface ExpressConduitInstance extends ExpressMiddleware {
+	close: () => void;
+}
+
+// Helper to check if request is secure
+function isSecureRequest(req: IncomingMessage): boolean {
+	const forwardedProto = req.headers["x-forwarded-proto"];
+	if (forwardedProto === "https") return true;
+
+	const socket = req.socket as { encrypted?: boolean };
+	if (socket.encrypted) return true;
+
+	return false;
+}
+
 export function ExpressConduitServer(
 	server: Server,
 	options: ExpressAdapterOptions = {}
@@ -64,6 +79,13 @@ export function ExpressConduitServer(
 			return;
 		}
 
+		// HTTPS/WSS enforcement check
+		if (config.requireSecure && !isSecureRequest(request)) {
+			socket.write("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\nWSS required");
+			socket.destroy();
+			return;
+		}
+
 		// Validate origin if allowedOrigins is configured
 		if (config.allowedOrigins && config.allowedOrigins.length > 0) {
 			const origin = request.headers.origin;
@@ -76,13 +98,14 @@ export function ExpressConduitServer(
 
 		const { key, id, token } = url.query as { key?: string; id?: string; token?: string };
 
-		if (!key || !id || !token) {
+		// key is required when auth mode is "key", optional when "none"
+		if ((!key && config.auth.mode === "key") || !id || !token) {
 			socket.destroy();
 			return;
 		}
 
 		wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-			const client = core.handleConnection(ws, id, token, key);
+			const client = core.handleConnection(ws, id, token, key || config.key);
 
 			if (!client) {
 				return;
@@ -107,6 +130,18 @@ export function ExpressConduitServer(
 		const url = parseUrl(req.url || "", true);
 		const pathname = url.pathname || "";
 
+		// HTTPS enforcement check
+		if (config.requireSecure) {
+			// In Express, check x-forwarded-proto header
+			const proto = (req as Record<string, unknown>).headers
+				? ((req as Record<string, unknown>).headers as Record<string, string>)["x-forwarded-proto"]
+				: undefined;
+			if (proto !== "https") {
+				res.status(403).json({ error: "HTTPS required" });
+				return;
+			}
+		}
+
 		// Set CORS headers
 		setCorsHeaders(res, config);
 
@@ -117,18 +152,21 @@ export function ExpressConduitServer(
 			return;
 		}
 
+		// Whether auth-less routes are available
+		const noAuth = config.auth.mode === "none";
+
 		// Route requests
 		if (pathname === "/" || pathname === "") {
 			res.json({ name: "Conduit Server", version: VERSION });
 			return;
 		}
 
-		if (pathname === `/${config.key}/id`) {
+		if (pathname === `/${config.key}/id` || (noAuth && pathname === "/id")) {
 			res.send(core.generateClientId());
 			return;
 		}
 
-		if (pathname === `/${config.key}/conduits`) {
+		if (pathname === `/${config.key}/conduits` || (noAuth && pathname === "/conduits")) {
 			if (config.allowDiscovery) {
 				res.json(core.realm.getClientIds());
 			} else {
@@ -142,11 +180,28 @@ export function ExpressConduitServer(
 
 	// Attach cleanup method
 	(middleware as ExpressMiddleware & { close: () => void }).close = () => {
-		core.stop();
+		// Send GOAWAY message to all clients before closing
+		const goawayMessage = JSON.stringify({
+			type: MessageType.GOAWAY,
+			payload: { msg: "Server is shutting down" },
+		});
+
 		for (const client of wss.clients) {
-			client.close();
+			try {
+				client.send(goawayMessage);
+			} catch {
+				// Ignore send errors during shutdown
+			}
 		}
-		wss.close();
+
+		// Give clients a moment to receive the message before closing
+		setTimeout(() => {
+			core.stop();
+			for (const client of wss.clients) {
+				client.close(1001, "Server shutdown");
+			}
+			wss.close();
+		}, 100);
 	};
 
 	return middleware;

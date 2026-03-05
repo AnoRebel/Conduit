@@ -28,6 +28,7 @@ interface HonoContext {
 		url: string;
 		method: string;
 		query: (key: string) => string | undefined;
+		header: (key: string) => string | undefined;
 	};
 	json: (data: unknown, status?: number) => Response;
 	text: (data: string, status?: number) => Response;
@@ -46,6 +47,7 @@ export interface HonoConduitServer {
 		method: string;
 		handler: (c: HonoContext) => Response | Promise<Response>;
 	}[];
+	destroy(): void;
 }
 
 export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoConduitServer {
@@ -57,6 +59,15 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 	const middleware: HonoMiddleware = async (c, next) => {
 		const url = new URL(c.req.url);
 		const pathname = url.pathname;
+
+		// HTTPS enforcement check
+		if (config.requireSecure) {
+			const proto = c.req.header("x-forwarded-proto");
+			const isSecure = proto === "https" || url.protocol === "https:";
+			if (!isSecure) {
+				return c.json({ error: "HTTPS required" }, 403);
+			}
+		}
 
 		// Set CORS headers
 		setCorsHeaders(c, config);
@@ -144,10 +155,15 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 		return routes;
 	}
 
+	function destroy(): void {
+		core.stop();
+	}
+
 	return {
 		core,
 		middleware,
 		getRoutes,
+		destroy,
 	};
 }
 
