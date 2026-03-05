@@ -21,12 +21,6 @@ interface Serializer {
 	deserialize: (data: ArrayBuffer | Uint8Array) => unknown;
 }
 
-declare global {
-	interface Window {
-		__CONDUIT_SERIALIZERS__?: Map<SerializationType, Serializer>;
-	}
-}
-
 // Register MsgPack serializer
 const serializer: Serializer = {
 	serialize: (data: unknown): Uint8Array => {
@@ -39,11 +33,16 @@ const serializer: Serializer = {
 };
 
 // Register globally for the DataConnection to pick up
-if (typeof window !== "undefined") {
-	if (!window.__CONDUIT_SERIALIZERS__) {
-		window.__CONDUIT_SERIALIZERS__ = new Map();
+// Uses globalThis cast to avoid `declare global` which JSR disallows
+if (typeof globalThis !== "undefined") {
+	const g = globalThis as Record<string, unknown>;
+	if (!g.__CONDUIT_SERIALIZERS__) {
+		g.__CONDUIT_SERIALIZERS__ = new Map<SerializationType, Serializer>();
 	}
-	window.__CONDUIT_SERIALIZERS__.set(SerializationType.MsgPack, serializer);
+	(g.__CONDUIT_SERIALIZERS__ as Map<SerializationType, Serializer>).set(
+		SerializationType.MsgPack,
+		serializer
+	);
 }
 
 export { encode, decode };
