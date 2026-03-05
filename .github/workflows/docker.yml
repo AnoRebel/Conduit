@@ -57,7 +57,8 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           MAJOR="${VERSION%%.*}"
           MINOR="${VERSION%.*}"
-          REPO="ghcr.io/${{ github.repository }}"
+          REPO="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "repo=${REPO}" >> $GITHUB_OUTPUT
 
           for image in server server-admin admin-ui all-in-one; do
             TAGS="${REPO}/${image}:${VERSION}"
@@ -117,20 +118,20 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Server" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository }}/server:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ steps.tags.outputs.repo }}/server:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Server with Admin API" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository }}/server-admin:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ steps.tags.outputs.repo }}/server-admin:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Admin UI (standalone)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository }}/admin-ui:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ steps.tags.outputs.repo }}/admin-ui:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### All-in-One (Server + Admin API + Dashboard)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository }}/all-in-one:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ steps.tags.outputs.repo }}/all-in-one:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

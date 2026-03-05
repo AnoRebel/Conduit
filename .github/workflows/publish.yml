@@ -122,19 +122,19 @@ jobs:
       # JSR uses GitHub Actions OIDC for authentication (id-token: write)
       # No secrets needed — just link each package to this repo on jsr.io
       - name: Publish @conduit/shared to JSR
-        run: bunx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types --allow-dirty
         working-directory: packages/shared
 
       - name: Publish @conduit/client to JSR
-        run: bunx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types --allow-dirty
         working-directory: packages/client
 
       - name: Publish @conduit/server to JSR
-        run: bunx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types --allow-dirty
         working-directory: packages/server
 
       - name: Publish @conduit/admin to JSR
-        run: bunx jsr publish --allow-slow-types
+        run: bunx jsr publish --allow-slow-types --allow-dirty
         working-directory: packages/admin
 
       - name: Create JSR publish summary
