@@ -82,13 +82,19 @@ describe("RateLimiter", () => {
 		it("should not exceed max tokens on refill", async () => {
 			const customLimiter = new RateLimiter({
 				maxTokens: 5,
-				refillRate: 1000, // Very fast refill
+				refillRate: 10, // Slow refill: 10 tokens/sec
 			});
 
-			// Wait for some time
-			await new Promise(resolve => setTimeout(resolve, 100));
+			// Drain all tokens immediately
+			for (let i = 0; i < 5; i++) {
+				expect(customLimiter.tryConsume("client1")).toBe(true);
+			}
+			expect(customLimiter.tryConsume("client1")).toBe(false);
 
-			// Should still only have maxTokens
+			// Wait long enough to fully refill (500ms at 10/sec = 5 tokens)
+			await new Promise(resolve => setTimeout(resolve, 600));
+
+			// Should have at most maxTokens (5), not more
 			let consumed = 0;
 			while (customLimiter.tryConsume("client1")) {
 				consumed++;
