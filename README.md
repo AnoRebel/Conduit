@@ -3,7 +3,7 @@
 [![CI](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@conduit/server)](https://www.npmjs.com/package/@conduit/server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-436-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-469-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
 
 WebRTC peer-to-peer data, video, and audio connections made simple.
 
@@ -290,7 +290,7 @@ For custom setups, you can embed the admin API in your own Express/Fastify/Hono 
 import express from 'express';
 import { ExpressConduitServer } from '@conduit/server';
 import { createExpressAdminMiddleware } from '@conduit/admin/adapters/express';
-import { createAdminCore } from '@conduit/admin';
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
 
 const app = express();
 const server = app.listen(9000);
@@ -300,7 +300,9 @@ const conduit = ExpressConduitServer(server, { config: { path: '/conduit' } });
 
 // Create admin core and attach to server
 const adminCore = createAdminCore({
-  auth: { type: 'apiKey', apiKey: process.env.ADMIN_API_KEY },
+  config: createAdminConfig({
+    auth: { methods: ['apiKey'], apiKey: process.env.ADMIN_API_KEY },
+  }),
 });
 adminCore.attachToServer(conduit.core);
 
@@ -598,7 +600,7 @@ bun install
 # Build all packages
 bun run build
 
-# Run tests (436 tests across all packages)
+# Run tests (469 tests across all packages)
 bun run test
 
 # Type checking

@@ -48,7 +48,7 @@ The CLI handles all wiring: creates the admin core, mounts HTTP routes, sets up 
 ```typescript
 import express from 'express';
 import { ExpressConduitServer } from '@conduit/server';
-import { createAdminCore } from '@conduit/admin';
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
 import { createExpressAdminMiddleware } from '@conduit/admin/adapters/express';
 
 const app = express();
@@ -61,10 +61,9 @@ const conduit = ExpressConduitServer(server, {
 
 // Create admin core and attach to signaling server
 const adminCore = createAdminCore({
-  auth: {
-    type: 'apiKey',
-    apiKey: process.env.ADMIN_API_KEY || 'secret-key',
-  },
+  config: createAdminConfig({
+    auth: { methods: ['apiKey'], apiKey: process.env.ADMIN_API_KEY || 'secret-key' },
+  }),
 });
 adminCore.attachToServer(conduit.core);
 
@@ -77,7 +76,7 @@ app.use('/admin', createExpressAdminMiddleware({ admin: adminCore }));
 ```typescript
 import Fastify from 'fastify';
 import { fastifyConduitPlugin } from '@conduit/server/adapters/fastify';
-import { createAdminCore } from '@conduit/admin';
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
 import { createFastifyAdminPlugin } from '@conduit/admin/adapters/fastify';
 
 const fastify = Fastify();
@@ -89,7 +88,9 @@ await fastify.register(fastifyConduitPlugin, {
 
 // Create admin core
 const adminCore = createAdminCore({
-  auth: { type: 'apiKey', apiKey: 'secret-key' },
+  config: createAdminConfig({
+    auth: { methods: ['apiKey'], apiKey: 'secret-key' },
+  }),
 });
 
 // Register Admin plugin
@@ -105,14 +106,16 @@ fastify.listen({ port: 9000 });
 ```typescript
 import { Hono } from 'hono';
 import { createConduitMiddleware } from '@conduit/server/adapters/hono';
-import { createAdminCore } from '@conduit/admin';
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
 import { createHonoAdminMiddleware } from '@conduit/admin/adapters/hono';
 
 const app = new Hono();
 
 const conduit = createConduitMiddleware({ config: { path: '/' } });
 const adminCore = createAdminCore({
-  auth: { type: 'apiKey', apiKey: 'secret-key' },
+  config: createAdminConfig({
+    auth: { methods: ['apiKey'], apiKey: 'secret-key' },
+  }),
 });
 adminCore.attachToServer(conduit.core);
 
@@ -124,14 +127,16 @@ app.use('/admin/*', createHonoAdminMiddleware({ admin: adminCore }));
 
 ```typescript
 import { createConduitServer } from '@conduit/server';
-import { createAdminCore } from '@conduit/admin';
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
 import { createNodeAdminServer } from '@conduit/admin/adapters/node';
 
 const conduit = createConduitServer({ config: { port: 9000 } });
 
 // Create admin core and attach to signaling server
 const adminCore = createAdminCore({
-  auth: { type: 'apiKey', apiKey: 'secret-key' },
+  config: createAdminConfig({
+    auth: { methods: ['apiKey'], apiKey: 'secret-key' },
+  }),
 });
 adminCore.attachToServer(conduit.core);
 
@@ -144,40 +149,62 @@ adminServer.listen(9001, () => {
 
 ## Configuration
 
+Use `createAdminConfig()` to create a config with sensible defaults — you only need to override what you need:
+
+```typescript
+import { createAdminConfig } from '@conduit/admin';
+
+const config = createAdminConfig({
+  auth: { methods: ['apiKey'], apiKey: 'your-key' },
+});
+```
+
+Full `AdminConfig` interface:
+
 ```typescript
 interface AdminConfig {
-  // Authentication
+  path: string;               // Base path (default: '/admin')
+  apiVersion: string;         // API version prefix (default: 'v1')
+
   auth: {
-    type: 'apiKey' | 'jwt' | 'basic';
-    apiKey?: string;           // For API Key auth
-    jwtSecret?: string;        // For JWT auth
-    basicUsers?: Map<string, string>; // For Basic auth
+    methods: ('apiKey' | 'jwt' | 'basic')[];  // Auth methods to enable
+    apiKey?: string;                            // For API Key auth
+    jwtSecret?: string;                         // For JWT auth
+    jwtExpiresIn?: number;                      // JWT expiry in seconds (default: 3600)
+    basicCredentials?: { username: string; password: string }; // For Basic auth
+    sessionTimeout?: number;                    // Session timeout in ms (default: 3600000)
   };
 
-  // Rate limiting for admin API
-  rateLimit?: {
-    enabled: boolean;
+  rateLimit: {
+    enabled: boolean;          // Default: true
     maxRequests: number;       // Default: 100
     windowMs: number;          // Default: 60000 (1 minute)
   };
 
-  // Metrics collection
-  metrics?: {
-    retentionMs: number;       // Default: 3600000 (1 hour)
+  metrics: {
+    retentionMs: number;       // Default: 86400000 (24 hours)
     snapshotIntervalMs: number; // Default: 1000
+    maxSnapshots: number;      // Default: 3600
   };
 
-  // Audit logging
-  audit?: {
+  audit: {
     enabled: boolean;          // Default: true
-    maxEntries: number;        // Default: 1000
+    maxEntries: number;        // Default: 10000
+    logLevel: 'actions' | 'all'; // Default: 'actions'
   };
 
-  // WebSocket real-time updates
-  websocket?: {
+  websocket: {
     enabled: boolean;          // Default: true
     path: string;              // Default: '/ws'
+    heartbeatInterval: number; // Default: 30000
   };
+
+  sse: {
+    enabled: boolean;          // Default: true
+    keepAliveInterval: number; // Default: 15000
+  };
+
+  persistence?: PersistenceConfig; // Optional SQLite persistence
 }
 ```
 
@@ -188,18 +215,13 @@ By default, the admin API stores all data in-memory. For production deployments,
 ### Setup
 
 ```typescript
-import { createPersistenceStore } from '@conduit/admin/persistence';
-import { createAdminCore } from '@conduit/admin';
-
-// Create SQLite persistence store
-const store = createPersistenceStore({
-  type: 'sqlite',
-  dbPath: './conduit.db',
-});
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
 
 const admin = createAdminCore({
-  auth: { type: 'apiKey', apiKey: 'secret-key' },
-  persistence: store,
+  config: createAdminConfig({
+    auth: { methods: ['apiKey'], apiKey: 'secret-key' },
+    persistence: { type: 'sqlite', dbPath: './conduit.db' },
+  }),
 });
 ```
 
@@ -382,13 +404,12 @@ curl -H "Authorization: Bearer your-api-key" \
 JWT tokens with configurable expiration and **role-based access control**:
 
 ```typescript
-import { createAdminCore } from '@conduit/admin';
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
 
 const admin = createAdminCore({
-  auth: {
-    type: 'jwt',
-    jwtSecret: process.env.JWT_SECRET,
-  },
+  config: createAdminConfig({
+    auth: { methods: ['jwt'], jwtSecret: process.env.JWT_SECRET },
+  }),
 });
 
 // Generate token with role
@@ -415,13 +436,15 @@ Viewers can monitor metrics, list clients, and view audit logs but cannot discon
 HTTP Basic authentication:
 
 ```typescript
+import { createAdminCore, createAdminConfig } from '@conduit/admin';
+
 const admin = createAdminCore({
-  auth: {
-    type: 'basic',
-    basicUsers: new Map([
-      ['admin', 'password123'],
-    ]),
-  },
+  config: createAdminConfig({
+    auth: {
+      methods: ['basic'],
+      basicCredentials: { username: 'admin', password: 'password123' },
+    },
+  }),
 });
 ```
 

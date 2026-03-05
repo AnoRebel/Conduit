@@ -247,6 +247,9 @@ routes.forEach(({ path, method, handler }) => {
 });
 
 serve({ fetch: app.fetch, port: 9000 });
+
+// Graceful shutdown — sends GOAWAY to connected clients
+conduit.destroy();
 ```
 
 ### Bun
@@ -262,6 +265,9 @@ const server = createConduitServer({
 });
 
 server.serve();
+
+// Graceful shutdown — sends GOAWAY to connected clients
+server.close();
 ```
 
 ## Configuration
