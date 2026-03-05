@@ -252,19 +252,13 @@ jobs:
           echo "" >> RELEASE_NOTES.md
           echo "### Installation" >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
-          echo "#### npm / bun" >> RELEASE_NOTES.md
-          echo '```bash' >> RELEASE_NOTES.md
-          echo "bun add @conduit/client@$VERSION" >> RELEASE_NOTES.md
-          echo "bun add @conduit/server@$VERSION" >> RELEASE_NOTES.md
-          echo "# or with npm" >> RELEASE_NOTES.md
-          echo "npm install @conduit/client@$VERSION" >> RELEASE_NOTES.md
-          echo "npm install @conduit/server@$VERSION" >> RELEASE_NOTES.md
-          echo '```' >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
           echo "#### JSR" >> RELEASE_NOTES.md
           echo '```bash' >> RELEASE_NOTES.md
           echo "bunx jsr add @conduit/client@$VERSION" >> RELEASE_NOTES.md
           echo "bunx jsr add @conduit/server@$VERSION" >> RELEASE_NOTES.md
+          echo "# or with npx" >> RELEASE_NOTES.md
+          echo "npx jsr add @conduit/client@$VERSION" >> RELEASE_NOTES.md
+          echo "npx jsr add @conduit/server@$VERSION" >> RELEASE_NOTES.md
           echo "# or with deno" >> RELEASE_NOTES.md
           echo "deno add jsr:@conduit/client@$VERSION" >> RELEASE_NOTES.md
           echo "deno add jsr:@conduit/server@$VERSION" >> RELEASE_NOTES.md
@@ -369,7 +363,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "The following workflows will be triggered automatically:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "1. **[Publish to npm & JSR](${{ github.server_url }}/${{ github.repository }}/actions/workflows/publish.yml)** - Publishes packages to npm and JSR registries" >> $GITHUB_STEP_SUMMARY
+            echo "1. **[Publish to JSR](${{ github.server_url }}/${{ github.repository }}/actions/workflows/publish.yml)** - Publishes packages to JSR registry" >> $GITHUB_STEP_SUMMARY
             echo "2. **[Docker Build](${{ github.server_url }}/${{ github.repository }}/actions/workflows/docker.yml)** - Builds and pushes Docker images" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Release URL" >> $GITHUB_STEP_SUMMARY
