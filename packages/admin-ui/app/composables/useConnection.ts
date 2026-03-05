@@ -132,7 +132,6 @@ export function useConnection() {
 					return { Authorization: `Basic ${encoded}` };
 				}
 				return {};
-			case "none":
 			default:
 				return {};
 		}
