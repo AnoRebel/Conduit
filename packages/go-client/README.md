@@ -5,7 +5,7 @@ A Go client library for the [Conduit](https://github.com/AnoRebel/conduit) WebRT
 ## Installation
 
 ```bash
-go get github.com/AnoRebel/conduit-go
+go get github.com/AnoRebel/Conduit/packages/go-client
 ```
 
 ## Quick Start
@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 
-	conduit "github.com/AnoRebel/conduit-go"
+	conduit "github.com/AnoRebel/Conduit/packages/go-client"
 )
 
 func main() {

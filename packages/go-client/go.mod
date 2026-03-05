@@ -1,4 +1,4 @@
-module github.com/AnoRebel/conduit-go
+module github.com/AnoRebel/Conduit/packages/go-client
 
 go 1.26
 

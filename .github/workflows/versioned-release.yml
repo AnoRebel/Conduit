@@ -266,7 +266,7 @@ jobs:
           echo "" >> RELEASE_NOTES.md
           echo "#### Go" >> RELEASE_NOTES.md
           echo '```bash' >> RELEASE_NOTES.md
-          echo "go get github.com/AnoRebel/conduit-go@v$VERSION" >> RELEASE_NOTES.md
+          echo "go get github.com/AnoRebel/Conduit/packages/go-client@v$VERSION" >> RELEASE_NOTES.md
           echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           echo "### Docker" >> RELEASE_NOTES.md
