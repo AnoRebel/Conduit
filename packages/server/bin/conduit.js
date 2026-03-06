@@ -7,7 +7,7 @@ import { createConduitServer } from "../dist/adapters/node.js";
 
 const program = new Command();
 
-program.name("conduit").description("Conduit Server - WebRTC signaling server").version("1.0.0");
+program.name("conduit").description("Conduit Server - WebRTC signaling server").version("1.0.1");
 
 program
 	.command("start")
@@ -60,7 +60,7 @@ program
 
 		console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║                   Conduit Server v1.0.0                   ║
+║                   Conduit Server v1.0.1
 ╚═══════════════════════════════════════════════════════════╝
 `);
 
