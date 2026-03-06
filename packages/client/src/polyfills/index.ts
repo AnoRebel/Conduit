@@ -18,11 +18,16 @@ export async function loadPolyfills(): Promise<void> {
 		}
 
 		// ReadableStream polyfill for streaming data connections
+		// Only needed in very old browsers; modern Node/Deno/Bun all have ReadableStream.
+		// The dynamic specifier variable prevents JSR from rewriting the bare npm specifier
+		// to a relative path (which would not exist in the published package).
 		if (typeof ReadableStream === "undefined") {
 			logger.log("Loading ReadableStream polyfill");
 			try {
-				const { ReadableStream: RS } = await import("web-streams-polyfill");
-				if (typeof globalThis.ReadableStream === "undefined") {
+				const mod = "web-streams-polyfill";
+				const polyfill = await import(/* @vite-ignore */ mod);
+				const RS = polyfill.ReadableStream;
+				if (RS && typeof globalThis.ReadableStream === "undefined") {
 					(globalThis as unknown as { ReadableStream: typeof RS }).ReadableStream = RS;
 				}
 			} catch {
