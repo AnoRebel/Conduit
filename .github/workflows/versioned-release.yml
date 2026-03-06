@@ -309,6 +309,9 @@ jobs:
           echo "Tag: ${{ needs.prepare.outputs.tag }}"
           echo "Prerelease: ${{ needs.prepare.outputs.is_prerelease }}"
 
+      - name: Format version-bumped files
+        run: bunx biome format --write .
+
       - name: Commit and tag
         if: ${{ !inputs.dry_run }}
         run: |
@@ -316,10 +319,10 @@ jobs:
           TAG="${{ needs.prepare.outputs.tag }}"
 
           git add -A
-          git commit -m "chore(release): $VERSION" || echo "No changes to commit"
+          git commit --no-verify -m "chore(release): $VERSION" || echo "No changes to commit"
           git tag -a "$TAG" -m "Release $VERSION"
-          git push origin HEAD:${{ github.ref_name }}
-          git push origin "$TAG"
+          git push --no-verify origin HEAD:${{ github.ref_name }}
+          git push --no-verify origin "$TAG"
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
