@@ -1,7 +1,8 @@
 /**
- * Hono adapter for Conduit Server
+ * @module @conduit/server/adapters/hono
  *
- * Usage:
+ * Hono middleware adapter for Conduit Server.
+ *
  * ```typescript
  * import { Hono } from 'hono';
  * import { createConduitMiddleware } from '@conduit/server/adapters/hono';

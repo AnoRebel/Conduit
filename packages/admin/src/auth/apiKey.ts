@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { AuthResult } from "./index.js";
 
+/** Authenticator that validates requests against a static API key using constant-time comparison. */
 export class ApiKeyAuth {
 	private readonly _apiKey: string | undefined;
 	private readonly _apiKeyBuffer: Buffer | undefined;

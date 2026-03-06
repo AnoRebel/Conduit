@@ -1,7 +1,8 @@
 /**
- * Express adapter for Conduit Server
+ * @module @conduit/server/adapters/express
  *
- * Usage:
+ * Express middleware adapter for Conduit Server.
+ *
  * ```typescript
  * import express from 'express';
  * import { ExpressConduitServer } from '@conduit/server/adapters/express';

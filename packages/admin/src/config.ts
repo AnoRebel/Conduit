@@ -142,6 +142,7 @@ export interface AdminConfig {
 // Default Configuration
 // ============================================================================
 
+/** Default admin configuration values. */
 export const defaultAdminConfig: AdminConfig = {
 	path: "/admin",
 	apiVersion: "v1",
@@ -180,8 +181,10 @@ export const defaultAdminConfig: AdminConfig = {
 // Configuration Factory
 // ============================================================================
 
+/** Partial overrides accepted by {@link createAdminConfig}. */
 export type AdminConfigOptions = Partial<AdminConfig>;
 
+/** Create a full {@link AdminConfig} by merging partial overrides with defaults. */
 export function createAdminConfig(options: AdminConfigOptions = {}): AdminConfig {
 	return {
 		...defaultAdminConfig,
@@ -217,6 +220,7 @@ export function createAdminConfig(options: AdminConfigOptions = {}): AdminConfig
 // Validation
 // ============================================================================
 
+/** Validate an {@link AdminConfig} and return any configuration errors. */
 export function validateAdminConfig(config: AdminConfig): { valid: boolean; errors: string[] } {
 	const errors: string[] = [];
 

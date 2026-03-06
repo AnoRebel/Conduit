@@ -1,3 +1,18 @@
+/**
+ * @module @conduit/server
+ *
+ * WebRTC signaling server for Conduit. Provides the core server logic
+ * and adapters for Node.js, Bun, Hono, Express, and Fastify.
+ *
+ * @example
+ * ```typescript
+ * import { createConduitServer } from '@conduit/server/adapters/node';
+ *
+ * const server = createConduitServer({ config: { port: 9000 } });
+ * server.listen();
+ * ```
+ */
+
 // ============================================================================
 // Re-export shared types and enums
 // ============================================================================

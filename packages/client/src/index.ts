@@ -1,3 +1,21 @@
+/**
+ * @module @conduit/client
+ *
+ * WebRTC peer-to-peer client for data, video, and audio connections.
+ * Connects to a Conduit signaling server to establish direct peer connections.
+ *
+ * @example
+ * ```typescript
+ * import { Conduit } from '@conduit/client';
+ *
+ * const peer = new Conduit('my-peer-id', { host: 'localhost', port: 9000 });
+ * peer.on('open', (id) => console.log('Connected as', id));
+ *
+ * const conn = peer.connect('other-peer');
+ * conn.on('data', (data) => console.log('Received:', data));
+ * ```
+ */
+
 // Import adapter for browser compatibility
 import "webrtc-adapter";
 

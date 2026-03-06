@@ -1,5 +1,6 @@
 import pino, { type LoggerOptions, type Logger as PinoLogger } from "pino";
 
+/** Supported log levels, matching pino's level names. */
 export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
 
 export interface LoggerConfig {
@@ -96,7 +97,7 @@ export function wrapLogger(pinoLogger: PinoLogger): ILogger {
 	};
 }
 
-// Default export for convenience
+/** Convenience namespace bundling all logger factory functions. */
 export const logger = {
 	create: createLogger,
 	get: getLogger,

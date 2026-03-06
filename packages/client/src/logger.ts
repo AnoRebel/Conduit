@@ -1,11 +1,17 @@
+/** Verbosity level for the Conduit client logger. */
 export enum LogLevel {
+	/** No logging output. */
 	Disabled = 0,
+	/** Log only errors. */
 	Errors = 1,
+	/** Log errors and warnings. */
 	Warnings = 2,
+	/** Log everything (debug). */
 	All = 3,
 }
 
-class Logger {
+/** Logger with configurable verbosity for the Conduit client. */
+export class Logger {
 	private _logLevel: LogLevel = LogLevel.Disabled;
 
 	get logLevel(): LogLevel {
@@ -56,4 +62,5 @@ class Logger {
 	}
 }
 
-export const logger = new Logger();
+/** Singleton logger instance used throughout the Conduit client. */
+export const logger: Logger = new Logger();

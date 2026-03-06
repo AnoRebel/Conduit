@@ -4,9 +4,7 @@ import type { RateLimitConfig } from "../types.js";
 import type { AuditLogger } from "./audit.js";
 import type { BanManager } from "./bans.js";
 
-/**
- * Extended server core interface with additional methods we need
- */
+/** Server core interface extended with realm access for admin actions. */
 export interface ActionableServerCore extends InstrumentableServerCore {
 	readonly realm: {
 		getClientIds(): string[];
@@ -22,6 +20,7 @@ export interface ActionableServerCore extends InstrumentableServerCore {
 	};
 }
 
+/** Minimal client interface with socket access for admin operations. */
 export interface ActionableClient {
 	id: string;
 	token: string;
@@ -29,6 +28,7 @@ export interface ActionableClient {
 	send(message: IMessage): void;
 }
 
+/** Administrative action methods for managing clients, bans, and server features. */
 export interface AdminActions {
 	disconnectClient(clientId: string, userId: string): boolean;
 	disconnectAllClients(userId: string): number;
@@ -42,12 +42,14 @@ export interface AdminActions {
 	toggleFeature(feature: "discovery" | "relay", enabled: boolean, userId: string): void;
 }
 
+/** Options for {@link createAdminActions}. */
 export interface AdminActionsOptions {
 	serverCore: ActionableServerCore;
 	banManager: BanManager;
 	auditLogger: AuditLogger;
 }
 
+/** Create an {@link AdminActions} implementation backed by the given server core, ban manager, and audit logger. */
 export function createAdminActions(options: AdminActionsOptions): AdminActions {
 	const { serverCore, banManager, auditLogger } = options;
 

@@ -31,26 +31,42 @@ function safeCompare(a: string, b: string): boolean {
 	return timingSafeEqual(bufA, bufB);
 }
 
+/** The core Conduit signaling server — transport-agnostic. */
 export interface ConduitServerCore {
+	/** The realm that tracks all connected clients and queued messages. */
 	readonly realm: IRealm;
+	/** Resolved server configuration. */
 	readonly config: ServerConfig;
+	/** Structured logger instance. */
 	readonly logger: ILogger;
 
+	/** Process a new WebSocket connection; returns the client or `null` on rejection. */
 	handleConnection(socket: WebSocket, id: string, token: string, key: string): IClient | null;
+	/** Process an incoming WebSocket message from an authenticated client. */
 	handleMessage(client: IClient, data: RawData | string): void;
+	/** Handle a client WebSocket disconnect. */
 	handleDisconnect(client: IClient): void;
+	/** Generate a cryptographically random, collision-free client ID. */
 	generateClientId(): string;
+	/** Start background maintenance tasks (heartbeat checks, message expiry). */
 	start(): void;
+	/** Stop all background tasks and release resources. */
 	stop(): void;
 }
 
+/** Options accepted by {@link createConduitServerCore}. */
 export interface CreateConduitServerCoreOptions {
+	/** Partial server configuration (merged with defaults). */
 	config?: Partial<ServerConfig>;
+	/** Custom message handler; uses {@link DefaultMessageHandler} when omitted. */
 	messageHandler?: MessageHandler;
+	/** Callback invoked when a client successfully connects. */
 	onClientConnect?: (client: IClient) => void;
+	/** Callback invoked when a client disconnects. */
 	onClientDisconnect?: (clientId: string) => void;
 }
 
+/** Create a new transport-agnostic Conduit signaling server core. */
 export function createConduitServerCore(
 	options: CreateConduitServerCoreOptions = {}
 ): ConduitServerCore {

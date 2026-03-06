@@ -10,24 +10,37 @@ import type { Conduit } from "../conduit.js";
 import { logger } from "../logger.js";
 import { type NegotiableConnection, Negotiator } from "../negotiator.js";
 
+/** Events emitted by a {@link DataConnection}. */
 export interface DataConnectionEvents {
+	/** Fired when the WebRTC data channel is open and ready. */
 	open: () => void;
+	/** Fired when data is received from the remote peer. */
 	data: (data: unknown) => void;
+	/** Fired when the data channel is closed. */
 	close: () => void;
+	/** Fired when an error occurs on the data channel. */
 	error: (error: Error) => void;
+	/** Fired when the ICE connection state changes. */
 	iceStateChanged: (state: RTCIceConnectionState) => void;
 }
 
+/** Options for creating a {@link DataConnection}. */
 export interface DataConnectionOptions extends BaseConnectionOptions {
+	/** Serialization format for data sent over this connection. */
 	serialization?: SerializationType;
+	/** Whether the data channel should guarantee ordered delivery. */
 	reliable?: boolean;
-	/** Maximum buffer size in bytes (default: 64KB). Messages are dropped if exceeded. */
+	/** Maximum buffer size in bytes (default: 64 KB). Messages are dropped if exceeded. */
 	maxBufferSize?: number;
 }
 
 // Default maximum buffer size (64KB)
 const DEFAULT_MAX_BUFFER_SIZE = 64 * 1024;
 
+/**
+ * A WebRTC data channel connection to a remote peer.
+ * Supports binary, JSON, and raw serialization modes.
+ */
 export class DataConnection
 	extends EventEmitter<DataConnectionEvents>
 	implements NegotiableConnection

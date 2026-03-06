@@ -1,4 +1,15 @@
-// Version - Single source of truth for Conduit version
+/**
+ * @module @conduit/shared
+ *
+ * Shared types, enums, and constants for the Conduit WebRTC signaling ecosystem.
+ * This package provides the foundational building blocks used by both
+ * `@conduit/client` and `@conduit/server`.
+ *
+ * @example
+ * ```typescript
+ * import { MessageType, ConnectionType, VERSION } from '@conduit/shared';
+ * ```
+ */
 
 // Enums - Re-export all enum types and values
 export {

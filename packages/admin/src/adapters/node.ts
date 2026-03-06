@@ -1,3 +1,20 @@
+/**
+ * @module @conduit/admin/adapters/node
+ *
+ * Node.js HTTP adapter for the Conduit Admin API. Creates a standalone admin
+ * server with REST endpoints, SSE streams, and WebSocket support.
+ *
+ * @example
+ * ```typescript
+ * import { createNodeAdminServer } from '@conduit/admin/adapters/node';
+ * import { createAdminCore } from '@conduit/admin';
+ *
+ * const admin = createAdminCore({ config: createAdminConfig() });
+ * const server = createNodeAdminServer({ admin });
+ * server.listen(9001);
+ * ```
+ */
+
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AdminRateLimitConfig } from "../config.js";
 import type { AdminCore } from "../core/index.js";

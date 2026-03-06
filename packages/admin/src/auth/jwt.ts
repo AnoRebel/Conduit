@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import type { JWTPayload } from "../types.js";
 import type { AuthResult } from "./index.js";
 
+/** Authenticator for JWT-based authentication with token generation and validation. */
 export class JWTAuth {
 	private readonly _secret: string;
 	private readonly _expiresIn: number;

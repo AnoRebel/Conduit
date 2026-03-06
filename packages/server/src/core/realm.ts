@@ -2,16 +2,25 @@ import { randomBytes } from "node:crypto";
 import type { IClient } from "./client.js";
 import { type IMessageQueue, MessageQueue } from "./messageQueue.js";
 
+/** Tracks all connected clients and their pending message queues. */
 export interface IRealm {
+	/** Look up a client by ID. */
 	getClient(id: string): IClient | undefined;
+	/** Return all connected client IDs. */
 	getClientIds(): string[];
+	/** Register a client in the realm. */
 	setClient(client: IClient): void;
+	/** Remove and return a client by ID. */
 	removeClient(id: string): IClient | undefined;
+	/** Access the realm's message queue. */
 	getMessageQueue(): IMessageQueue;
+	/** Generate a unique client ID. */
 	generateClientId(): string;
+	/** Check whether a client with the given ID exists. */
 	clientExists(id: string): boolean;
 }
 
+/** In-memory implementation of {@link IRealm}. */
 export class Realm implements IRealm {
 	private readonly _clients: Map<string, IClient> = new Map();
 	private readonly _messageQueue: MessageQueue = new MessageQueue();

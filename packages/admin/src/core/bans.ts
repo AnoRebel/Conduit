@@ -1,6 +1,7 @@
 import type { PersistenceStore } from "../persistence/index.js";
 import type { BanEntry } from "../types.js";
 
+/** Manager for client and IP bans with optional persistent storage. */
 export interface BanManager {
 	banClient(clientId: string, reason?: string): BanEntry;
 	unbanClient(clientId: string): boolean;
@@ -15,10 +16,12 @@ export interface BanManager {
 	clear(): void;
 }
 
+/** Options for {@link createBanManager}. */
 export interface BanManagerOptions {
 	store?: PersistenceStore;
 }
 
+/** Create a {@link BanManager} with optional persistence backing. */
 export function createBanManager(options: BanManagerOptions = {}): BanManager {
 	const { store } = options;
 	const bans = new Map<string, BanEntry>();

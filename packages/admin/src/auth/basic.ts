@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { AuthResult } from "./index.js";
 
+/** Authenticator for HTTP Basic authentication with constant-time credential comparison. */
 export class BasicAuth {
 	private readonly _username: string;
 	private readonly _expectedBuffer: Buffer;

@@ -1,6 +1,7 @@
 import type { PersistenceStore } from "../persistence/index.js";
 import type { AuditAction, AuditEntry } from "../types.js";
 
+/** Audit logger for recording and querying admin operations. */
 export interface AuditLogger {
 	log(action: AuditAction, userId: string, details?: Record<string, unknown>): AuditEntry;
 	getEntries(limit?: number): AuditEntry[];
@@ -12,12 +13,14 @@ export interface AuditLogger {
 	readonly size: number;
 }
 
+/** Options for {@link createAuditLogger}. */
 export interface AuditLoggerOptions {
 	enabled?: boolean;
 	maxEntries?: number;
 	store?: PersistenceStore;
 }
 
+/** Create an {@link AuditLogger} with optional persistence backing. */
 export function createAuditLogger(options: AuditLoggerOptions = {}): AuditLogger {
 	const { enabled = true, maxEntries = 1000, store } = options;
 

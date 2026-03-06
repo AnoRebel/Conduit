@@ -6,6 +6,7 @@ import type { AuditAction, AuditEntry, BanEntry } from "../types.js";
 import { MemoryStore } from "./memory.js";
 import { SQLiteStore } from "./sqlite.js";
 
+/** Configuration for selecting the persistence backend. */
 export interface PersistenceConfig {
 	/** Storage type: "memory" (default) or "sqlite" */
 	type: "memory" | "sqlite";
@@ -13,6 +14,7 @@ export interface PersistenceConfig {
 	dbPath?: string;
 }
 
+/** Abstract data store for persisting bans and audit entries. */
 export interface PersistenceStore {
 	// Ban operations
 	saveBan(entry: BanEntry): void;
@@ -38,6 +40,7 @@ export interface PersistenceStore {
 // Factory
 // ============================================================================
 
+/** Create a {@link PersistenceStore} based on the given configuration. */
 export function createPersistenceStore(
 	config: PersistenceConfig = { type: "memory" }
 ): PersistenceStore {

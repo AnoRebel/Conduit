@@ -1,5 +1,7 @@
 /**
- * MsgPack serialization adapter for Conduit
+ * @module @conduit/client/msgpack
+ *
+ * MsgPack serialization adapter for Conduit.
  *
  * Usage:
  * ```typescript

@@ -8,7 +8,40 @@ const DEFAULT_CONFIG = {
 	sdpSemantics: "unified-plan" as const,
 };
 
-export const util = {
+/** Utility helpers for the Conduit client. */
+export interface ConduitUtil {
+	noop(): void;
+	readonly CLOUD_HOST: "conduit.anorebel.net";
+	readonly CLOUD_PORT: 443;
+	chunkedBrowsers: { Chrome: number; chrome: number };
+	chunkedMTU: number;
+	defaultConfig: RTCConfiguration;
+	browser: string;
+	browserVersion: number;
+	supports: {
+		browser: boolean;
+		webRTC: boolean;
+		audioVideo: boolean;
+		data: boolean;
+		binaryBlob: boolean;
+		reliable: boolean;
+		webSocket: boolean;
+	};
+	validateId(id: string): boolean;
+	randomToken(): string;
+	pack<T>(data: T): ArrayBuffer | string;
+	unpack<T>(data: string | ArrayBuffer): T;
+	chunk(blob: Blob): { __peerData: number; n: number; total: number; data: Blob }[];
+	blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer>;
+	isSecure(): boolean;
+	version: string;
+}
+
+/**
+ * Utility helpers for the Conduit client — token generation, ID validation,
+ * binary packing, blob chunking, and browser detection.
+ */
+export const util: ConduitUtil = {
 	noop(): void {},
 
 	CLOUD_HOST: "conduit.anorebel.net" as const,

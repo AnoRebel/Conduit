@@ -6,16 +6,25 @@ import { supports } from "../supports.js";
 import { DataConnection, type DataConnectionOptions } from "./DataConnection.js";
 import { WebSocketConnection, type WebSocketConnectionOptions } from "./WebSocketConnection.js";
 
+/** Events emitted by an {@link AutoConnection}. */
 export interface AutoConnectionEvents {
+	/** Fired when the connection is open and ready. */
 	open: () => void;
+	/** Fired when data is received from the remote peer. */
 	data: (data: unknown) => void;
+	/** Fired when the connection is closed. */
 	close: () => void;
+	/** Fired when an error occurs. */
 	error: (error: Error) => void;
+	/** Fired when the transport is changed (e.g. WebRTC → WebSocket fallback). */
 	transportChanged: (transport: TransportType) => void;
 }
 
+/** Options for creating an {@link AutoConnection}. */
 export interface AutoConnectionOptions extends DataConnectionOptions, WebSocketConnectionOptions {
+	/** Preferred transport; set to force a specific one instead of auto-selecting. */
 	preferredTransport?: TransportType;
+	/** Timeout in ms before falling back from WebRTC to WebSocket (default: 10 000). */
 	webrtcTimeout?: number;
 }
 

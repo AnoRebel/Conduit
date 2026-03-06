@@ -1,3 +1,18 @@
+/**
+ * @module @conduit/admin/adapters/hono
+ *
+ * Hono middleware adapter for the Conduit Admin API.
+ *
+ * @example
+ * ```typescript
+ * import { Hono } from 'hono';
+ * import { createHonoAdminMiddleware } from '@conduit/admin/adapters/hono';
+ *
+ * const app = new Hono();
+ * app.route('/admin', createHonoAdminMiddleware({ admin }));
+ * ```
+ */
+
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,

@@ -1,6 +1,7 @@
 import type { AuthResult } from "../auth/index.js";
 import type { AdminCore } from "../core/index.js";
 
+/** Context provided to each admin route handler. */
 export interface RouteContext {
 	admin: AdminCore;
 	auth: AuthResult;
@@ -9,14 +10,17 @@ export interface RouteContext {
 	body: unknown;
 }
 
+/** Serializable response returned from a route handler. */
 export interface RouteResponse {
 	status: number;
 	body: unknown;
 	headers?: Record<string, string>;
 }
 
+/** Async-compatible function that processes a request and returns a response. */
 export type RouteHandler = (ctx: RouteContext) => RouteResponse | Promise<RouteResponse>;
 
+/** A registered admin API route. */
 export interface Route {
 	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 	path: string;
@@ -24,7 +28,7 @@ export interface Route {
 	requiresAuth: boolean;
 }
 
-// Helper to create JSON responses
+/** Create a JSON response with the given data and status code. */
 export function json(data: unknown, status = 200): RouteResponse {
 	return {
 		status,
@@ -33,18 +37,22 @@ export function json(data: unknown, status = 200): RouteResponse {
 	};
 }
 
+/** Create an error JSON response. */
 export function error(message: string, status = 400): RouteResponse {
 	return json({ error: message }, status);
 }
 
+/** Create a 404 Not Found response. */
 export function notFound(message = "Not found"): RouteResponse {
 	return error(message, 404);
 }
 
+/** Create a 401 Unauthorized response. */
 export function unauthorized(message = "Unauthorized"): RouteResponse {
 	return error(message, 401);
 }
 
+/** Create a 403 Forbidden response. */
 export function forbidden(message = "Forbidden"): RouteResponse {
 	return error(message, 403);
 }
@@ -57,6 +65,7 @@ import { metricsRoutes } from "./metrics.js";
 // Import route handlers
 import { statusRoutes } from "./status.js";
 
+/** Build the full set of admin API routes. */
 export function createRoutes(): Route[] {
 	return [
 		...statusRoutes,

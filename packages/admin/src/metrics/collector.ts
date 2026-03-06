@@ -4,6 +4,7 @@ import { Counter, CounterMap } from "./counters.js";
 import { Gauge } from "./gauges.js";
 import { CircularTimeSeries } from "./timeseries.js";
 
+/** Central metrics collector with counters, gauges, and time series. */
 export interface MetricsCollector {
 	// Counters
 	readonly connectionsOpened: Counter;

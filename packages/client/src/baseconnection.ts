@@ -2,21 +2,36 @@ import type { ConnectionType, ServerMessage } from "@conduit/shared";
 import { EventEmitter } from "eventemitter3";
 import type { Conduit } from "./conduit.js";
 
+/** Common events shared by all connection types. */
 export interface BaseConnectionEvents {
+	/** Fired when the connection is ready to send/receive data. */
 	open: () => void;
+	/** Fired when the connection is closed. */
 	close: () => void;
+	/** Fired when an error occurs on the connection. */
 	error: (error: Error) => void;
+	/** Fired when the ICE connection state changes. */
 	iceStateChanged: (state: RTCIceConnectionState) => void;
 }
 
+/** Common options shared by all connection types. */
 export interface BaseConnectionOptions {
+	/** Unique identifier for this connection. Auto-generated if omitted. */
 	connectionId?: string;
+	/** Human-readable label for the connection. */
 	label?: string;
+	/** Arbitrary metadata attached to the connection. */
 	metadata?: unknown;
+	/** Whether the underlying channel guarantees ordered, reliable delivery. */
 	reliable?: boolean;
+	/** Serialization format for the connection. */
 	serialization?: string;
 }
 
+/**
+ * Abstract base class for all peer connections.
+ * Provides common properties such as `remote`, `connectionId`, `label`, and `metadata`.
+ */
 export abstract class BaseConnection<
 	T extends BaseConnectionEvents = BaseConnectionEvents,
 > extends EventEmitter<T> {

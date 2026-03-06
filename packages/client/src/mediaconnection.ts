@@ -5,18 +5,30 @@ import type { Conduit } from "./conduit.js";
 import { logger } from "./logger.js";
 import { type NegotiableConnection, Negotiator } from "./negotiator.js";
 
+/** Events emitted by a {@link MediaConnection}. */
 export interface MediaConnectionEvents {
+	/** Fired when a remote media stream is received. */
 	stream: (stream: MediaStream) => void;
+	/** Fired when the media connection is ready. */
 	open: () => void;
+	/** Fired when the media connection is closed. */
 	close: () => void;
+	/** Fired when an error occurs on the media connection. */
 	error: (error: Error) => void;
+	/** Fired when the ICE connection state changes. */
 	iceStateChanged: (state: RTCIceConnectionState) => void;
 }
 
+/** Options for creating a {@link MediaConnection}. */
 export interface MediaConnectionOptions extends BaseConnectionOptions {
+	/** The local media stream to send to the remote peer. */
 	_stream?: MediaStream;
 }
 
+/**
+ * A WebRTC media connection to a remote peer for audio/video streaming.
+ * Use {@link Conduit.call} to initiate a call, or listen for the `"call"` event to answer one.
+ */
 export class MediaConnection
 	extends EventEmitter<MediaConnectionEvents>
 	implements NegotiableConnection

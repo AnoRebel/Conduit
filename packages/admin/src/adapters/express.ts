@@ -1,3 +1,18 @@
+/**
+ * @module @conduit/admin/adapters/express
+ *
+ * Express middleware adapter for the Conduit Admin API.
+ *
+ * @example
+ * ```typescript
+ * import express from 'express';
+ * import { createExpressAdminMiddleware } from '@conduit/admin/adapters/express';
+ *
+ * const app = express();
+ * app.use('/admin', createExpressAdminMiddleware({ admin }));
+ * ```
+ */
+
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,

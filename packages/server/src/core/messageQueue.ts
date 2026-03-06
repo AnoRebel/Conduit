@@ -1,12 +1,18 @@
 import type { IMessage } from "@conduit/shared";
 
+/** Interface for a per-client signaling message queue. */
 export interface IMessageQueue {
+	/** Retrieve and drain all queued messages for the given client ID. */
 	getMessages(id: string): IMessage[];
+	/** Enqueue a message for the given client ID. */
 	addMessage(id: string, message: IMessage): void;
+	/** Remove all queued messages for the given client ID. */
 	clearMessages(id: string): void;
+	/** Timestamp of the last message retrieval for the given client ID. */
 	getLastReadAt(id: string): number;
 }
 
+/** In-memory implementation of {@link IMessageQueue}. */
 export class MessageQueue implements IMessageQueue {
 	private readonly _queues: Map<string, IMessage[]> = new Map();
 	private readonly _lastReadAt: Map<string, number> = new Map();

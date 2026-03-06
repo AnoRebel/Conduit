@@ -1,3 +1,4 @@
+/** A single data point in a time series. */
 export interface TimeSeriesPoint {
 	timestamp: number;
 	value: number;
@@ -187,6 +188,7 @@ export class CircularTimeSeries {
 	}
 }
 
+/** Aggregate statistics computed over a {@link CircularTimeSeries}. */
 export interface TimeSeriesStats {
 	count: number;
 	min: number;

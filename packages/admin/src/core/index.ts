@@ -21,6 +21,7 @@ import { type ActionableServerCore, type AdminActions, createAdminActions } from
 import { type AuditLogger, createAuditLogger } from "./audit.js";
 import { type BanManager, createBanManager } from "./bans.js";
 
+/** Central admin panel controller — manages metrics, bans, audit, and server actions. */
 export interface AdminCore {
 	readonly metrics: MetricsCollector;
 	readonly config: AdminConfig;
@@ -65,10 +66,13 @@ export interface AdminCore {
 	readonly serverCore: InstrumentableServerCore | null;
 }
 
+/** Options for {@link createAdminCore}. */
 export interface CreateAdminCoreOptions {
+	/** Admin configuration. */
 	config: AdminConfig;
 }
 
+/** Create a new {@link AdminCore} instance with the given configuration. */
 export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 	const { config } = options;
 

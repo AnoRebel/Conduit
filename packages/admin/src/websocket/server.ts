@@ -9,6 +9,7 @@ import {
 	serializeEvent,
 } from "./events.js";
 
+/** A connected WebSocket client with subscription tracking. */
 export interface AdminWSClient {
 	id: string;
 	socket: WebSocket;
@@ -17,6 +18,7 @@ export interface AdminWSClient {
 	userId?: string;
 }
 
+/** WebSocket server for broadcasting real-time admin events to connected clients. */
 export interface AdminWSServer {
 	handleConnection(socket: WebSocket, request: IncomingMessage): void;
 	broadcast<T extends AdminEventType>(type: T, data: ServerToClientEvents[T]): number;
@@ -32,6 +34,7 @@ export interface AdminWSServer {
 	emitError(type: string, message: string): void;
 }
 
+/** Options for {@link createAdminWSServer}. */
 export interface AdminWSServerOptions {
 	admin: AdminCore;
 	pingInterval?: number;

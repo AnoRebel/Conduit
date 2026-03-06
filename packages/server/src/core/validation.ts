@@ -1,10 +1,14 @@
 import { MessageType } from "@conduit/shared";
 
-// Maximum sizes for security
+/** Maximum allowed client ID length. */
 export const MAX_ID_LENGTH = 64;
+/** Maximum allowed connection token length. */
 export const MAX_TOKEN_LENGTH = 64;
+/** Maximum allowed API key length. */
 export const MAX_KEY_LENGTH = 64;
-export const MAX_MESSAGE_SIZE = 64 * 1024; // 64KB default
+/** Default maximum message size in bytes (64 KB). */
+export const MAX_MESSAGE_SIZE = 64 * 1024;
+/** Maximum allowed nesting depth for message payloads. */
 export const MAX_PAYLOAD_DEPTH = 10;
 
 // Validation patterns
@@ -12,8 +16,11 @@ const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const TOKEN_PATTERN = /^[A-Za-z0-9_=-]{1,64}$/;
 const KEY_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+/** Result of a validation check — `valid: true` or `valid: false` with an error message. */
 export interface ValidationResult {
+	/** Whether validation passed. */
 	valid: boolean;
+	/** Human-readable error message when `valid` is `false`. */
 	error?: string;
 }
 

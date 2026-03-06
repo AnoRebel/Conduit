@@ -1,12 +1,20 @@
 import { logger } from "./logger.js";
 
+/** Detected browser/runtime capabilities relevant to Conduit. */
 export interface BrowserSupport {
+	/** Whether the runtime is a browser (vs. Node.js). */
 	browser: boolean;
+	/** Whether WebRTC APIs are available. */
 	webRTC: boolean;
+	/** Whether getUserMedia (audio/video capture) is available. */
 	audioVideo: boolean;
+	/** Whether RTCDataChannel is available. */
 	data: boolean;
+	/** Whether binary Blob creation is supported. */
 	binaryBlob: boolean;
+	/** Whether reliable (ordered) data channels are available. */
 	reliable: boolean;
+	/** Whether the WebSocket API is available. */
 	webSocket: boolean;
 }
 
@@ -73,6 +81,7 @@ function isReliableSupported(): boolean {
 	return isDataChannelSupported();
 }
 
+/** Detect the current runtime's WebRTC and related capabilities. */
 export function detectSupport(): BrowserSupport {
 	const browser = detectBrowser();
 	const isBrowser = browser !== "node";
@@ -92,4 +101,5 @@ export function detectSupport(): BrowserSupport {
 	return support;
 }
 
-export const supports = detectSupport();
+/** Cached result of {@link detectSupport}, evaluated once at module load. */
+export const supports: BrowserSupport = detectSupport();

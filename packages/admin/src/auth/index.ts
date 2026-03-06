@@ -5,11 +5,17 @@ import { BasicAuth } from "./basic.js";
 import { JWTAuth } from "./jwt.js";
 import { SessionManager } from "./session.js";
 
+/** Outcome of an authentication attempt. */
 export interface AuthResult {
+	/** Whether authentication succeeded. */
 	valid: boolean;
+	/** Authenticated user identifier (when valid). */
 	userId?: string;
+	/** Role assigned to the authenticated user. */
 	role?: "admin" | "viewer";
+	/** Associated session, if session-based auth was used. */
 	session?: AuthSession;
+	/** Error message on failure. */
 	error?: string;
 }
 
@@ -39,6 +45,7 @@ export interface AuthManager {
 	authenticateRequest(headers: Record<string, string | string[] | undefined>): AuthResult;
 }
 
+/** Create an {@link AuthManager} from the given {@link AuthConfig}. */
 export function createAuthManager(config: AuthConfig): AuthManager {
 	const apiKeyAuth = new ApiKeyAuth(config.apiKey);
 	const jwtAuth = config.jwtSecret ? new JWTAuth(config.jwtSecret, config.jwtExpiresIn) : null;

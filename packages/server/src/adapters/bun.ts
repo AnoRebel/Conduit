@@ -1,7 +1,8 @@
 /**
- * Bun.serve adapter for Conduit Server
+ * @module @conduit/server/adapters/bun
  *
- * Usage:
+ * Bun.serve adapter for Conduit Server.
+ *
  * ```typescript
  * import { createConduitServer } from '@conduit/server/adapters/bun';
  *

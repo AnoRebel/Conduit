@@ -1,3 +1,22 @@
+/**
+ * @module @conduit/admin
+ *
+ * Admin API and dashboard backend for Conduit signaling servers.
+ * Provides authentication, metrics collection, audit logging, ban management,
+ * and REST/SSE/WebSocket endpoints for real-time server monitoring.
+ *
+ * @example
+ * ```typescript
+ * import { createAdminCore, createAdminConfig } from '@conduit/admin';
+ * import { createNodeAdminServer } from '@conduit/admin/adapters/node';
+ *
+ * const config = createAdminConfig({ auth: { methods: ['apiKey'] } });
+ * const admin = createAdminCore({ config });
+ * const server = createNodeAdminServer({ admin });
+ * server.listen(9001);
+ * ```
+ */
+
 // ============================================================================
 // Authentication
 // ============================================================================

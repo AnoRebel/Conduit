@@ -1,3 +1,18 @@
+/**
+ * @module @conduit/server/adapters/node
+ *
+ * Node.js HTTP adapter for Conduit Server. Creates a standalone HTTP + WebSocket
+ * server using the `ws` library.
+ *
+ * @example
+ * ```typescript
+ * import { createConduitServer } from '@conduit/server/adapters/node';
+ *
+ * const server = createConduitServer({ config: { port: 9000 } });
+ * server.listen();
+ * ```
+ */
+
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { parse as parseUrl } from "node:url";
 import { MessageType, VERSION } from "@conduit/shared";

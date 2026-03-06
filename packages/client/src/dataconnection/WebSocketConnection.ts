@@ -3,16 +3,25 @@ import { EventEmitter } from "eventemitter3";
 import type { Conduit } from "../conduit.js";
 import { logger } from "../logger.js";
 
+/** Events emitted by a {@link WebSocketConnection}. */
 export interface WebSocketConnectionEvents {
+	/** Fired when the relay connection is open and ready. */
 	open: () => void;
+	/** Fired when data is received via the server relay. */
 	data: (data: unknown) => void;
+	/** Fired when the relay connection is closed. */
 	close: () => void;
+	/** Fired when an error occurs. */
 	error: (error: Error) => void;
 }
 
+/** Options for creating a {@link WebSocketConnection}. */
 export interface WebSocketConnectionOptions {
+	/** Unique identifier for this connection. Auto-generated if omitted. */
 	connectionId?: string;
+	/** Human-readable label for the connection. */
 	label?: string;
+	/** Arbitrary metadata attached to the connection. */
 	metadata?: unknown;
 }
 

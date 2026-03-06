@@ -1,3 +1,20 @@
+/**
+ * @module @conduit/admin/standalone
+ *
+ * Standalone admin mode for managing multiple Conduit servers remotely.
+ * Connects to multiple server instances and aggregates metrics and status.
+ *
+ * @example
+ * ```typescript
+ * import { createStandaloneAdmin } from '@conduit/admin/standalone';
+ *
+ * const admin = createStandaloneAdmin({
+ *   servers: [{ url: 'http://server1:9000' }, { url: 'http://server2:9000' }],
+ * });
+ * await admin.start();
+ * ```
+ */
+
 import type { AdminConfig } from "../config.js";
 import { type AdminConfigOptions, createAdminConfig } from "../config.js";
 import type { MetricsSnapshot, ServerConnection } from "../types.js";

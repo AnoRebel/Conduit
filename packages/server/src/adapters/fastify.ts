@@ -1,7 +1,8 @@
 /**
- * Fastify adapter for Conduit Server
+ * @module @conduit/server/adapters/fastify
  *
- * Usage:
+ * Fastify plugin adapter for Conduit Server.
+ *
  * ```typescript
  * import Fastify from 'fastify';
  * import { fastifyConduitPlugin } from '@conduit/server/adapters/fastify';

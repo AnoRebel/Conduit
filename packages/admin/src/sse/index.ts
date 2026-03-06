@@ -2,12 +2,14 @@ import type { ServerResponse } from "node:http";
 import type { AdminCore } from "../core/index.js";
 import type { AdminEventType, ServerToClientEvents } from "../websocket/events.js";
 
+/** A connected SSE (Server-Sent Events) client. */
 export interface SSEClient {
 	id: string;
 	response: ServerResponse;
 	subscriptions: Set<AdminEventType>;
 }
 
+/** SSE server that pushes real-time admin events to connected clients. */
 export interface SSEServer {
 	addClient(response: ServerResponse, subscriptions?: AdminEventType[]): SSEClient;
 	removeClient(clientId: string): boolean;
@@ -18,6 +20,7 @@ export interface SSEServer {
 	close(): void;
 }
 
+/** Options for creating an {@link SSEServer}. */
 export interface SSEServerOptions {
 	admin: AdminCore;
 	metricsInterval?: number;
@@ -195,15 +198,21 @@ export function createSSEServer(options: SSEServerOptions): SSEServer {
 	};
 }
 
-/**
- * Create SSE route handlers for the admin API
- */
-export function createSSERoutes(sse: SSEServer) {
+/** SSE route handlers returned by {@link createSSERoutes}. */
+export interface SSERoutes {
+	/** Subscribe to real-time events via SSE, optionally filtering by event type. */
+	events(response: ServerResponse, subscriptions?: AdminEventType[]): SSEClient;
+	/** Subscribe to audit and error log events via SSE. */
+	logs(response: ServerResponse): SSEClient;
+}
+
+/** Create SSE route handlers for the admin API. */
+export function createSSERoutes(sse: SSEServer): SSERoutes {
 	return {
-		events: (response: ServerResponse, subscriptions?: AdminEventType[]) => {
+		events: (response: ServerResponse, subscriptions?: AdminEventType[]): SSEClient => {
 			return sse.addClient(response, subscriptions);
 		},
-		logs: (response: ServerResponse) => {
+		logs: (response: ServerResponse): SSEClient => {
 			return sse.addClient(response, ["audit:entry", "error:occurred"]);
 		},
 	};

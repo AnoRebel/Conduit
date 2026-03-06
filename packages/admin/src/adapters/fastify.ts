@@ -1,3 +1,18 @@
+/**
+ * @module @conduit/admin/adapters/fastify
+ *
+ * Fastify plugin adapter for the Conduit Admin API.
+ *
+ * @example
+ * ```typescript
+ * import Fastify from 'fastify';
+ * import { createFastifyAdminPlugin } from '@conduit/admin/adapters/fastify';
+ *
+ * const fastify = Fastify();
+ * fastify.register(createFastifyAdminPlugin({ admin }));
+ * ```
+ */
+
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,

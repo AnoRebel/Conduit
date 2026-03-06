@@ -16,40 +16,69 @@ import { Socket } from "./socket.js";
 import { supports } from "./supports.js";
 import { util } from "./util.js";
 
+/** Events emitted by the {@link Conduit} peer instance. */
 export interface ConduitEvents {
+	/** Fired when the connection to the signaling server is established and an ID is obtained. */
 	open: (id: string) => void;
+	/** Fired when a new incoming data connection is received from a remote peer. */
 	connection: (connection: DataConnection | AutoConnection | WebSocketConnection) => void;
+	/** Fired when an incoming media call is received from a remote peer. */
 	call: (mediaConnection: MediaConnection) => void;
+	/** Fired when the peer is destroyed and can no longer accept or create connections. */
 	close: () => void;
+	/** Fired when the peer is disconnected from the signaling server (can reconnect). */
 	disconnected: () => void;
+	/** Fired when a fatal error occurs. */
 	error: (error: ConduitError) => void;
 }
 
+/** Configuration options for creating a {@link Conduit} peer instance. */
 export interface ConduitOptions {
+	/** API key for the signaling server (default: `"conduit"`). */
 	key?: string;
+	/** Signaling server hostname. */
 	host?: string;
+	/** Signaling server port. */
 	port?: number;
+	/** Signaling server path prefix (default: `"/"`). */
 	path?: string;
+	/** Whether to use a secure (TLS) connection to the signaling server. */
 	secure?: boolean;
+	/** Authentication token for the signaling server. */
 	token?: string;
+	/** Custom RTCPeerConnection configuration (ICE servers, etc.). */
 	config?: RTCConfiguration;
+	/** Logging verbosity level. */
 	debug?: LogLevel;
+	/** Referrer policy for HTTP requests to the signaling server. */
 	referrerPolicy?: ReferrerPolicy;
+	/** Preferred transport type for data connections. */
 	transport?: TransportType;
+	/** Default serialization format for data connections. */
 	serialization?: SerializationType;
 }
 
+/** Options for establishing a data connection to a remote peer via {@link Conduit.connect}. */
 export interface ConnectOptions {
+	/** A human-readable label for the connection. */
 	label?: string;
+	/** Arbitrary metadata to associate with the connection. */
 	metadata?: unknown;
+	/** Serialization format for data sent over this connection. */
 	serialization?: SerializationType;
+	/** Whether the data channel should guarantee ordered, reliable delivery. */
 	reliable?: boolean;
+	/** Transport type override for this specific connection. */
 	transport?: TransportType;
+	/** Timeout in ms before falling back from WebRTC to WebSocket (default: 10 000). */
 	webrtcTimeout?: number;
 }
 
+/** Options for initiating a media call to a remote peer via {@link Conduit.call}. */
 export interface CallOptions {
+	/** Arbitrary metadata to associate with the call. */
 	metadata?: unknown;
+	/** Optional transform applied to the SDP before sending the offer. */
 	sdpTransform?: (sdp: string) => string;
 }
 
@@ -68,6 +97,21 @@ const DEFAULT_OPTIONS: Partial<ConduitOptions> = {
 const MAX_LOST_MESSAGES_PER_REMOTE = 100;
 const MAX_LOST_MESSAGE_REMOTES = 1000;
 
+/**
+ * The main Conduit peer client.
+ *
+ * Creates a connection to the signaling server and provides methods to connect
+ * to remote peers for data exchange and media calls.
+ *
+ * @example
+ * ```typescript
+ * const peer = new Conduit('my-id', { host: 'localhost', port: 9000 });
+ * peer.on('open', (id) => {
+ *   const conn = peer.connect('remote-id');
+ *   conn.on('open', () => conn.send('hello'));
+ * });
+ * ```
+ */
 export class Conduit extends EventEmitter<ConduitEvents> {
 	private _id: string | null = null;
 	private _lastServerId: string | null = null;

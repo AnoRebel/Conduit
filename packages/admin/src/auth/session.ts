@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { AuthSession } from "../types.js";
 import type { AuthResult } from "./index.js";
 
+/** In-memory session manager with automatic expiry and cleanup. */
 export class SessionManager {
 	private readonly _sessions = new Map<string, AuthSession>();
 	private readonly _timeout: number;

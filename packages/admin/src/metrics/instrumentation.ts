@@ -17,6 +17,7 @@ export interface InstrumentableServerCore {
 	handleDisconnect: (...args: unknown[]) => void;
 }
 
+/** Callback hooks invoked by instrumented server core methods for custom side-effects. */
 export interface InstrumentationHooks {
 	onConnectionOpened?: (clientId: string) => void;
 	onConnectionClosed?: (clientId: string) => void;

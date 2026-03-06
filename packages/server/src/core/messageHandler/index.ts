@@ -11,10 +11,13 @@ import {
 	handleOffer,
 } from "./handlers/transmission.js";
 
+/** Strategy interface for handling incoming signaling messages. */
 export interface MessageHandler {
+	/** Route a message from the given client to the appropriate handler. */
 	handle(client: IClient, message: IMessage): void;
 }
 
+/** Built-in {@link MessageHandler} that dispatches messages by {@link MessageType}. */
 export class DefaultMessageHandler implements MessageHandler {
 	constructor(
 		private readonly realm: IRealm,

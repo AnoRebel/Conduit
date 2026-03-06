@@ -1,7 +1,8 @@
 /**
- * PeerJS Compatibility Layer
+ * @module @conduit/client/peerjs-compat
  *
- * This module provides drop-in compatibility for projects migrating from PeerJS to Conduit.
+ * PeerJS Compatibility Layer.
+ * Provides drop-in compatibility for projects migrating from PeerJS to Conduit.
  *
  * Usage:
  * Replace your PeerJS import:

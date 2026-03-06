@@ -21,32 +21,50 @@ export interface ServerAuthConfig {
 	mode: "key" | "none";
 }
 
+/** Full configuration for the Conduit signaling server. */
 export interface ServerConfig {
+	/** Port to listen on (default: 9000). */
 	port: number;
+	/** Host/IP to bind to (default: "0.0.0.0"). */
 	host: string;
+	/** URL path prefix for the signaling endpoint (default: "/"). */
 	path: string;
+	/** API key that clients must provide (default: "conduit"). */
 	key: string;
 	/** Authentication configuration */
 	auth: ServerAuthConfig;
+	/** Timeout in ms before queued messages expire (default: 5000). */
 	expireTimeout: number;
+	/** Timeout in ms before an idle client is considered broken (default: 60 000). */
 	aliveTimeout: number;
+	/** Maximum number of concurrent client connections (default: 5000). */
 	concurrentLimit: number;
+	/** Allow clients to discover other connected peer IDs (default: false). */
 	allowDiscovery: boolean;
+	/** Interval in ms for cleaning up outgoing message queues (default: 1000). */
 	cleanupOutMsgs: number;
+	/** CORS origin configuration passed to the HTTP adapter. */
 	corsOrigin: string | string[] | boolean;
 	/** Allowed origins for WebSocket connections (default: undefined = allow all, set to array for whitelist) */
 	allowedOrigins?: string[];
+	/** Set to `true` or a header name when running behind a reverse proxy. */
 	proxied: boolean | string;
 	/** Require secure connections (HTTPS/WSS). When true, rejects non-secure connections. (default: false) */
 	requireSecure: boolean;
+	/** WebSocket relay (server-mediated data forwarding) settings. */
 	relay: {
+		/** Whether relay is enabled (default: true). */
 		enabled: boolean;
+		/** Maximum relay message size in bytes (default: 65 536). */
 		maxMessageSize: number;
 	};
+	/** Per-client rate-limiting settings. */
 	rateLimit: RateLimitConfig;
+	/** Structured logging settings. */
 	logging: LoggingConfig;
 }
 
+/** Default server configuration values. */
 export const defaultConfig: ServerConfig = {
 	port: 9000,
 	host: "0.0.0.0",
@@ -79,6 +97,7 @@ export const defaultConfig: ServerConfig = {
 	},
 };
 
+/** Create a full {@link ServerConfig} by merging partial overrides with {@link defaultConfig}. */
 export function createConfig(options: Partial<ServerConfig> = {}): ServerConfig {
 	return {
 		...defaultConfig,
