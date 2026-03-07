@@ -1,6 +1,6 @@
 {
   "name": "@conduit/admin",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "exports": {
     ".": "./src/index.ts",
     "./adapters/node": "./src/adapters/node.ts",
