@@ -17,6 +17,7 @@ export class MessageQueue implements IMessageQueue {
 	private readonly _queues: Map<string, IMessage[]> = new Map();
 	private readonly _lastReadAt: Map<string, number> = new Map();
 
+	/** Retrieve and drain all queued messages for the given client ID. */
 	getMessages(id: string): IMessage[] {
 		const queue = this._queues.get(id);
 		if (!queue) {
@@ -31,6 +32,7 @@ export class MessageQueue implements IMessageQueue {
 		return messages;
 	}
 
+	/** Enqueue a message for the given client ID. */
 	addMessage(id: string, message: IMessage): void {
 		let queue = this._queues.get(id);
 		if (!queue) {
@@ -40,11 +42,13 @@ export class MessageQueue implements IMessageQueue {
 		queue.push(message);
 	}
 
+	/** Remove all queued messages for the given client ID. */
 	clearMessages(id: string): void {
 		this._queues.delete(id);
 		this._lastReadAt.delete(id);
 	}
 
+	/** Timestamp of the last message retrieval for the given client ID. */
 	getLastReadAt(id: string): number {
 		return this._lastReadAt.get(id) || 0;
 	}

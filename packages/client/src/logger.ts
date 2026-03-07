@@ -14,32 +14,38 @@ export enum LogLevel {
 export class Logger {
 	private _logLevel: LogLevel = LogLevel.Disabled;
 
+	/** Get the current logging verbosity level. */
 	get logLevel(): LogLevel {
 		return this._logLevel;
 	}
 
+	/** Set the logging verbosity level. */
 	set logLevel(level: LogLevel) {
 		this._logLevel = level;
 	}
 
+	/** Log a debug message (only shown when level is {@link LogLevel.All}). */
 	log(...args: unknown[]): void {
 		if (this._logLevel >= LogLevel.All) {
 			this._print(LogLevel.All, ...args);
 		}
 	}
 
+	/** Log a warning message (shown when level ≥ {@link LogLevel.Warnings}). */
 	warn(...args: unknown[]): void {
 		if (this._logLevel >= LogLevel.Warnings) {
 			this._print(LogLevel.Warnings, ...args);
 		}
 	}
 
+	/** Log an error message (shown when level ≥ {@link LogLevel.Errors}). */
 	error(...args: unknown[]): void {
 		if (this._logLevel >= LogLevel.Errors) {
 			this._print(LogLevel.Errors, ...args);
 		}
 	}
 
+	/** Replace the default logging function with a custom implementation. */
 	setLogFunction(fn: (level: LogLevel, ...args: unknown[]) => void): void {
 		this._print = fn;
 	}

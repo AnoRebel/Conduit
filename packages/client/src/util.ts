@@ -10,30 +10,54 @@ const DEFAULT_CONFIG = {
 
 /** Utility helpers for the Conduit client. */
 export interface ConduitUtil {
+	/** No-op function placeholder. */
 	noop(): void;
+	/** Default Conduit cloud host. */
 	readonly CLOUD_HOST: "conduit.anorebel.net";
+	/** Default Conduit cloud port. */
 	readonly CLOUD_PORT: 443;
+	/** Map of browsers that require chunked data channel sends. */
 	chunkedBrowsers: { Chrome: number; chrome: number };
+	/** Maximum transmission unit for chunked sends (bytes). */
 	chunkedMTU: number;
+	/** Default `RTCConfiguration` with public STUN servers. */
 	defaultConfig: RTCConfiguration;
+	/** Detected browser name (e.g. `"Chrome"`, `"Firefox"`). */
 	browser: string;
+	/** Detected browser major version number. */
 	browserVersion: number;
+	/** Feature support flags for the current environment. */
 	supports: {
+		/** Whether the environment is a browser. */
 		browser: boolean;
+		/** Whether WebRTC is supported. */
 		webRTC: boolean;
+		/** Whether `getUserMedia` (audio/video) is supported. */
 		audioVideo: boolean;
+		/** Whether data channels are supported. */
 		data: boolean;
+		/** Whether binary Blob data channels are supported. */
 		binaryBlob: boolean;
+		/** Whether reliable (ordered) data channels are supported. */
 		reliable: boolean;
+		/** Whether WebSocket is supported. */
 		webSocket: boolean;
 	};
+	/** Validate a peer ID against allowed characters and length. */
 	validateId(id: string): boolean;
+	/** Generate a cryptographically random token string. */
 	randomToken(): string;
+	/** Serialize data for transmission over a data channel. */
 	pack<T>(data: T): ArrayBuffer | string;
+	/** Deserialize data received from a data channel. */
 	unpack<T>(data: string | ArrayBuffer): T;
+	/** Split a Blob into MTU-sized chunks for reliable delivery. */
 	chunk(blob: Blob): { __peerData: number; n: number; total: number; data: Blob }[];
+	/** Convert a Blob to an ArrayBuffer. */
 	blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer>;
+	/** Whether the page is served over HTTPS. */
 	isSecure(): boolean;
+	/** Current Conduit client library version string. */
 	version: string;
 }
 

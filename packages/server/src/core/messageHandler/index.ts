@@ -24,6 +24,7 @@ export class DefaultMessageHandler implements MessageHandler {
 		private readonly config: ServerConfig
 	) {}
 
+	/** Route a message from the given client to the appropriate handler based on its {@link MessageType}. */
 	handle(client: IClient, message: IMessage): void {
 		const { type } = message;
 

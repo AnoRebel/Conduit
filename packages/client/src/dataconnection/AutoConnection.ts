@@ -36,12 +36,19 @@ const DEFAULT_WEBRTC_TIMEOUT = 10000; // 10 seconds
  * 2. Falls back to WebSocket relay if WebRTC fails or times out
  */
 export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
+	/** Connection type discriminator, always `ConnectionType.Data`. */
 	readonly type = ConnectionType.Data;
+	/** The remote peer ID this connection is with. */
 	readonly remote: string;
+	/** The {@link Conduit} instance that owns this connection. */
 	readonly provider: Conduit;
+	/** Unique identifier for this specific connection. */
 	readonly connectionId: string;
+	/** Human-readable label for the connection. */
 	readonly label: string;
+	/** Arbitrary metadata associated with this connection. */
 	readonly metadata: unknown;
+	/** Configuration options for this auto connection. */
 	readonly options: AutoConnectionOptions;
 
 	private _activeConnection: DataConnection | WebSocketConnection | null = null;
@@ -60,14 +67,17 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 		this.metadata = options.metadata;
 	}
 
+	/** Whether the connection is currently open and ready for data. */
 	get open(): boolean {
 		return this._open;
 	}
 
+	/** The currently active transport type (WebRTC, WebSocket, or Auto during negotiation). */
 	get transport(): TransportType {
 		return this._transport;
 	}
 
+	/** The underlying connection instance, or `null` before initialization. */
 	get activeConnection(): DataConnection | WebSocketConnection | null {
 		return this._activeConnection;
 	}

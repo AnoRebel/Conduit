@@ -31,13 +31,21 @@ export interface WebSocketConnectionOptions {
  * Data is relayed through the signaling server.
  */
 export class WebSocketConnection extends EventEmitter<WebSocketConnectionEvents> {
+	/** Connection type discriminator, always `ConnectionType.Data`. */
 	readonly type = ConnectionType.Data;
+	/** Transport type, always `TransportType.WebSocket`. */
 	readonly transport = TransportType.WebSocket;
+	/** The remote peer ID this connection relays data to. */
 	readonly remote: string;
+	/** The {@link Conduit} instance that owns this connection. */
 	readonly provider: Conduit;
+	/** Unique identifier for this specific connection. */
 	readonly connectionId: string;
+	/** Human-readable label for the connection. */
 	readonly label: string;
+	/** Arbitrary metadata associated with this connection. */
 	readonly metadata: unknown;
+	/** Configuration options for this WebSocket connection. */
 	readonly options: WebSocketConnectionOptions;
 
 	private _open = false;
@@ -53,6 +61,7 @@ export class WebSocketConnection extends EventEmitter<WebSocketConnectionEvents>
 		this.metadata = options.metadata;
 	}
 
+	/** Whether the relay connection is currently open. */
 	get open(): boolean {
 		return this._open;
 	}

@@ -43,6 +43,7 @@ interface FastifyReply {
 
 type FastifyHandler = (request: FastifyRequest, reply: FastifyReply) => void | Promise<void>;
 
+/** Options for the Fastify adapter, extending core server options. */
 export interface FastifyAdapterOptions extends CreateConduitServerCoreOptions {}
 
 // Helper to check if request is secure
@@ -56,6 +57,12 @@ function isSecureRequest(req: IncomingMessage): boolean {
 	return false;
 }
 
+/**
+ * Fastify plugin that registers Conduit signaling routes and WebSocket handling.
+ *
+ * @param fastify - The Fastify instance to register the plugin with.
+ * @param options - Adapter options including server configuration.
+ */
 export async function fastifyConduitPlugin(
 	fastify: FastifyInstance,
 	options: FastifyAdapterOptions = {}

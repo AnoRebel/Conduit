@@ -3,6 +3,7 @@ import pino, { type LoggerOptions, type Logger as PinoLogger } from "pino";
 /** Supported log levels, matching pino's level names. */
 export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
 
+/** Options for configuring the pino-based structured logger. */
 export interface LoggerConfig {
 	/** Log level (default: "info") */
 	level?: LogLevel;
@@ -73,12 +74,19 @@ export function createChildLogger(bindings: Record<string, unknown>): PinoLogger
  * Logger interface for the server core
  */
 export interface ILogger {
+	/** Log a fatal-level message (unrecoverable errors). */
 	fatal(msg: string, ...args: unknown[]): void;
+	/** Log an error-level message. */
 	error(msg: string, ...args: unknown[]): void;
+	/** Log a warning-level message. */
 	warn(msg: string, ...args: unknown[]): void;
+	/** Log an info-level message. */
 	info(msg: string, ...args: unknown[]): void;
+	/** Log a debug-level message. */
 	debug(msg: string, ...args: unknown[]): void;
+	/** Log a trace-level message (finest granularity). */
 	trace(msg: string, ...args: unknown[]): void;
+	/** Create a child logger with additional context bindings. */
 	child(bindings: Record<string, unknown>): ILogger;
 }
 

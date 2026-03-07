@@ -124,7 +124,9 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 	> = new Map();
 	private _lostMessages: Map<string, ServerMessage[]> = new Map();
 
+	/** Resolved configuration options for this peer. */
 	readonly options: ConduitOptions;
+	/** The underlying WebSocket connection to the signaling server. */
 	readonly socket: Socket;
 
 	private readonly _api: API;
@@ -172,22 +174,27 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 	}
 
+	/** The unique peer ID assigned by the signaling server, or `null` if not yet connected. */
 	get id(): string | null {
 		return this._id;
 	}
 
+	/** Whether the connection to the signaling server is open. */
 	get open(): boolean {
 		return this._open;
 	}
 
+	/** Whether this peer has been permanently destroyed. */
 	get destroyed(): boolean {
 		return this._destroyed;
 	}
 
+	/** Whether the peer is currently disconnected from the signaling server. */
 	get disconnected(): boolean {
 		return this._disconnected;
 	}
 
+	/** Map of remote peer IDs to their active connections. */
 	get connections(): Map<
 		string,
 		Array<DataConnection | AutoConnection | WebSocketConnection | MediaConnection>

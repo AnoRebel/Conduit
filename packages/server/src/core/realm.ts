@@ -25,18 +25,22 @@ export class Realm implements IRealm {
 	private readonly _clients: Map<string, IClient> = new Map();
 	private readonly _messageQueue: MessageQueue = new MessageQueue();
 
+	/** Look up a client by ID. */
 	getClient(id: string): IClient | undefined {
 		return this._clients.get(id);
 	}
 
+	/** Return all connected client IDs. */
 	getClientIds(): string[] {
 		return Array.from(this._clients.keys());
 	}
 
+	/** Register a client in the realm. */
 	setClient(client: IClient): void {
 		this._clients.set(client.id, client);
 	}
 
+	/** Remove and return a client by ID. */
 	removeClient(id: string): IClient | undefined {
 		const client = this._clients.get(id);
 		if (client) {
@@ -45,10 +49,12 @@ export class Realm implements IRealm {
 		return client;
 	}
 
+	/** Access the realm's message queue. */
 	getMessageQueue(): IMessageQueue {
 		return this._messageQueue;
 	}
 
+	/** Generate a unique client ID. */
 	generateClientId(): string {
 		let id: string;
 		do {
@@ -57,6 +63,7 @@ export class Realm implements IRealm {
 		return id;
 	}
 
+	/** Check whether a client with the given ID exists. */
 	clientExists(id: string): boolean {
 		return this._clients.has(id);
 	}

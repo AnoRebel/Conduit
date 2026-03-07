@@ -1,5 +1,6 @@
 import type { LogLevel } from "./logger.js";
 
+/** Per-client token-bucket rate limiting configuration. */
 export interface RateLimitConfig {
 	/** Enable rate limiting (default: true) */
 	enabled: boolean;
@@ -9,6 +10,7 @@ export interface RateLimitConfig {
 	refillRate: number;
 }
 
+/** Structured logging configuration for the signaling server. */
 export interface LoggingConfig {
 	/** Log level: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent" (default: "info") */
 	level: LogLevel;
@@ -16,6 +18,7 @@ export interface LoggingConfig {
 	pretty: boolean;
 }
 
+/** Authentication mode configuration for client connections. */
 export interface ServerAuthConfig {
 	/** Authentication mode: "key" requires a signaling key, "none" allows unauthenticated access */
 	mode: "key" | "none";

@@ -30,18 +30,22 @@ export class Client implements IClient {
 		public readonly token: string
 	) {}
 
+	/** The underlying WebSocket, or `null` if disconnected. */
 	get socket(): WebSocket | null {
 		return this._socket;
 	}
 
+	/** Timestamp of the last heartbeat ping. */
 	get lastPing(): number {
 		return this._lastPing;
 	}
 
+	/** Attach or detach the WebSocket for this client. */
 	setSocket(socket: WebSocket | null): void {
 		this._socket = socket;
 	}
 
+	/** Send a signaling message to the client; returns `true` on success. */
 	send(message: IMessage): boolean {
 		if (!this._socket || this._socket.readyState !== 1) {
 			return false;
@@ -55,6 +59,7 @@ export class Client implements IClient {
 		}
 	}
 
+	/** Record a heartbeat ping with the current timestamp. */
 	updateLastPing(): void {
 		this._lastPing = Date.now();
 	}

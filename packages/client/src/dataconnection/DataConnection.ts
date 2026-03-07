@@ -45,14 +45,23 @@ export class DataConnection
 	extends EventEmitter<DataConnectionEvents>
 	implements NegotiableConnection
 {
+	/** Connection type discriminator, always `ConnectionType.Data`. */
 	readonly type = ConnectionType.Data;
+	/** The remote peer ID this connection is with. */
 	readonly remote: string;
+	/** The {@link Conduit} instance that owns this connection. */
 	readonly provider: Conduit;
+	/** Unique identifier for this specific data connection. */
 	readonly connectionId: string;
+	/** Human-readable label for the data channel. */
 	readonly label: string;
+	/** Arbitrary metadata associated with this connection. */
 	readonly metadata: unknown;
+	/** The serialization format used for encoding/decoding data. */
 	readonly serialization: SerializationType;
+	/** Whether the data channel guarantees ordered, reliable delivery. */
 	readonly reliable: boolean;
+	/** Configuration options for this data connection. */
 	readonly options: DataConnectionOptions;
 
 	protected _open = false;
@@ -87,22 +96,27 @@ export class DataConnection
 		this._peerConnection = pc;
 	}
 
+	/** Whether the data channel is currently open and ready. */
 	get open(): boolean {
 		return this._open;
 	}
 
+	/** The underlying `RTCPeerConnection`, or `null` before initialization. */
 	get peerConnection(): RTCPeerConnection | null {
 		return this._peerConnection;
 	}
 
+	/** The underlying `RTCDataChannel`, or `null` before initialization. */
 	get dataChannel(): RTCDataChannel | null {
 		return this._dataChannel;
 	}
 
+	/** Current size of the outgoing message buffer in bytes. */
 	get bufferSize(): number {
 		return this._bufferSize;
 	}
 
+	/** Initialize the WebRTC connection and data channel. */
 	async initialize(originator: boolean): Promise<void> {
 		await this._negotiator.startConnection({ originator });
 
@@ -205,6 +219,7 @@ export class DataConnection
 		}
 	}
 
+	/** Send data to the remote peer over the data channel. Buffers if not yet open. */
 	async send(data: unknown): Promise<void> {
 		if (!this._open) {
 			// Estimate size for buffer limit check
@@ -266,6 +281,7 @@ export class DataConnection
 		this._bufferSize = 0;
 	}
 
+	/** Handle an incoming signaling message (answer or ICE candidate). */
 	handleMessage(message: ServerMessage): void {
 		const payload = message.payload as {
 			sdp?: RTCSessionDescriptionInit;
@@ -286,6 +302,7 @@ export class DataConnection
 		}
 	}
 
+	/** Assign an existing RTCDataChannel to this connection (used for incoming connections). */
 	setDataChannel(dataChannel: RTCDataChannel): void {
 		this._setupDataChannel(dataChannel);
 	}
@@ -316,6 +333,7 @@ export class DataConnection
 		return 8; // Default for primitives
 	}
 
+	/** Close the data channel and peer connection, releasing all resources. */
 	close(): void {
 		if (this._dataChannel) {
 			this._dataChannel.close();

@@ -41,9 +41,12 @@ type NextFunction = () => void;
 
 type ExpressMiddleware = (req: Request, res: Response, next: NextFunction) => void;
 
+/** Options for the Express adapter, extending core server options. */
 export interface ExpressAdapterOptions extends CreateConduitServerCoreOptions {}
 
+/** An Express middleware that also exposes a {@link close} method for graceful shutdown. */
 export interface ExpressConduitInstance extends ExpressMiddleware {
+	/** Gracefully shut down the Conduit server, sending GOAWAY to connected clients. */
 	close: () => void;
 }
 
@@ -58,6 +61,13 @@ function isSecureRequest(req: IncomingMessage): boolean {
 	return false;
 }
 
+/**
+ * Create an Express middleware that adds Conduit signaling routes and WebSocket handling.
+ *
+ * @param server - The underlying Node.js HTTP server (from `app.listen()`).
+ * @param options - Adapter options including server configuration.
+ * @returns An Express middleware function with an attached {@link ExpressConduitInstance.close | close()} method.
+ */
 export function ExpressConduitServer(
 	server: Server,
 	options: ExpressAdapterOptions = {}

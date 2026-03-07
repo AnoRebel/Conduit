@@ -25,19 +25,34 @@ import {
 } from "../core/index.js";
 import type { ILogger } from "../logger.js";
 
+/** Options for the Node.js HTTP adapter, extending the core options with an optional pre-existing HTTP server. */
 export interface NodeAdapterOptions extends CreateConduitServerCoreOptions {
+	/** An existing HTTP server to attach to; if omitted, a new server is created. */
 	server?: Server;
 }
 
+/** A running Conduit server instance backed by Node.js HTTP and the `ws` WebSocket library. */
 export interface ConduitServer {
+	/** The underlying Node.js HTTP server. */
 	readonly server: Server;
+	/** The `ws` WebSocket server handling signaling connections. */
 	readonly wss: WebSocketServer;
+	/** The Conduit server core that manages clients, realms, and message routing. */
 	readonly core: ConduitServerCore;
+	/** Logger instance used by this server. */
 	readonly logger: ILogger;
+	/** Start listening for HTTP and WebSocket connections on the given port and host. */
 	listen(port?: number, host?: string, callback?: () => void): void;
+	/** Gracefully shut down the server, sending GOAWAY to connected clients first. */
 	close(callback?: (err?: Error) => void): void;
 }
 
+/**
+ * Create a standalone Conduit signaling server using Node.js HTTP and the `ws` WebSocket library.
+ *
+ * @param options - Adapter options including server configuration and an optional pre-existing HTTP server.
+ * @returns A {@link ConduitServer} instance ready to {@link ConduitServer.listen | listen} for connections.
+ */
 export function createConduitServer(options: NodeAdapterOptions = {}): ConduitServer {
 	const core = createConduitServerCore(options);
 	const config = core.config;

@@ -33,12 +33,19 @@ export class MediaConnection
 	extends EventEmitter<MediaConnectionEvents>
 	implements NegotiableConnection
 {
+	/** Connection type discriminator, always `ConnectionType.Media`. */
 	readonly type = ConnectionType.Media;
+	/** The remote peer ID this media connection is with. */
 	readonly remote: string;
+	/** The {@link Conduit} instance that owns this connection. */
 	readonly provider: Conduit;
+	/** Unique identifier for this specific media connection. */
 	readonly connectionId: string;
+	/** Human-readable label for the connection. */
 	readonly label: string;
+	/** Arbitrary metadata associated with this connection. */
 	readonly metadata: unknown;
+	/** Configuration options for this media connection. */
 	readonly options: MediaConnectionOptions;
 
 	protected _open = false;
@@ -68,22 +75,27 @@ export class MediaConnection
 		this._peerConnection = pc;
 	}
 
+	/** Whether the media connection is currently open. */
 	get open(): boolean {
 		return this._open;
 	}
 
+	/** The underlying `RTCPeerConnection`, or `null` before initialization. */
 	get peerConnection(): RTCPeerConnection | null {
 		return this._peerConnection;
 	}
 
+	/** The local media stream being sent to the remote peer, or `null`. */
 	get localStream(): MediaStream | null {
 		return this._localStream;
 	}
 
+	/** The remote media stream received from the peer, or `null`. */
 	get remoteStream(): MediaStream | null {
 		return this._remoteStream;
 	}
 
+	/** Initialize the WebRTC peer connection for media exchange. */
 	async initialize(originator: boolean): Promise<void> {
 		await this._negotiator.startConnection({ originator });
 
@@ -148,6 +160,7 @@ export class MediaConnection
 		}
 	}
 
+	/** Handle an incoming signaling message (offer, answer, or ICE candidate). */
 	handleMessage(message: ServerMessage): void {
 		const payload = message.payload as {
 			sdp?: RTCSessionDescriptionInit;
@@ -173,6 +186,7 @@ export class MediaConnection
 		}
 	}
 
+	/** Close the media connection, stopping all tracks and releasing resources. */
 	close(): void {
 		if (this._localStream) {
 			for (const track of this._localStream.getTracks()) {

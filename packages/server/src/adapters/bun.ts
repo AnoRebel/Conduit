@@ -33,12 +33,18 @@ interface BunServer {
 	stop(closeActiveConnections?: boolean): void;
 }
 
+/** Options for the Bun adapter, extending core server options. */
 export interface BunAdapterOptions extends CreateConduitServerCoreOptions {}
 
+/** A Conduit server instance built for the Bun runtime. */
 export interface BunConduitServer {
+	/** The Conduit server core that manages clients, realms, and message routing. */
 	readonly core: ConduitServerCore;
+	/** Start the server via `Bun.serve()` and return the Bun server handle. */
 	serve(): BunServer;
+	/** Get the raw `Bun.serve()` options for advanced composition (e.g. adding custom routes). */
 	getServeOptions(): BunServeOptions;
+	/** Gracefully shut down the server, sending GOAWAY to connected clients first. */
 	close(): void;
 }
 
@@ -60,6 +66,12 @@ interface WebSocketData {
 	key: string;
 }
 
+/**
+ * Create a Conduit signaling server optimised for the Bun runtime.
+ *
+ * @param options - Adapter options including server configuration.
+ * @returns A {@link BunConduitServer} that can be started with {@link BunConduitServer.serve | serve()}.
+ */
 export function createConduitServer(options: BunAdapterOptions = {}): BunConduitServer {
 	const core = createConduitServerCore(options);
 	const config = core.config;

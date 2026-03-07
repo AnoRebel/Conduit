@@ -38,19 +38,31 @@ interface HonoContext {
 
 type HonoMiddleware = (c: HonoContext, next: () => Promise<void>) => Promise<Response | void>;
 
+/** Options for the Hono adapter, extending core server options. */
 export interface HonoAdapterOptions extends CreateConduitServerCoreOptions {}
 
+/** A Conduit server instance designed for the Hono framework. */
 export interface HonoConduitServer {
+	/** The Conduit server core that manages clients, realms, and message routing. */
 	readonly core: ConduitServerCore;
+	/** Hono middleware that handles HTTP requests and CORS for Conduit routes. */
 	readonly middleware: HonoMiddleware;
+	/** Get an array of route definitions for manual registration with a Hono app. */
 	getRoutes(): {
 		path: string;
 		method: string;
 		handler: (c: HonoContext) => Response | Promise<Response>;
 	}[];
+	/** Stop the Conduit server core and release resources. */
 	destroy(): void;
 }
 
+/**
+ * Create a Conduit signaling server as Hono middleware.
+ *
+ * @param options - Adapter options including server configuration.
+ * @returns A {@link HonoConduitServer} with middleware and route helpers.
+ */
 export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoConduitServer {
 	const core = createConduitServerCore(options);
 	const config = core.config;

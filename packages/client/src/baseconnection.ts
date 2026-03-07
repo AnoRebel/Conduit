@@ -38,13 +38,20 @@ export abstract class BaseConnection<
 	protected _open = false;
 	protected _peerConnection: RTCPeerConnection | null = null;
 
+	/** The remote peer ID this connection is with. */
 	readonly remote: string;
+	/** The {@link Conduit} instance that owns this connection. */
 	readonly provider: Conduit;
+	/** The options used to create this connection. */
 	readonly options: BaseConnectionOptions;
+	/** Unique identifier for this specific connection. */
 	readonly connectionId: string;
+	/** The connection type (data or media). */
 	abstract readonly type: ConnectionType;
 
+	/** Arbitrary metadata associated with this connection. */
 	readonly metadata: unknown;
+	/** Human-readable label for this connection. */
 	readonly label: string;
 
 	constructor(remoteId: string, provider: Conduit, options: BaseConnectionOptions = {}) {
@@ -62,15 +69,19 @@ export abstract class BaseConnection<
 		return `${this.type}_${Math.random().toString(36).slice(2)}`;
 	}
 
+	/** Whether the connection is currently open and ready for data. */
 	get open(): boolean {
 		return this._open;
 	}
 
+	/** The underlying `RTCPeerConnection`, or `null` if not applicable. */
 	get peerConnection(): RTCPeerConnection | null {
 		return this._peerConnection;
 	}
 
+	/** Close the connection and release resources. */
 	abstract close(): void;
 
+	/** Handle an incoming signaling message from the server. */
 	abstract handleMessage(message: ServerMessage): void;
 }
