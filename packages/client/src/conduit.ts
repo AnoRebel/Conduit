@@ -113,22 +113,22 @@ const MAX_LOST_MESSAGE_REMOTES = 1000;
  * ```
  */
 export class Conduit extends EventEmitter<ConduitEvents> {
-	/** @internal Current peer ID, `null` until the server assigns one. */
+	/** @ignore Current peer ID, `null` until the server assigns one. */
 	private _id: string | null = null;
-	/** @internal Last server-assigned ID, used for reconnection. */
+	/** @ignore Last server-assigned ID, used for reconnection. */
 	private _lastServerId: string | null = null;
-	/** @internal Whether {@link destroy} has been called. */
+	/** @ignore Whether {@link destroy} has been called. */
 	private _destroyed = false;
-	/** @internal Whether the peer is disconnected from the signaling server. */
+	/** @ignore Whether the peer is disconnected from the signaling server. */
 	private _disconnected = false;
-	/** @internal Whether the signaling server connection is open. */
+	/** @ignore Whether the signaling server connection is open. */
 	private _open = false;
-	/** @internal Map of remote peer IDs to their active connections. */
+	/** @ignore Map of remote peer IDs to their active connections. */
 	private _connections: Map<
 		string,
 		Array<DataConnection | AutoConnection | WebSocketConnection | MediaConnection>
 	> = new Map();
-	/** @internal Messages received before the target connection was created. */
+	/** @ignore Messages received before the target connection was created. */
 	private _lostMessages: Map<string, ServerMessage[]> = new Map();
 
 	/** Resolved configuration options for this peer. */
@@ -136,7 +136,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 	/** The underlying WebSocket connection to the signaling server. */
 	readonly socket: Socket;
 
-	/** @internal HTTP API client for ID retrieval and discovery. */
+	/** @ignore HTTP API client for ID retrieval and discovery. */
 	private readonly _api: API;
 
 	constructor(options?: ConduitOptions);
@@ -210,7 +210,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		return this._connections;
 	}
 
-	/** @internal Request a new peer ID from the signaling server. */
+	/** @ignore Request a new peer ID from the signaling server. */
 	private async _retrieveId(): Promise<void> {
 		try {
 			const id = await this._api.retrieveId();
@@ -223,7 +223,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 	}
 
-	/** @internal Initialize the peer with the given ID and start the socket. */
+	/** @ignore Initialize the peer with the given ID and start the socket. */
 	private _initialize(id: string): void {
 		this._id = id;
 		this._lastServerId = id;
@@ -232,7 +232,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		this.socket.start(id, token);
 	}
 
-	/** @internal Wire up event handlers on the signaling socket. */
+	/** @ignore Wire up event handlers on the signaling socket. */
 	private _setupSocketListeners(): void {
 		this.socket.on("message", data => {
 			this._handleMessage(data);
@@ -262,7 +262,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		});
 	}
 
-	/** @internal Dispatch an incoming server message to the appropriate handler. */
+	/** @ignore Dispatch an incoming server message to the appropriate handler. */
 	private _handleMessage(message: ServerMessage): void {
 		const { type, payload, src } = message;
 
@@ -314,7 +314,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 	}
 
-	/** @internal Handle an incoming OFFER message and create the appropriate connection. */
+	/** @ignore Handle an incoming OFFER message and create the appropriate connection. */
 	private _handleOffer(message: ServerMessage): void {
 		const payload = message.payload as {
 			type: ConnectionType;
@@ -397,7 +397,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 	}
 
-	/** @internal Route a connection-level message (ANSWER, CANDIDATE, RELAY) to the right connection. */
+	/** @ignore Route a connection-level message (ANSWER, CANDIDATE, RELAY) to the right connection. */
 	private _handleConnectionMessage(message: ServerMessage): void {
 		const payload = message.payload as { connectionId?: string };
 		const { src } = message;
@@ -418,7 +418,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 	}
 
-	/** @internal Buffer a message whose target connection does not exist yet. */
+	/** @ignore Buffer a message whose target connection does not exist yet. */
 	private _storeLostMessage(remoteId: string, message: ServerMessage): void {
 		// Limit number of remotes we store messages for
 		if (this._lostMessages.size >= MAX_LOST_MESSAGE_REMOTES && !this._lostMessages.has(remoteId)) {
@@ -441,7 +441,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		messages.push(message);
 	}
 
-	/** @internal Deliver previously buffered messages to a newly created connection. */
+	/** @ignore Deliver previously buffered messages to a newly created connection. */
 	private _deliverLostMessages(
 		remoteId: string,
 		connection: DataConnection | AutoConnection | WebSocketConnection | MediaConnection
@@ -458,7 +458,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 	}
 
-	/** @internal Register a new connection and deliver any buffered messages for it. */
+	/** @ignore Register a new connection and deliver any buffered messages for it. */
 	private _addConnection(
 		remoteId: string,
 		connection: DataConnection | AutoConnection | WebSocketConnection | MediaConnection
@@ -474,7 +474,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		this._deliverLostMessages(remoteId, connection);
 	}
 
-	/** @internal Close and remove all connections for a remote peer. */
+	/** @ignore Close and remove all connections for a remote peer. */
 	private _cleanupRemote(remoteId: string): void {
 		const connections = this._connections.get(remoteId);
 		if (connections) {
@@ -632,7 +632,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		return this._api.listAllConduits();
 	}
 
-	/** @internal Emit a fatal error and destroy the peer. */
+	/** @ignore Emit a fatal error and destroy the peer. */
 	private _abort(type: ConduitErrorType, message: string): void {
 		logger.error(`Conduit error: ${type} - ${message}`);
 		this._emitError(type, message);
@@ -642,7 +642,7 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 	}
 
-	/** @internal Construct a {@link ConduitError} and emit it on the `"error"` event. */
+	/** @ignore Construct a {@link ConduitError} and emit it on the `"error"` event. */
 	private _emitError(type: ConduitErrorType, message: string): void {
 		const error = new ConduitError(type, message);
 		this.emit("error", error);

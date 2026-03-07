@@ -48,15 +48,15 @@ export class MediaConnection
 	/** Configuration options for this media connection. */
 	readonly options: MediaConnectionOptions;
 
-	/** @internal Whether the media connection is currently open. */
+	/** @ignore Whether the media connection is currently open. */
 	protected _open = false;
-	/** @internal The underlying RTCPeerConnection instance. */
+	/** @ignore The underlying RTCPeerConnection instance. */
 	protected _peerConnection: RTCPeerConnection | null = null;
-	/** @internal The local media stream being sent to the remote peer. */
+	/** @ignore The local media stream being sent to the remote peer. */
 	private _localStream: MediaStream | null = null;
-	/** @internal The remote media stream received from the peer. */
+	/** @ignore The remote media stream received from the peer. */
 	private _remoteStream: MediaStream | null = null;
-	/** @internal WebRTC negotiation helper. */
+	/** @ignore WebRTC negotiation helper. */
 	private _negotiator: Negotiator;
 
 	constructor(remoteId: string, provider: Conduit, options: MediaConnectionOptions = {}) {
@@ -113,7 +113,7 @@ export class MediaConnection
 		}
 	}
 
-	/** @internal Add all local stream tracks to the RTCPeerConnection. */
+	/** @ignore Add all local stream tracks to the RTCPeerConnection. */
 	private _addTracksToConnection(): void {
 		if (!this._peerConnection || !this._localStream) {
 			return;
@@ -125,7 +125,7 @@ export class MediaConnection
 		}
 	}
 
-	/** @internal Listen for remote tracks on the peer connection. */
+	/** @ignore Listen for remote tracks on the peer connection. */
 	private _setupTrackListener(): void {
 		if (!this._peerConnection) {
 			return;

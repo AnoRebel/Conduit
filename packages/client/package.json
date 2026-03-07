@@ -1,6 +1,6 @@
 {
   "name": "@conduit/client",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Conduit - WebRTC peer-to-peer data, video, and audio connections",
   "type": "module",
   "main": "./dist/conduit.cjs",

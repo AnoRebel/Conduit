@@ -49,13 +49,13 @@ export interface NegotiatorOptions {
  * Manages WebRTC session negotiation (offer/answer/ICE) using the perfect-negotiation pattern.
  */
 export class Negotiator {
-	/** @internal The connection being negotiated. */
+	/** @ignore The connection being negotiated. */
 	private readonly _connection: NegotiableConnection;
-	/** @internal The Conduit instance used for signaling. */
+	/** @ignore The Conduit instance used for signaling. */
 	private readonly _conduit: Conduit;
-	/** @internal Whether an offer is currently being created. */
+	/** @ignore Whether an offer is currently being created. */
 	private _makingOffer = false;
-	/** @internal Whether to ignore a colliding offer. */
+	/** @ignore Whether to ignore a colliding offer. */
 	private _ignoreOffer = false;
 
 	/** Create a Negotiator for the given connection. */
@@ -75,7 +75,7 @@ export class Negotiator {
 		}
 	}
 
-	/** @internal Create and configure a new RTCPeerConnection. */
+	/** @ignore Create and configure a new RTCPeerConnection. */
 	private _createPeerConnection(): RTCPeerConnection {
 		logger.log("Creating RTCPeerConnection");
 
@@ -87,7 +87,7 @@ export class Negotiator {
 		return peerConnection;
 	}
 
-	/** @internal Attach ICE, signaling, and negotiation listeners to the peer connection. */
+	/** @ignore Attach ICE, signaling, and negotiation listeners to the peer connection. */
 	private _setupListeners(peerConnection: RTCPeerConnection): void {
 		// Handle ICE candidates
 		peerConnection.onicecandidate = event => {

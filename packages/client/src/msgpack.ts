@@ -17,7 +17,7 @@
 import { SerializationType } from "@conduit/shared";
 import { decode, encode } from "@msgpack/msgpack";
 
-/** @internal Serializer registry entry shape used by the DataConnection serialization layer. */
+/** @ignore Serializer registry entry shape used by the DataConnection serialization layer. */
 interface Serializer {
 	/** Encode arbitrary data to binary. */
 	serialize: (data: unknown) => Uint8Array;
