@@ -1,6 +1,6 @@
 {
   "name": "conduit-monorepo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -20,6 +20,8 @@
     "format:check": "biome format .",
     "typecheck": "bun run build:shared && bun run --filter='./packages/*' typecheck",
     "clean": "rm -rf packages/*/dist packages/*/.turbo node_modules/.cache",
+    "version:sync": "bun run scripts/sync-version.ts",
+    "version:set": "bun run scripts/sync-version.ts",
     "prepare": "lefthook install && bun run build"
   },
   "devDependencies": {

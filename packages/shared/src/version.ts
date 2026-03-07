@@ -1,5 +1,5 @@
 /**
- * Single source of truth for the Conduit version.
- * Updated automatically by the versioned-release workflow.
+ * Runtime Conduit version constant.
+ * Stamped from the root `version.json` by `scripts/sync-version.ts`.
  */
-export const VERSION = "1.0.1";
+export const VERSION = "1.0.2";

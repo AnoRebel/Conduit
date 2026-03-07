@@ -55,7 +55,7 @@ jobs:
       - name: Get current version
         id: current
         run: |
-          CURRENT=$(node -p "require('./package.json').version")
+          CURRENT=$(node -p "require('./version.json').version")
           echo "version=$CURRENT" >> $GITHUB_OUTPUT
           echo "📦 Current version: $CURRENT"
 
@@ -191,44 +191,7 @@ jobs:
         run: bun run build
 
       - name: Update package versions
-        run: |
-          VERSION="${{ needs.prepare.outputs.new_version }}"
-          echo "📦 Updating all packages to version $VERSION"
-
-          # Update all package.json versions using node (avoids npm workspace:* issues)
-          for pkg in . packages/shared packages/client packages/server packages/admin packages/admin-ui; do
-            node -e "
-              const fs = require('fs');
-              const p = '$pkg/package.json';
-              const data = JSON.parse(fs.readFileSync(p, 'utf8'));
-              data.version = '$VERSION';
-              fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');
-            "
-            echo "  → $pkg/package.json"
-          done
-
-          # Update JSR package versions
-          for pkg in shared client server admin; do
-            if [ -f "packages/$pkg/jsr.json" ]; then
-              node -e "
-                const fs = require('fs');
-                const path = 'packages/$pkg/jsr.json';
-                const data = JSON.parse(fs.readFileSync(path, 'utf8'));
-                data.version = '$VERSION';
-                fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
-              "
-              echo "  → packages/$pkg/jsr.json"
-            fi
-          done
-
-          # Update shared version.ts (single source of truth)
-          sed -i "s/export const VERSION = \".*\"/export const VERSION = \"$VERSION\"/" packages/shared/src/version.ts
-          echo "  → Updated packages/shared/src/version.ts"
-
-          # Update server CLI version display
-          sed -i "s/Conduit Server v[0-9]\+\.[0-9]\+\.[0-9]\+[^\"]*/Conduit Server v$VERSION/" packages/server/bin/conduit.js
-          sed -i "s/\.version(\"[^\"]*\")/.version(\"$VERSION\")/" packages/server/bin/conduit.js
-          echo "  → Updated packages/server/bin/conduit.js"
+        run: bun run scripts/sync-version.ts "${{ needs.prepare.outputs.new_version }}"
 
       - name: Generate changelog
         id: changelog
