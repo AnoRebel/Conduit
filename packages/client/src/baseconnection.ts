@@ -35,7 +35,9 @@ export interface BaseConnectionOptions {
 export abstract class BaseConnection<
 	T extends BaseConnectionEvents = BaseConnectionEvents,
 > extends EventEmitter<T> {
+	/** @internal Whether the connection is currently open. */
 	protected _open = false;
+	/** @internal The underlying RTCPeerConnection instance. */
 	protected _peerConnection: RTCPeerConnection | null = null;
 
 	/** The remote peer ID this connection is with. */
@@ -65,6 +67,7 @@ export abstract class BaseConnection<
 		this.label = options.label || this.connectionId;
 	}
 
+	/** @internal Generate a random connection identifier. */
 	private _generateId(): string {
 		return `${this.type}_${Math.random().toString(36).slice(2)}`;
 	}

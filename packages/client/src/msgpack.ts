@@ -17,9 +17,11 @@
 import { SerializationType } from "@conduit/shared";
 import { decode, encode } from "@msgpack/msgpack";
 
-// Type for the serializer registry (internal to Conduit)
+/** @internal Serializer registry entry shape used by the DataConnection serialization layer. */
 interface Serializer {
+	/** Encode arbitrary data to binary. */
 	serialize: (data: unknown) => Uint8Array;
+	/** Decode binary data back to a JavaScript value. */
 	deserialize: (data: ArrayBuffer | Uint8Array) => unknown;
 }
 

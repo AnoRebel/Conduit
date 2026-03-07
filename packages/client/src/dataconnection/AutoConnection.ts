@@ -51,9 +51,13 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 	/** Configuration options for this auto connection. */
 	readonly options: AutoConnectionOptions;
 
+	/** @internal The currently active underlying connection (WebRTC or WebSocket). */
 	private _activeConnection: DataConnection | WebSocketConnection | null = null;
+	/** @internal The transport type currently in use. */
 	private _transport: TransportType = TransportType.Auto;
+	/** @internal Whether the connection is currently open. */
 	private _open = false;
+	/** @internal Timer ID for the WebRTC-to-WebSocket fallback timeout. */
 	private _webrtcTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(remoteId: string, provider: Conduit, options: AutoConnectionOptions = {}) {
@@ -106,6 +110,7 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 		}
 	}
 
+	/** @internal Start a WebRTC data connection without fallback. */
 	private async _initializeWebRTC(originator: boolean): Promise<void> {
 		logger.log("Initializing WebRTC connection");
 
@@ -121,6 +126,7 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 		await dataConnection.initialize(originator);
 	}
 
+	/** @internal Start a WebRTC data connection with a timed fallback to WebSocket. */
 	private async _initializeWebRTCWithFallback(originator: boolean): Promise<void> {
 		logger.log("Initializing WebRTC connection with fallback");
 
@@ -151,6 +157,7 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 		}
 	}
 
+	/** @internal Start a WebSocket relay connection. */
 	private _initializeWebSocket(): void {
 		logger.log("Initializing WebSocket connection");
 
@@ -166,6 +173,7 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 		wsConnection.initialize();
 	}
 
+	/** @internal Close the WebRTC attempt and switch to WebSocket relay. */
 	private _fallbackToWebSocket(): void {
 		if (this._webrtcTimeoutId) {
 			clearTimeout(this._webrtcTimeoutId);
@@ -183,6 +191,7 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 		this.emit("transportChanged", TransportType.WebSocket);
 	}
 
+	/** @internal Forward events from a WebRTC DataConnection to this AutoConnection. */
 	private _setupDataConnectionListeners(connection: DataConnection): void {
 		connection.on("open", () => {
 			if (this._webrtcTimeoutId) {
@@ -213,6 +222,7 @@ export class AutoConnection extends EventEmitter<AutoConnectionEvents> {
 		});
 	}
 
+	/** @internal Forward events from a WebSocketConnection to this AutoConnection. */
 	private _setupWebSocketListeners(connection: WebSocketConnection): void {
 		connection.on("open", () => {
 			this._open = true;

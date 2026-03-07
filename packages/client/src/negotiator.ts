@@ -8,38 +8,63 @@ import { util } from "./util.js";
  * Both DataConnection and MediaConnection implement this interface.
  */
 export interface NegotiableConnection {
+	/** The connection type (data or media). */
 	readonly type: ConnectionType;
+	/** The remote peer ID. */
 	readonly remote: string;
+	/** The owning Conduit instance. */
 	readonly provider: Conduit;
+	/** Unique connection identifier. */
 	readonly connectionId: string;
+	/** Human-readable label. */
 	readonly label: string;
+	/** Arbitrary metadata. */
 	readonly metadata: unknown;
+	/** Connection-specific options. */
 	readonly options: {
+		/** Serialization format name. */
 		serialization?: string;
+		/** Whether reliable delivery is requested. */
 		reliable?: boolean;
 	};
+	/** The underlying RTCPeerConnection, or `null`. */
 	peerConnection: RTCPeerConnection | null;
+	/** Assign an RTCPeerConnection to the connection. */
 	setPeerConnection(pc: RTCPeerConnection): void;
+	/** Emit an event on the connection. */
 	emit(event: string, ...args: unknown[]): boolean;
+	/** Close the connection. */
 	close(): void;
 }
 
+/** Options passed to {@link Negotiator.startConnection}. */
 export interface NegotiatorOptions {
+	/** Whether this peer is the connection originator (caller). */
 	originator?: boolean;
+	/** Optional transform applied to the SDP before sending. */
 	sdpTransform?: (sdp: string) => string;
 }
 
+/**
+ * Manages WebRTC session negotiation (offer/answer/ICE) using the perfect-negotiation pattern.
+ */
 export class Negotiator {
+	/** @internal The connection being negotiated. */
 	private readonly _connection: NegotiableConnection;
+	/** @internal The Conduit instance used for signaling. */
 	private readonly _conduit: Conduit;
+	/** @internal Whether an offer is currently being created. */
 	private _makingOffer = false;
+	/** @internal Whether to ignore a colliding offer. */
 	private _ignoreOffer = false;
 
+	/** Create a Negotiator for the given connection. */
 	constructor(connection: NegotiableConnection) {
 		this._connection = connection;
 		this._conduit = connection.provider;
 	}
 
+	/** Create an RTCPeerConnection and begin negotiation. */
 	async startConnection(options: NegotiatorOptions = {}): Promise<void> {
 		const peerConnection = this._createPeerConnection();
 		this._connection.setPeerConnection(peerConnection);
@@ -50,6 +75,7 @@ export class Negotiator {
 		}
 	}
 
+	/** @internal Create and configure a new RTCPeerConnection. */
 	private _createPeerConnection(): RTCPeerConnection {
 		logger.log("Creating RTCPeerConnection");
 
@@ -61,6 +87,7 @@ export class Negotiator {
 		return peerConnection;
 	}
 
+	/** @internal Attach ICE, signaling, and negotiation listeners to the peer connection. */
 	private _setupListeners(peerConnection: RTCPeerConnection): void {
 		// Handle ICE candidates
 		peerConnection.onicecandidate = event => {
@@ -136,6 +163,7 @@ export class Negotiator {
 		};
 	}
 
+	/** Process an incoming SDP offer and send back an answer. */
 	async handleOffer(offer: RTCSessionDescriptionInit): Promise<void> {
 		const peerConnection = this._connection.peerConnection;
 		if (!peerConnection) {
@@ -175,6 +203,7 @@ export class Negotiator {
 		}
 	}
 
+	/** Apply an incoming SDP answer to the peer connection. */
 	async handleAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
 		const peerConnection = this._connection.peerConnection;
 		if (!peerConnection) {
@@ -190,6 +219,7 @@ export class Negotiator {
 		}
 	}
 
+	/** Add an incoming ICE candidate to the peer connection. */
 	async handleCandidate(candidate: RTCIceCandidateInit): Promise<void> {
 		const peerConnection = this._connection.peerConnection;
 		if (!peerConnection) {
@@ -207,6 +237,7 @@ export class Negotiator {
 		}
 	}
 
+	/** Remove all event listeners from the peer connection. */
 	cleanup(): void {
 		const peerConnection = this._connection.peerConnection;
 		if (peerConnection) {

@@ -7,26 +7,46 @@ import { util } from "./util.js";
 // WebSocket ready state constants (avoid accessing static properties on potentially undefined WebSocket)
 const WS_OPEN = 1;
 
+/** Events emitted by the signaling {@link Socket}. */
 export interface SocketEvents {
+	/** Fired when a parsed server message is received. */
 	message: (data: ServerMessage) => void;
+	/** Fired when a WebSocket error occurs. */
 	error: (error: Error) => void;
+	/** Fired when the WebSocket is explicitly closed. */
 	close: () => void;
+	/** Fired when the connection is lost (after reconnection attempts). */
 	disconnected: () => void;
 }
 
+/**
+ * WebSocket wrapper for the Conduit signaling protocol.
+ * Handles connection, reconnection, message parsing, and queuing.
+ */
 export class Socket extends EventEmitter<SocketEvents> {
+	/** @internal The active WebSocket instance. */
 	private _ws: WebSocket | null = null;
+	/** @internal Whether the socket has been intentionally disconnected. */
 	private _disconnected = false;
+	/** @internal The peer ID associated with this socket session. */
 	private _id: string | null = null;
+	/** @internal Messages queued while the socket is not yet open. */
 	private _messagesQueue: Array<{ type: MessageType; payload?: unknown }> = [];
+	/** @internal Number of reconnection attempts so far. */
 	private _reconnectAttempts = 0;
+	/** @internal Maximum reconnection attempts before giving up. */
 	private _maxReconnectAttempts = 3;
+	/** @internal Timer ID for the next reconnection attempt. */
 	private _reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	constructor(private readonly _options: ConduitOptions) {
+	constructor(
+		/** @internal Conduit options used to build the WebSocket URL. */
+		private readonly _options: ConduitOptions
+	) {
 		super();
 	}
 
+	/** Open a WebSocket connection to the signaling server for the given peer ID. */
 	start(id: string, token: string): void {
 		this._id = id;
 		this._disconnected = false;
@@ -82,6 +102,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		};
 	}
 
+	/** @internal Build the WebSocket URL from connection options. */
 	private _buildUrl(id: string, token: string): string {
 		const protocol = this._options.secure ? "wss" : "ws";
 		const { host, port, path, key } = this._options;
@@ -105,6 +126,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		return url;
 	}
 
+	/** @internal Attempt to reconnect after an unexpected close, with exponential backoff. */
 	private _tryReconnect(): void {
 		if (this._reconnectAttempts >= this._maxReconnectAttempts) {
 			logger.error("Max reconnection attempts reached");
@@ -124,6 +146,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		}, delay);
 	}
 
+	/** Send a signaling message, or queue it if the socket is not yet open. */
 	send(data: { type: MessageType; payload?: unknown }): void {
 		if (this._disconnected) {
 			return;
@@ -138,6 +161,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		this._ws.send(message);
 	}
 
+	/** @internal Flush all queued messages through the now-open socket. */
 	private _sendQueuedMessages(): void {
 		const copy = [...this._messagesQueue];
 		this._messagesQueue = [];
@@ -147,6 +171,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		}
 	}
 
+	/** Close the WebSocket connection and cancel any pending reconnection. */
 	close(): void {
 		this._disconnected = true;
 
@@ -171,6 +196,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		this.emit("close");
 	}
 
+	/** Whether the underlying WebSocket is currently open and ready. */
 	get isOpen(): boolean {
 		return this._ws?.readyState === WS_OPEN;
 	}

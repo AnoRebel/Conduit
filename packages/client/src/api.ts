@@ -3,13 +3,17 @@ import type { ConduitOptions } from "./conduit.js";
 import { ConduitError } from "./conduitError.js";
 import { logger } from "./logger.js";
 
+/** HTTP client for the Conduit signaling server REST endpoints. */
 export class API {
+	/** @internal Conduit options used to build request URLs. */
 	private readonly _options: ConduitOptions;
 
+	/** Create an API client with the given connection options. */
 	constructor(options: ConduitOptions) {
 		this._options = options;
 	}
 
+	/** @internal Construct a full URL for the given API path. */
 	private _buildUrl(path: string): string {
 		const protocol = this._options.secure ? "https" : "http";
 		const { host, port, path: basePath, key } = this._options;
@@ -31,6 +35,7 @@ export class API {
 		return url;
 	}
 
+	/** Request a new peer ID from the signaling server. */
 	async retrieveId(): Promise<string> {
 		const url = this._buildUrl("/id");
 
@@ -57,6 +62,7 @@ export class API {
 		}
 	}
 
+	/** Fetch a list of all connected peer IDs from the signaling server (discovery). */
 	async listAllConduits(): Promise<string[]> {
 		const url = this._buildUrl("/conduits");
 
