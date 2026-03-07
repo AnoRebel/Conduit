@@ -48,7 +48,7 @@ export class WebSocketConnection extends EventEmitter<WebSocketConnectionEvents>
 	/** Configuration options for this WebSocket connection. */
 	readonly options: WebSocketConnectionOptions;
 
-	/** @ignore Whether the relay connection is currently open. */
+	/** Whether the relay connection is currently open. */
 	private _open = false;
 
 	constructor(remoteId: string, provider: Conduit, options: WebSocketConnectionOptions = {}) {
@@ -151,7 +151,7 @@ export class WebSocketConnection extends EventEmitter<WebSocketConnectionEvents>
 		this._handleClose();
 	}
 
-	/** @ignore Mark the connection as closed and emit the close event. */
+	/** Mark the connection as closed and emit the close event. */
 	private _handleClose(): void {
 		this._open = false;
 		this.emit("close");

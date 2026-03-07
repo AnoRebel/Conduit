@@ -64,21 +64,21 @@ export class DataConnection
 	/** Configuration options for this data connection. */
 	readonly options: DataConnectionOptions;
 
-	/** @ignore Whether the data channel is currently open. */
+	/** Whether the data channel is currently open. */
 	protected _open = false;
-	/** @ignore The underlying RTCPeerConnection instance. */
+	/** The underlying RTCPeerConnection instance. */
 	protected _peerConnection: RTCPeerConnection | null = null;
-	/** @ignore The underlying RTCDataChannel instance. */
+	/** The underlying RTCDataChannel instance. */
 	private _dataChannel: RTCDataChannel | null = null;
-	/** @ignore WebRTC negotiation helper. */
+	/** WebRTC negotiation helper. */
 	private _negotiator: Negotiator;
-	/** @ignore Outgoing message buffer used before the channel opens. */
+	/** Outgoing message buffer used before the channel opens. */
 	private _buffer: unknown[] = [];
-	/** @ignore Current estimated size of the outgoing buffer in bytes. */
+	/** Current estimated size of the outgoing buffer in bytes. */
 	private _bufferSize = 0;
-	/** @ignore Maximum allowed buffer size in bytes. */
+	/** Maximum allowed buffer size in bytes. */
 	private _maxBufferSize: number;
-	/** @ignore Partially received chunked transfers keyed by chunk ID. */
+	/** Partially received chunked transfers keyed by chunk ID. */
 	private _chunkedData: Map<number, { total: number; chunks: Blob[] }> = new Map();
 
 	constructor(remoteId: string, provider: Conduit, options: DataConnectionOptions = {}) {
@@ -137,7 +137,7 @@ export class DataConnection
 		}
 	}
 
-	/** @ignore Configure event handlers on the given data channel. */
+	/** Configure event handlers on the given data channel. */
 	private _setupDataChannel(dataChannel: RTCDataChannel): void {
 		this._dataChannel = dataChannel;
 		dataChannel.binaryType = "arraybuffer";
@@ -165,7 +165,7 @@ export class DataConnection
 		};
 	}
 
-	/** @ignore Deserialize and process an incoming data channel message. */
+	/** Deserialize and process an incoming data channel message. */
 	private async _handleDataMessage(data: ArrayBuffer | string): Promise<void> {
 		let deserializedData: unknown;
 
@@ -197,7 +197,7 @@ export class DataConnection
 		}
 	}
 
-	/** @ignore Type guard for chunked transfer metadata. */
+	/** Type guard for chunked transfer metadata. */
 	private _isChunkedData(
 		data: unknown
 	): data is { __peerData: number; n: number; total: number; data: Blob } {
@@ -210,7 +210,7 @@ export class DataConnection
 		);
 	}
 
-	/** @ignore Accumulate a single chunk; emit the reassembled blob when all chunks arrive. */
+	/** Accumulate a single chunk; emit the reassembled blob when all chunks arrive. */
 	private _handleChunk(chunk: { __peerData: number; n: number; total: number; data: Blob }): void {
 		const { __peerData: id, n, total, data } = chunk;
 
@@ -281,7 +281,7 @@ export class DataConnection
 		}
 	}
 
-	/** @ignore Send all buffered messages now that the channel is open. */
+	/** Send all buffered messages now that the channel is open. */
 	private _drainBuffer(): void {
 		if (!this._open || this._buffer.length === 0) {
 			return;
@@ -320,7 +320,7 @@ export class DataConnection
 		this._setupDataChannel(dataChannel);
 	}
 
-	/** @ignore Estimate the byte size of arbitrary data for buffer-limit checking. */
+	/** Estimate the byte size of arbitrary data for buffer-limit checking. */
 	private _estimateSize(data: unknown): number {
 		if (data === null || data === undefined) {
 			return 0;

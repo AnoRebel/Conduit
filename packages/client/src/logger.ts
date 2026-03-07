@@ -12,7 +12,7 @@ export enum LogLevel {
 
 /** Logger with configurable verbosity for the Conduit client. */
 export class Logger {
-	/** @ignore Current verbosity level. */
+	/** Current verbosity level. */
 	private _logLevel: LogLevel = LogLevel.Disabled;
 
 	/** Get the current logging verbosity level. */
@@ -51,7 +51,7 @@ export class Logger {
 		this._print = fn;
 	}
 
-	/** @ignore Default print implementation, writes to the console. */
+	/** Default print implementation, writes to the console. */
 	private _print(level: LogLevel, ...args: unknown[]): void {
 		const prefix = "[Conduit]";
 		const timestamp = new Date().toISOString();

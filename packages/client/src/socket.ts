@@ -24,23 +24,23 @@ export interface SocketEvents {
  * Handles connection, reconnection, message parsing, and queuing.
  */
 export class Socket extends EventEmitter<SocketEvents> {
-	/** @ignore The active WebSocket instance. */
+	/** The active WebSocket instance. */
 	private _ws: WebSocket | null = null;
-	/** @ignore Whether the socket has been intentionally disconnected. */
+	/** Whether the socket has been intentionally disconnected. */
 	private _disconnected = false;
-	/** @ignore The peer ID associated with this socket session. */
+	/** The peer ID associated with this socket session. */
 	private _id: string | null = null;
-	/** @ignore Messages queued while the socket is not yet open. */
+	/** Messages queued while the socket is not yet open. */
 	private _messagesQueue: Array<{ type: MessageType; payload?: unknown }> = [];
-	/** @ignore Number of reconnection attempts so far. */
+	/** Number of reconnection attempts so far. */
 	private _reconnectAttempts = 0;
-	/** @ignore Maximum reconnection attempts before giving up. */
+	/** Maximum reconnection attempts before giving up. */
 	private _maxReconnectAttempts = 3;
-	/** @ignore Timer ID for the next reconnection attempt. */
+	/** Timer ID for the next reconnection attempt. */
 	private _reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(
-		/** @ignore Conduit options used to build the WebSocket URL. */
+		/** Conduit options used to build the WebSocket URL. */
 		private readonly _options: ConduitOptions
 	) {
 		super();
@@ -102,7 +102,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		};
 	}
 
-	/** @ignore Build the WebSocket URL from connection options. */
+	/** Build the WebSocket URL from connection options. */
 	private _buildUrl(id: string, token: string): string {
 		const protocol = this._options.secure ? "wss" : "ws";
 		const { host, port, path, key } = this._options;
@@ -126,7 +126,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		return url;
 	}
 
-	/** @ignore Attempt to reconnect after an unexpected close, with exponential backoff. */
+	/** Attempt to reconnect after an unexpected close, with exponential backoff. */
 	private _tryReconnect(): void {
 		if (this._reconnectAttempts >= this._maxReconnectAttempts) {
 			logger.error("Max reconnection attempts reached");
@@ -161,7 +161,7 @@ export class Socket extends EventEmitter<SocketEvents> {
 		this._ws.send(message);
 	}
 
-	/** @ignore Flush all queued messages through the now-open socket. */
+	/** Flush all queued messages through the now-open socket. */
 	private _sendQueuedMessages(): void {
 		const copy = [...this._messagesQueue];
 		this._messagesQueue = [];

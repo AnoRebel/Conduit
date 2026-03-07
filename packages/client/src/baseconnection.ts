@@ -35,9 +35,9 @@ export interface BaseConnectionOptions {
 export abstract class BaseConnection<
 	T extends BaseConnectionEvents = BaseConnectionEvents,
 > extends EventEmitter<T> {
-	/** @ignore Whether the connection is currently open. */
+	/** Whether the connection is currently open. */
 	protected _open = false;
-	/** @ignore The underlying RTCPeerConnection instance. */
+	/** The underlying RTCPeerConnection instance. */
 	protected _peerConnection: RTCPeerConnection | null = null;
 
 	/** The remote peer ID this connection is with. */
@@ -67,7 +67,7 @@ export abstract class BaseConnection<
 		this.label = options.label || this.connectionId;
 	}
 
-	/** @ignore Generate a random connection identifier. */
+	/** Generate a random connection identifier. */
 	private _generateId(): string {
 		return `${this.type}_${Math.random().toString(36).slice(2)}`;
 	}

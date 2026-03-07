@@ -5,7 +5,7 @@ import { logger } from "./logger.js";
 
 /** HTTP client for the Conduit signaling server REST endpoints. */
 export class API {
-	/** @ignore Conduit options used to build request URLs. */
+	/** Conduit options used to build request URLs. */
 	private readonly _options: ConduitOptions;
 
 	/** Create an API client with the given connection options. */
@@ -13,7 +13,7 @@ export class API {
 		this._options = options;
 	}
 
-	/** @ignore Construct a full URL for the given API path. */
+	/** Construct a full URL for the given API path. */
 	private _buildUrl(path: string): string {
 		const protocol = this._options.secure ? "https" : "http";
 		const { host, port, path: basePath, key } = this._options;
