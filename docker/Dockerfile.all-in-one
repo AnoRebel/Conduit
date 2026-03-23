@@ -34,7 +34,7 @@ WORKDIR /app/packages/admin-ui
 RUN bun run generate
 
 # Production stage — debian slim for glibc compatibility
-FROM oven/bun:1.3.10-slim AS production
+FROM oven/bun:1.3.11-slim AS production
 
 WORKDIR /app
 

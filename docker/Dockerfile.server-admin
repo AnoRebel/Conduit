@@ -22,7 +22,7 @@ COPY packages/admin packages/admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
 # Production stage — debian slim for glibc compatibility (bun+musl has networking issues)
-FROM oven/bun:1.3.10-slim AS production
+FROM oven/bun:1.3.11-slim AS production
 
 WORKDIR /app
 
