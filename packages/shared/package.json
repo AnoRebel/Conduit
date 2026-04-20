@@ -41,7 +41,7 @@
   },
   "homepage": "https://github.com/AnoRebel/conduit#readme",
   "devDependencies": {
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vitest": "^4.0.18"
   },
   "publishConfig": {
