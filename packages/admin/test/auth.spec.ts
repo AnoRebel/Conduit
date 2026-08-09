@@ -469,7 +469,52 @@ describe("createAuthManager", () => {
 			});
 
 			expect(result.valid).toBe(true);
+			// An API key with no configured role is not privileged: a credential
+			// that does not say it is an admin is not treated as one.
+			expect(result.role).toBe("viewer");
+		});
+
+		it("should grant the admin role to an API key configured for it", () => {
+			const privileged = createAuthManager({
+				methods: ["apiKey"],
+				apiKey: "test-api-key",
+				apiKeyRole: "admin",
+			});
+
+			const result = privileged.authenticateRequest({ "x-api-key": "test-api-key" });
+
+			expect(result.valid).toBe(true);
 			expect(result.role).toBe("admin");
+		});
+
+		it("should not treat a cookie merely ending with the session name as a session", () => {
+			// An unanchored match would accept "evil_admin_session" as "admin_session".
+			const result = authManager.authenticateRequest({
+				cookie: "evil_admin_session=forged-value",
+			});
+
+			expect(result.valid).toBe(false);
+		});
+
+		it("should not accept a JWT signed with a non-allowlisted algorithm", () => {
+			// "none" carries no signature; verification must refuse it outright
+			// rather than inspecting its claims.
+			const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+			const payload = Buffer.from(
+				JSON.stringify({
+					sub: "attacker",
+					role: "admin",
+					iat: Math.floor(Date.now() / 1000),
+					exp: Math.floor(Date.now() / 1000) + 3600,
+				})
+			).toString("base64url");
+
+			const result = authManager.authenticateRequest({
+				authorization: `Bearer ${header}.${payload}.`,
+			});
+
+			expect(result.valid).toBe(false);
+			expect(result.role).not.toBe("admin");
 		});
 
 		it("should authenticate via Bearer JWT token", () => {

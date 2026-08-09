@@ -16,96 +16,37 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { AdminRateLimitConfig } from "../config.js";
 import type { AdminCore } from "../core/index.js";
 import {
 	createRoutes,
 	error,
-	forbidden,
 	notFound,
 	type Route,
 	type RouteContext,
 	type RouteResponse,
 	unauthorized,
 } from "../routes/index.js";
+import {
+	applyPostAuthGuard,
+	applyPreAuthGuard,
+	createRateLimiterFromConfig,
+	MAX_BODY_SIZE,
+	type NormalizedRequest,
+} from "./guard.js";
 
-/** Maximum allowed request body size (1MB) to prevent DoS attacks. */
-const MAX_BODY_SIZE = 1024 * 1024;
-
-// ============================================================================
-// Rate Limiting
-// ============================================================================
-
-interface RateLimitState {
-	tokens: number;
-	lastRefill: number;
-}
-
-interface RateLimiter {
-	isAllowed(clientId: string): boolean;
-	destroy(): void;
-}
-
-function createRateLimiter(maxRequests: number, windowMs: number): RateLimiter {
-	const clients = new Map<string, RateLimitState>();
-
-	// Clean up old entries periodically
-	const cleanup = setInterval(() => {
-		const now = Date.now();
-		for (const [key, state] of clients) {
-			if (now - state.lastRefill > windowMs * 2) {
-				clients.delete(key);
-			}
-		}
-	}, windowMs);
-
-	// Allow cleanup interval to not keep process alive
-	if (cleanup.unref) cleanup.unref();
+/**
+ * Build the transport-independent request description the shared guard needs.
+ */
+function toNormalizedRequest(req: IncomingMessage, path: string): NormalizedRequest {
+	const declaredLength = Number(req.headers["content-length"]);
 
 	return {
-		isAllowed(clientId: string): boolean {
-			const now = Date.now();
-			let state = clients.get(clientId);
-
-			if (!state) {
-				state = { tokens: maxRequests - 1, lastRefill: now };
-				clients.set(clientId, state);
-				return true;
-			}
-
-			// Refill tokens based on elapsed time
-			const elapsed = now - state.lastRefill;
-			const tokensToAdd = Math.floor((elapsed / windowMs) * maxRequests);
-			if (tokensToAdd > 0) {
-				state.tokens = Math.min(maxRequests, state.tokens + tokensToAdd);
-				state.lastRefill = now;
-			}
-
-			if (state.tokens > 0) {
-				state.tokens--;
-				return true;
-			}
-
-			return false;
-		},
-		destroy() {
-			clearInterval(cleanup);
-			clients.clear();
-		},
+		method: req.method?.toUpperCase() ?? "GET",
+		headers: req.headers as Record<string, string | string[] | undefined>,
+		path,
+		remoteAddress: req.socket.remoteAddress,
+		contentLength: Number.isFinite(declaredLength) ? declaredLength : undefined,
 	};
-}
-
-function createRateLimiterFromConfig(rateLimitConfig: AdminRateLimitConfig): RateLimiter | null {
-	if (!rateLimitConfig.enabled) {
-		return null;
-	}
-	return createRateLimiter(rateLimitConfig.maxRequests, rateLimitConfig.windowMs);
-}
-
-function getClientIp(req: IncomingMessage): string {
-	const forwarded = req.headers["x-forwarded-for"];
-	const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-	return forwardedValue?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
 }
 
 export interface NodeAdminServerOptions {
@@ -202,25 +143,14 @@ export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdmi
 
 		const { route, params } = match;
 
-		// Rate limiting
-		if (rateLimiter) {
-			const clientIp = getClientIp(req);
-			if (!rateLimiter.isAllowed(clientIp)) {
-				sendResponse(res, error("Too many requests", 429));
-				return;
-			}
-		}
-
-		// CSRF protection: require JSON content-type for mutating requests
-		if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-			const contentType = req.headers["content-type"];
-			if (contentType && !contentType.includes("application/json")) {
-				sendResponse(res, {
-					status: 415,
-					body: { error: "Content-Type must be application/json" },
-				});
-				return;
-			}
+		// Rate limiting, CSRF and body-size checks, shared with every other adapter
+		const preAuth = applyPreAuthGuard(toNormalizedRequest(req, routePath), {
+			limiter: rateLimiter,
+			trustProxy: config.trustProxy,
+		});
+		if (preAuth) {
+			sendResponse(res, preAuth);
+			return;
 		}
 
 		// Handle authentication
@@ -239,9 +169,9 @@ export function createNodeAdminServer(options: NodeAdminServerOptions): NodeAdmi
 			}
 
 			// Role-based access control: write operations require admin role
-			const isWriteMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
-			if (isWriteMethod && authResult.role === "viewer") {
-				sendResponse(res, forbidden("Insufficient permissions. Admin role required."));
+			const postAuth = applyPostAuthGuard(method, authResult);
+			if (postAuth) {
+				sendResponse(res, postAuth);
 				return;
 			}
 		} else {

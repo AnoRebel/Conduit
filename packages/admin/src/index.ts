@@ -57,7 +57,10 @@ export {
 	MemoryStore,
 	type PersistenceConfig,
 	type PersistenceStore,
-	SQLiteStore,
+	// Type-only: the implementation imports "bun:sqlite" and is loaded on demand
+	// by createPersistenceStore, so that importing this package does not require
+	// the Bun runtime. Select it with `{ persistence: { type: "sqlite" } }`.
+	type SQLiteStore,
 } from "./persistence/index.js";
 
 // ============================================================================

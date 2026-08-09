@@ -12,6 +12,15 @@ export interface AuthConfig {
 	/** API key for simple authentication */
 	apiKey?: string;
 
+	/**
+	 * Role granted to callers authenticating with the API key.
+	 *
+	 * Defaults to `"viewer"`: a credential that does not explicitly say it is
+	 * privileged is not treated as privileged. Set this to `"admin"` to allow
+	 * API-key callers to perform state-changing requests.
+	 */
+	apiKeyRole?: "admin" | "viewer";
+
 	/** JWT secret for token-based authentication */
 	jwtSecret?: string;
 
@@ -24,8 +33,22 @@ export interface AuthConfig {
 		password: string;
 	};
 
+	/**
+	 * Role granted to callers authenticating with Basic credentials.
+	 *
+	 * Defaults to `"viewer"`, for the same reason as {@link AuthConfig.apiKeyRole}.
+	 */
+	basicRole?: "admin" | "viewer";
+
 	/** Session timeout in milliseconds (default: 3600000 = 1 hour) */
 	sessionTimeout?: number;
+
+	/**
+	 * Role granted to callers presenting a valid session cookie.
+	 *
+	 * Defaults to `"viewer"`, for the same reason as {@link AuthConfig.apiKeyRole}.
+	 */
+	sessionRole?: "admin" | "viewer";
 }
 
 // ============================================================================
@@ -117,6 +140,15 @@ export interface AdminConfig {
 	/** Rate limiting for admin endpoints */
 	rateLimit: AdminRateLimitConfig;
 
+	/**
+	 * Whether the admin API sits behind a trusted reverse proxy.
+	 *
+	 * Forwarded headers such as `X-Forwarded-For` are honoured only when this is
+	 * enabled. Left disabled, any client could spoof the header and obtain an
+	 * unlimited rate-limit budget, so this defaults to `false`.
+	 */
+	trustProxy: boolean;
+
 	/** Metrics collection configuration */
 	metrics: MetricsConfig;
 
@@ -156,6 +188,7 @@ export const defaultAdminConfig: AdminConfig = {
 		maxRequests: 100,
 		windowMs: 60000, // 1 minute
 	},
+	trustProxy: false,
 	metrics: {
 		retentionMs: 86400000, // 24 hours
 		snapshotIntervalMs: 1000, // 1 second

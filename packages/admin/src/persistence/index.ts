@@ -2,9 +2,9 @@
 // Persistence Store Interface
 // ============================================================================
 
+import { createRequire } from "node:module";
 import type { AuditAction, AuditEntry, BanEntry } from "../types.js";
 import { MemoryStore } from "./memory.js";
-import { SQLiteStore } from "./sqlite.js";
 
 /** Configuration for selecting the persistence backend. */
 export interface PersistenceConfig {
@@ -45,10 +45,37 @@ export function createPersistenceStore(
 	config: PersistenceConfig = { type: "memory" }
 ): PersistenceStore {
 	if (config.type === "sqlite") {
+		// Loaded lazily: ./sqlite.js imports "bun:sqlite", which does not exist
+		// outside the Bun runtime. A static import would make this whole module --
+		// and therefore the admin core -- unloadable under Node, even for
+		// deployments that never select the SQLite backend.
+		const { SQLiteStore } = loadSQLiteStore();
 		return new SQLiteStore(config.dbPath || "conduit-admin.db");
 	}
 	return new MemoryStore();
 }
 
+/** Resolve the SQLite backend on demand. Throws outside the Bun runtime. */
+function loadSQLiteStore(): typeof import("./sqlite.js") {
+	try {
+		return createRequire(import.meta.url)("./sqlite.js");
+	} catch (cause) {
+		throw new Error(
+			'SQLite persistence requires the Bun runtime ("bun:sqlite" is unavailable). ' +
+				'Use persistence type "memory", or run the server under Bun.',
+			{ cause }
+		);
+	}
+}
+
+/**
+ * The SQLite-backed store.
+ *
+ * Exposed as a type for annotation, and as a runtime getter that resolves the
+ * implementation on first access so that importing this module never pulls in
+ * "bun:sqlite". Prefer {@link createPersistenceStore}, which selects the
+ * backend from config.
+ */
+export type SQLiteStore = import("./sqlite.js").SQLiteStore;
+
 export { MemoryStore } from "./memory.js";
-export { SQLiteStore } from "./sqlite.js";

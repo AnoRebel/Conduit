@@ -22,6 +22,12 @@ import {
 	type RouteResponse,
 	unauthorized,
 } from "../routes/index.js";
+import {
+	applyPostAuthGuard,
+	applyPreAuthGuard,
+	createRateLimiterFromConfig,
+	type NormalizedRequest,
+} from "./guard.js";
 
 /**
  * Express-compatible request object (minimal interface)
@@ -33,6 +39,29 @@ export interface ExpressRequest {
 	body?: unknown;
 	headers: Record<string, string | string[] | undefined>;
 	params?: Record<string, string>;
+	/** Underlying connection, used as the transport-level peer address. */
+	socket?: { remoteAddress?: string | undefined };
+}
+
+/**
+ * Build the transport-independent request description the shared guard needs.
+ *
+ * Deliberately reads the raw socket address rather than Express's `req.ip`:
+ * `req.ip` already reflects `X-Forwarded-For` when Express's own `trust proxy`
+ * setting is enabled, which would silently override the admin config's
+ * `trustProxy` decision. Keeping the forwarded-header choice in one place means
+ * an operator cannot accidentally trust a spoofable address here.
+ */
+function toNormalizedRequest(req: ExpressRequest, path: string): NormalizedRequest {
+	const declaredLength = Number(req.headers["content-length"]);
+
+	return {
+		method: req.method.toUpperCase(),
+		headers: req.headers,
+		path,
+		remoteAddress: req.socket?.remoteAddress,
+		contentLength: Number.isFinite(declaredLength) ? declaredLength : undefined,
+	};
 }
 
 /**
@@ -72,6 +101,10 @@ export function createExpressAdminMiddleware(
 	const { admin } = options;
 	const routes = createRoutes();
 
+	// Initialize rate limiter from config -- created once per middleware, never per
+	// request, otherwise every request would start with a fresh token bucket.
+	const rateLimiter = createRateLimiterFromConfig(admin.config.rateLimit);
+
 	// Compile route patterns
 	const compiledRoutes = routes.map(route => ({
 		...route,
@@ -93,6 +126,16 @@ export function createExpressAdminMiddleware(
 
 		const { route, params } = match;
 
+		// Rate limiting, CSRF and body-size checks, shared with every other adapter
+		const preAuth = applyPreAuthGuard(toNormalizedRequest(req, path), {
+			limiter: rateLimiter,
+			trustProxy: admin.config.trustProxy,
+		});
+		if (preAuth) {
+			sendResponse(res, preAuth);
+			return;
+		}
+
 		// Handle authentication
 		let authResult = { valid: false, error: "Not authenticated" } as ReturnType<
 			typeof admin.auth.authenticateRequest
@@ -103,6 +146,13 @@ export function createExpressAdminMiddleware(
 
 			if (!authResult.valid) {
 				sendResponse(res, unauthorized(authResult.error));
+				return;
+			}
+
+			// Role-based access control: write operations require admin role
+			const postAuth = applyPostAuthGuard(method, authResult);
+			if (postAuth) {
+				sendResponse(res, postAuth);
 				return;
 			}
 		} else {

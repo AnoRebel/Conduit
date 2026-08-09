@@ -2,6 +2,14 @@ import jwt from "jsonwebtoken";
 import type { JWTPayload } from "../types.js";
 import type { AuthResult } from "./index.js";
 
+/**
+ * Signing algorithms accepted when verifying a token.
+ *
+ * Pinned explicitly so a token cannot dictate how it is verified: without this,
+ * verification is driven by the `alg` header of the token being checked.
+ */
+const ALLOWED_ALGORITHMS = ["HS256"] as const;
+
 /** Authenticator for JWT-based authentication with token generation and validation. */
 export class JWTAuth {
 	private readonly _secret: string;
@@ -18,12 +26,15 @@ export class JWTAuth {
 		}
 
 		try {
-			const decoded = jwt.verify(token, this._secret) as JWTPayload;
+			const decoded = jwt.verify(token, this._secret, {
+				algorithms: [...ALLOWED_ALGORITHMS],
+			}) as JWTPayload;
 
 			return {
 				valid: true,
 				userId: decoded.sub,
-				role: decoded.role ?? "admin",
+				// A token that does not claim a role is not treated as privileged.
+				role: decoded.role ?? "viewer",
 			};
 		} catch (error) {
 			if (error instanceof jwt.TokenExpiredError) {
@@ -44,7 +55,7 @@ export class JWTAuth {
 			role,
 		};
 
-		return jwt.sign(payload, this._secret);
+		return jwt.sign(payload, this._secret, { algorithm: ALLOWED_ALGORITHMS[0] });
 	}
 
 	decode(token: string): JWTPayload | null {

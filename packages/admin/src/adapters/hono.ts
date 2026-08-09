@@ -22,6 +22,14 @@ import {
 	type RouteResponse,
 	unauthorized,
 } from "../routes/index.js";
+import { applyPostAuthGuard, applyPreAuthGuard, createRateLimiterFromConfig } from "./guard.js";
+
+/** Parse a `Content-Length` header into a number, ignoring malformed values. */
+function parseContentLength(value: string | undefined): number | undefined {
+	if (value === undefined) return undefined;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : undefined;
+}
 
 /**
  * Hono-compatible context object (minimal interface)
@@ -64,6 +72,10 @@ export function createHonoAdminMiddleware(options: HonoAdminServerOptions): Hono
 	const { admin } = options;
 	const routes = createRoutes();
 
+	// Created once per middleware, not per request: a per-request limiter would
+	// hand every caller a fresh bucket and never actually limit anything.
+	const rateLimiter = createRateLimiterFromConfig(admin.config.rateLimit);
+
 	// Compile route patterns
 	const compiledRoutes = routes.map(route => ({
 		...route,
@@ -85,10 +97,37 @@ export function createHonoAdminMiddleware(options: HonoAdminServerOptions): Hono
 
 		const { route, params } = match;
 
-		// Build headers object for auth
+		// Build headers object for auth. `cookie` is included so session-based
+		// auth works here as it does on the other adapters.
 		const headers: Record<string, string | undefined> = {};
-		for (const key of ["authorization", "x-api-key"]) {
+		for (const key of [
+			"authorization",
+			"x-api-key",
+			"cookie",
+			"content-type",
+			"content-length",
+			"x-forwarded-for",
+		]) {
 			headers[key] = ctx.req.header(key);
+		}
+
+		// Rate limiting, CSRF and body-size checks, shared with every other adapter
+		const preAuth = applyPreAuthGuard(
+			{
+				method,
+				headers,
+				path,
+				// The minimal Hono context exposes no transport-level peer address.
+				// With trustProxy disabled the guard falls back to "unknown", which
+				// rate limits the adapter as a whole rather than per client; enable
+				// trustProxy when running Hono behind a proxy that sets the header.
+				remoteAddress: undefined,
+				contentLength: parseContentLength(headers["content-length"]),
+			},
+			{ limiter: rateLimiter, trustProxy: admin.config.trustProxy }
+		);
+		if (preAuth) {
+			return toHonoResponse(ctx, preAuth);
 		}
 
 		// Handle authentication
@@ -101,6 +140,12 @@ export function createHonoAdminMiddleware(options: HonoAdminServerOptions): Hono
 
 			if (!authResult.valid) {
 				return toHonoResponse(ctx, unauthorized(authResult.error));
+			}
+
+			// Role-based access control: write operations require admin role
+			const postAuth = applyPostAuthGuard(method, authResult);
+			if (postAuth) {
+				return toHonoResponse(ctx, postAuth);
 			}
 		} else {
 			authResult = { valid: true };

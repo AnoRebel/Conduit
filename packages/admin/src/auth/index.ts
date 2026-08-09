@@ -5,6 +5,28 @@ import { BasicAuth } from "./basic.js";
 import { JWTAuth } from "./jwt.js";
 import { SessionManager } from "./session.js";
 
+/** Name of the cookie carrying an admin session identifier. */
+const SESSION_COOKIE_NAME = "admin_session";
+
+/**
+ * Read a cookie value by exact name.
+ *
+ * Splits on `;` and compares the name before `=` exactly, so a cookie such as
+ * `evil_admin_session` is not mistaken for `admin_session` -- which an
+ * unanchored substring match would accept.
+ */
+function readCookie(cookieHeader: string, name: string): string | undefined {
+	for (const part of cookieHeader.split(";")) {
+		const separator = part.indexOf("=");
+		if (separator === -1) continue;
+
+		if (part.slice(0, separator).trim() === name) {
+			return part.slice(separator + 1).trim() || undefined;
+		}
+	}
+	return undefined;
+}
+
 /** Outcome of an authentication attempt. */
 export interface AuthResult {
 	/** Whether authentication succeeded. */
@@ -109,7 +131,9 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 			if (authValue.startsWith("Basic ")) {
 				const credentials = authValue.slice(6);
 				const result = validateBasicAuth(credentials);
-				if (result.valid) return { ...result, role: result.role ?? "admin" };
+				if (result.valid) {
+					return { ...result, role: result.role ?? config.basicRole ?? "viewer" };
+				}
 			}
 		}
 
@@ -119,7 +143,9 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 
 		if (apiKeyValue) {
 			const result = validateApiKey(apiKeyValue);
-			if (result.valid) return { ...result, role: result.role ?? "admin" };
+			if (result.valid) {
+				return { ...result, role: result.role ?? config.apiKeyRole ?? "viewer" };
+			}
 		}
 
 		// Try session cookie
@@ -127,10 +153,12 @@ export function createAuthManager(config: AuthConfig): AuthManager {
 		const cookieValue = Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader;
 
 		if (cookieValue) {
-			const sessionMatch = cookieValue.match(/admin_session=([^;]+)/);
-			if (sessionMatch?.[1]) {
-				const result = validateSession(sessionMatch[1]);
-				if (result.valid) return { ...result, role: result.role ?? "admin" };
+			const sessionId = readCookie(cookieValue, SESSION_COOKIE_NAME);
+			if (sessionId) {
+				const result = validateSession(sessionId);
+				if (result.valid) {
+					return { ...result, role: result.role ?? config.sessionRole ?? "viewer" };
+				}
 			}
 		}
 

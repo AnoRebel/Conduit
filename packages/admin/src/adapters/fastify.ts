@@ -22,6 +22,13 @@ import {
 	type RouteResponse,
 	unauthorized,
 } from "../routes/index.js";
+import {
+	applyPostAuthGuard,
+	applyPreAuthGuard,
+	createRateLimiterFromConfig,
+	type NormalizedRequest,
+	type RateLimiter,
+} from "./guard.js";
 
 /**
  * Fastify-compatible request object (minimal interface)
@@ -33,6 +40,29 @@ export interface FastifyRequest {
 	body?: unknown;
 	headers: Record<string, string | string[] | undefined>;
 	params?: Record<string, string>;
+	/** Underlying socket, used as the transport-level peer address. */
+	socket?: { remoteAddress?: string };
+}
+
+/**
+ * Build the transport-independent request description the shared guard needs.
+ *
+ * Deliberately reads the raw socket address rather than Fastify's `request.ip`:
+ * `request.ip` already reflects `X-Forwarded-For` when Fastify's own trustProxy
+ * option is enabled, which would silently override the admin config's
+ * `trustProxy` decision. Keeping the forwarded-header choice in one place means
+ * an operator cannot accidentally trust a spoofable address here.
+ */
+function toNormalizedRequest(request: FastifyRequest, path: string): NormalizedRequest {
+	const declaredLength = Number(request.headers["content-length"]);
+
+	return {
+		method: request.method?.toUpperCase() ?? "GET",
+		headers: request.headers,
+		path,
+		remoteAddress: request.socket?.remoteAddress,
+		contentLength: Number.isFinite(declaredLength) ? declaredLength : undefined,
+	};
 }
 
 /**
@@ -92,10 +122,14 @@ export function createFastifyAdminPlugin(options: FastifyAdminServerOptions): Fa
 	const { admin } = options;
 	const routes = createRoutes();
 
+	// Initialize rate limiter from config. Created once per plugin, never per
+	// request -- a per-request limiter would refill its bucket every time.
+	const rateLimiter = createRateLimiterFromConfig(admin.config.rateLimit);
+
 	return (fastify, _opts, done) => {
 		// Register routes
 		for (const route of routes) {
-			const handler = createRouteHandler(admin, route);
+			const handler = createRouteHandler(admin, route, rateLimiter);
 			const method = route.method.toLowerCase() as "get" | "post" | "put" | "patch" | "delete";
 
 			// Convert :param to Fastify's :param format (same format, just register)
@@ -106,8 +140,22 @@ export function createFastifyAdminPlugin(options: FastifyAdminServerOptions): Fa
 	};
 }
 
-function createRouteHandler(admin: AdminCore, route: Route): FastifyRouteHandler {
+function createRouteHandler(
+	admin: AdminCore,
+	route: Route,
+	rateLimiter: RateLimiter | null
+): FastifyRouteHandler {
 	return async (request, reply) => {
+		// Rate limiting, CSRF and body-size checks, shared with every other adapter
+		const preAuth = applyPreAuthGuard(toNormalizedRequest(request, route.path), {
+			limiter: rateLimiter,
+			trustProxy: admin.config.trustProxy,
+		});
+		if (preAuth) {
+			sendResponse(reply, preAuth);
+			return;
+		}
+
 		// Handle authentication
 		let authResult = { valid: false, error: "Not authenticated" } as ReturnType<
 			typeof admin.auth.authenticateRequest
@@ -118,6 +166,13 @@ function createRouteHandler(admin: AdminCore, route: Route): FastifyRouteHandler
 
 			if (!authResult.valid) {
 				sendResponse(reply, unauthorized(authResult.error));
+				return;
+			}
+
+			// Role-based access control: write operations require admin role
+			const postAuth = applyPostAuthGuard(request.method?.toUpperCase() ?? "GET", authResult);
+			if (postAuth) {
+				sendResponse(reply, postAuth);
 				return;
 			}
 		} else {
