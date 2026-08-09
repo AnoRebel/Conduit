@@ -1,6 +1,24 @@
+import { MessageType } from "@conduit/shared";
 import type { RateLimitConfig } from "../types.js";
 import type { Route } from "./index.js";
 import { error, json } from "./index.js";
+
+/**
+ * Message types an operator may broadcast to every connected peer.
+ *
+ * Deliberately narrower than the full protocol: connection-negotiation types
+ * such as OFFER/ANSWER/CANDIDATE are meaningful only between two specific peers
+ * and would corrupt client state if fanned out.
+ */
+const BROADCASTABLE_TYPES: ReadonlySet<string> = new Set([
+	MessageType.ERROR,
+	MessageType.EXPIRE,
+	MessageType.HEARTBEAT,
+	MessageType.LEAVE,
+]);
+
+/** Maximum serialized size of a broadcast payload, in bytes. */
+const MAX_BROADCAST_PAYLOAD_SIZE = 64 * 1024;
 
 export const configRoutes: Route[] = [
 	{
@@ -116,6 +134,25 @@ export const configRoutes: Route[] = [
 
 			if (!type || typeof type !== "string") {
 				return error("message type is required");
+			}
+
+			// A broadcast reaches every connected peer, so the type must be one the
+			// protocol defines rather than an arbitrary string injected into clients.
+			if (!BROADCASTABLE_TYPES.has(type)) {
+				return error(
+					`Unsupported message type "${type}". Expected one of: ${[...BROADCASTABLE_TYPES].join(", ")}`
+				);
+			}
+
+			// Bound the payload so a single request cannot fan a large message out
+			// to the entire client population.
+			if (payload !== undefined) {
+				const size = JSON.stringify(payload)?.length ?? 0;
+				if (size > MAX_BROADCAST_PAYLOAD_SIZE) {
+					return error(
+						`Broadcast payload exceeds the maximum size of ${MAX_BROADCAST_PAYLOAD_SIZE} bytes`
+					);
+				}
 			}
 
 			const message = { type, payload };

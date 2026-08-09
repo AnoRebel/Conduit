@@ -143,8 +143,13 @@ program
 		// Set up admin API if enabled
 		if (adminEnabled) {
 			try {
-				const { createAdminConfig, createAdminCore, createNodeAdminServer, createAdminWSServer } =
-					await import("@conduit/admin");
+				const {
+					createAdminConfig,
+					createAdminCore,
+					createNodeAdminServer,
+					createAdminWSServer,
+					validateAdminConfig,
+				} = await import("@conduit/admin");
 
 				// Build auth config from env/CLI options
 				const authMethods = [adminAuthType].filter(Boolean);
@@ -163,6 +168,20 @@ program
 					auth: authConfig,
 					...(dbPath ? { persistence: { type: "sqlite", dbPath } } : {}),
 				});
+
+				// Fail loudly rather than serving an admin API where every request
+				// 401s because the selected auth method has no credential.
+				const adminValidation = validateAdminConfig(adminConfig);
+				if (!adminValidation.valid) {
+					console.error("Refusing to start: invalid admin configuration.");
+					for (const problem of adminValidation.errors) {
+						console.error(`  - ${problem}`);
+					}
+					console.error("");
+					console.error("Set the missing credential (ADMIN_API_KEY, ADMIN_JWT_SECRET, or");
+					console.error("ADMIN_BASIC_USER/ADMIN_BASIC_PASS), or start without --admin.");
+					process.exit(1);
+				}
 
 				const adminCore = createAdminCore({ config: adminConfig });
 				adminCore.attachToServer(conduitServer.core);

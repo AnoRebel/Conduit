@@ -1,5 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import type { RawData, WebSocket } from "ws";
+import { createRateLimiter } from "../adapters/guard.js";
 import type { AdminCore } from "../core/index.js";
 import type { MetricsSnapshot } from "../types.js";
 import {
@@ -8,6 +9,26 @@ import {
 	type ServerToClientEvents,
 	serializeEvent,
 } from "./events.js";
+
+/** Maximum size of an inbound realtime frame, in bytes. */
+const MAX_WS_FRAME_SIZE = 64 * 1024;
+
+/** Authentication attempts permitted per source address, per window. */
+const MAX_AUTH_ATTEMPTS = 20;
+
+/** Window over which authentication attempts are counted, in milliseconds. */
+const AUTH_ATTEMPT_WINDOW_MS = 60_000;
+
+/** Measure a frame without materialising it as a string. */
+function frameSize(data: RawData): number {
+	if (typeof data === "string") {
+		return Buffer.byteLength(data);
+	}
+	if (Array.isArray(data)) {
+		return data.reduce((total, chunk) => total + chunk.length, 0);
+	}
+	return (data as { byteLength?: number }).byteLength ?? 0;
+}
 
 /** A connected WebSocket client with subscription tracking. */
 export interface AdminWSClient {
@@ -49,6 +70,7 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 
 	const clients = new Map<string, AdminWSClient>();
 	let clientIdCounter = 0;
+	const authLimiter = createRateLimiter(MAX_AUTH_ATTEMPTS, AUTH_ATTEMPT_WINDOW_MS);
 
 	let pingTimer: ReturnType<typeof setInterval> | null = null;
 	let metricsTimer: ReturnType<typeof setInterval> | null = null;
@@ -59,6 +81,14 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 
 	function handleConnection(socket: WebSocket, request: IncomingMessage): void {
 		const clientId = `ws_${++clientIdCounter}_${Date.now()}`;
+
+		// Throttle authentication attempts per source address. Without this the
+		// realtime endpoint is an unmetered oracle for guessing API keys and JWTs.
+		const address = request.socket.remoteAddress ?? "unknown";
+		if (authLimiter && !authLimiter.isAllowed(address)) {
+			socket.close(4029, "Too many authentication attempts");
+			return;
+		}
 
 		// Authenticate via query string or headers
 		const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
@@ -127,6 +157,14 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 	}
 
 	function handleMessage(client: AdminWSClient, data: RawData): void {
+		// Bound the frame before parsing it: an unbounded toString/JSON.parse on
+		// attacker-supplied input is a cheap way to exhaust memory and CPU.
+		const size = frameSize(data);
+		if (size > MAX_WS_FRAME_SIZE) {
+			console.error(`Rejecting oversized WebSocket frame from ${client.id}: ${size} bytes`);
+			return;
+		}
+
 		const text = data.toString();
 		const message = parseClientMessage(text);
 
@@ -233,6 +271,8 @@ export function createAdminWSServer(options: AdminWSServerOptions): AdminWSServe
 			clearInterval(metricsTimer);
 			metricsTimer = null;
 		}
+
+		authLimiter.destroy();
 
 		for (const client of clients.values()) {
 			client.socket.close(1000, "Server shutting down");

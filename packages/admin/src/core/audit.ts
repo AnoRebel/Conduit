@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { PersistenceStore } from "../persistence/index.js";
 import type { AuditAction, AuditEntry } from "../types.js";
 
@@ -45,7 +46,14 @@ export function createAuditLogger(options: AuditLoggerOptions = {}): AuditLogger
 
 		if (enabled) {
 			entries.push(entry);
-			store?.saveAuditEntry(entry);
+
+			// Auditing must not take down the operation being audited: a failing
+			// store is reported, not propagated into the caller's request.
+			try {
+				store?.saveAuditEntry(entry);
+			} catch (err) {
+				console.error("Failed to persist audit entry:", err);
+			}
 
 			// Trim old entries from memory
 			while (entries.length > maxEntries) {
@@ -101,8 +109,16 @@ export function createAuditLogger(options: AuditLoggerOptions = {}): AuditLogger
 		store?.clearAudit();
 	}
 
+	/**
+	 * Generate an audit record identifier.
+	 *
+	 * Uses a CSPRNG rather than Math.random: this value is the audit_log PRIMARY
+	 * KEY, so a collision is a failed INSERT, and predictable identifiers weaken
+	 * the audit trail itself. 96 bits makes collisions unexpected for the
+	 * lifetime of a deployment.
+	 */
 	function generateId(): string {
-		return `audit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+		return `audit_${Date.now()}_${randomBytes(12).toString("base64url")}`;
 	}
 
 	return {
