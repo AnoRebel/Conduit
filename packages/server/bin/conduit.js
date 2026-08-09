@@ -1,11 +1,20 @@
 #!/usr/bin/env node
 
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { Command } from "commander";
 import { createConduitServer } from "../dist/adapters/node.js";
 
 const program = new Command();
+
+/** The documented default key, which is public and therefore no protection. */
+const DEFAULT_INSECURE_KEY = "conduit";
+
+/** Whether a signaling key is set and is not the well-known default. */
+function isKeyAcceptable(key) {
+	return typeof key === "string" && key.trim() !== "" && key !== DEFAULT_INSECURE_KEY;
+}
 
 program.name("conduit").description("Conduit Server - WebRTC signaling server").version("1.0.5");
 
@@ -15,7 +24,12 @@ program
 	.description("Start the Conduit server")
 	.option("-p, --port <port>", "Port to listen on", "9000")
 	.option("-H, --host <host>", "Host to bind to", "0.0.0.0")
-	.option("-k, --key <key>", "API key for clients", "conduit")
+	.option("-k, --key <key>", "API key for clients (or set CONDUIT_KEY)")
+	.option(
+		"--allow-insecure-key",
+		"Permit the well-known default signaling key. Local development only.",
+		false
+	)
 	.option("--path <path>", "Path prefix", "/")
 	.option("--allow-discovery", "Allow peer discovery API", false)
 	.option("--concurrent-limit <limit>", "Max concurrent connections", "5000")
@@ -34,7 +48,7 @@ program
 	.action(async options => {
 		const port = parseInt(options.port, 10);
 		const host = options.host;
-		const key = options.key;
+		const key = env("CONDUIT_KEY") || options.key;
 		const path = options.path;
 		const allowDiscovery = options.allowDiscovery;
 		const concurrentLimit = parseInt(options.concurrentLimit, 10);
@@ -44,6 +58,29 @@ program
 		const relayEnabled = options.relay !== false;
 		const authMode = env("AUTH_MODE") || options.auth || "key";
 		const dbPath = env("ADMIN_DB_PATH") || options.db;
+
+		// Refuse to start on a publicly-known secret. This runs before anything
+		// binds a port, so a misconfigured deployment fails loudly at startup
+		// rather than serving traffic that anyone can authenticate against.
+		if (authMode === "key" && !isKeyAcceptable(key) && !options.allowInsecureKey) {
+			console.error(
+				[
+					key
+						? `Refusing to start: the signaling key "${DEFAULT_INSECURE_KEY}" is the documented default and is public.`
+						: "Refusing to start: no signaling key is configured.",
+					"",
+					"Set one with the CONDUIT_KEY environment variable or --key <key>.",
+					"For local development only, pass --allow-insecure-key to proceed anyway.",
+				].join("\n")
+			);
+			process.exit(1);
+		}
+
+		if (authMode === "key" && !isKeyAcceptable(key)) {
+			console.warn(
+				"WARNING: running with an insecure signaling key. Do not use this in production."
+			);
+		}
 
 		// Resolve admin settings: env vars take precedence over CLI flags
 		const adminEnabled =
@@ -64,6 +101,14 @@ program
 ╚═══════════════════════════════════════════════════════════╝
 `);
 
+		/**
+		 * Ban check, populated once the admin core exists. Left undefined when the
+		 * admin API is disabled, in which case no connection is ever refused as
+		 * banned.
+		 * @type {((clientId: string, address?: string) => boolean) | undefined}
+		 */
+		let banChecker;
+
 		const conduitServer = createConduitServer({
 			config: {
 				port,
@@ -83,6 +128,10 @@ program
 					maxMessageSize: 65536,
 				},
 			},
+			// Late-bound: the admin core owns the ban list but is created after the
+			// server. Reading through the holder keeps the server free of ban state
+			// and works whether or not the admin API is enabled.
+			isBanned: (clientId, address) => banChecker?.(clientId, address) ?? false,
 			onClientConnect: client => {
 				console.log(`[${new Date().toISOString()}] Client connected: ${client.id}`);
 			},
@@ -117,6 +166,11 @@ program
 
 				const adminCore = createAdminCore({ config: adminConfig });
 				adminCore.attachToServer(conduitServer.core);
+
+				// Make bans real: the admin API records them, and the signaling
+				// server now refuses connections from banned peers and addresses.
+				banChecker = (clientId, address) =>
+					adminCore.isClientBanned(clientId) || (address ? adminCore.isIPBanned(address) : false);
 
 				const adminServer = createNodeAdminServer({
 					admin: adminCore,
@@ -226,7 +280,7 @@ program
 		conduitServer.listen(port, host, () => {
 			console.log(`Server listening on ${host}:${port}`);
 			console.log(`Path: ${path}`);
-			console.log(`Key: ${key}`);
+			console.log(`Key: ${maskKey(key)}`);
 			console.log(`Auth: ${authMode}`);
 			console.log(`Discovery: ${allowDiscovery ? "enabled" : "disabled"}`);
 			console.log(`Relay: ${relayEnabled ? "enabled" : "disabled"}`);
@@ -279,9 +333,11 @@ program
 			default: "0.0.0.0",
 		});
 
+		// Offer a freshly generated key rather than the public default, so a
+		// config produced by the wizard is usable without --allow-insecure-key.
 		const key = await input({
 			message: "API key for clients:",
-			default: "conduit",
+			default: randomBytes(24).toString("base64url"),
 		});
 
 		const path = await input({
@@ -358,6 +414,18 @@ program.parse();
 function env(name) {
 	const value = process.env[name];
 	return value && value.trim() !== "" ? value.trim() : undefined;
+}
+
+/**
+ * Render a key for display without disclosing it.
+ *
+ * The startup banner is written to container logs, journals and CI output, so
+ * it must not carry the shared secret in cleartext.
+ */
+function maskKey(key) {
+	if (!key) return "(not set)";
+	if (key.length <= 4) return "*".repeat(key.length);
+	return `${key.slice(0, 2)}${"*".repeat(Math.min(key.length - 2, 8))} (${key.length} chars)`;
 }
 
 /** MIME type map for static file serving */

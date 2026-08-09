@@ -20,12 +20,14 @@ import { parse as parseUrl } from "node:url";
 import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
+import { resolveCorsOrigin } from "../core/cors.js";
 import { type CreateConduitServerCoreOptions, createConduitServerCore } from "../core/index.js";
 
 // Express types (avoid importing express to keep it optional)
 interface Request {
 	url?: string;
 	method?: string;
+	headers?: Record<string, string | string[] | undefined>;
 }
 
 interface Response {
@@ -154,7 +156,8 @@ export function ExpressConduitServer(
 		}
 
 		// Set CORS headers
-		setCorsHeaders(res, config);
+		const requestOrigin = req.headers?.origin;
+		setCorsHeaders(res, config, typeof requestOrigin === "string" ? requestOrigin : undefined);
 
 		// Handle preflight
 		if (req.method === "OPTIONS") {
@@ -218,17 +221,23 @@ export function ExpressConduitServer(
 	return middleware;
 }
 
-function setCorsHeaders(res: Response, config: ServerConfig): void {
+function setCorsHeaders(
+	res: Response,
+	config: ServerConfig,
+	requestOrigin: string | undefined
+): void {
 	if (config.corsOrigin === false) {
 		return;
 	}
 
-	if (config.corsOrigin === true) {
-		res.setHeader("Access-Control-Allow-Origin", "*");
-	} else if (typeof config.corsOrigin === "string") {
-		res.setHeader("Access-Control-Allow-Origin", config.corsOrigin);
-	} else if (Array.isArray(config.corsOrigin)) {
-		res.setHeader("Access-Control-Allow-Origin", config.corsOrigin.join(", "));
+	const { allowOrigin, vary } = resolveCorsOrigin(requestOrigin, config.corsOrigin);
+
+	if (allowOrigin !== undefined) {
+		res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+	}
+
+	if (vary) {
+		res.setHeader("Vary", "Origin");
 	}
 
 	res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");

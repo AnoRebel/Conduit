@@ -1,6 +1,7 @@
 import { type IMessage, MessageType } from "@conduit/shared";
 import type { IClient } from "../../client.js";
 import type { IRealm } from "../../realm.js";
+import { validateId } from "../../validation.js";
 
 export interface TransmissionPayload {
 	type?: string;
@@ -17,6 +18,17 @@ export function handleTransmission(client: IClient, message: IMessage, realm: IR
 	const { type, dst, payload } = message;
 
 	if (!dst) {
+		return;
+	}
+
+	// A destination must satisfy the same format rules as a peer ID. Without this
+	// an arbitrary string becomes a message-queue key, letting a client grow the
+	// queue map without bound by transmitting to destinations that never exist.
+	if (!validateId(dst).valid) {
+		client.send({
+			type: MessageType.ERROR,
+			payload: { msg: "Invalid destination" },
+		});
 		return;
 	}
 

@@ -40,8 +40,19 @@ export interface ConduitServerCore {
 	/** Structured logger instance. */
 	readonly logger: ILogger;
 
-	/** Process a new WebSocket connection; returns the client or `null` on rejection. */
-	handleConnection(socket: WebSocket, id: string, token: string, key: string): IClient | null;
+	/**
+	 * Process a new WebSocket connection; returns the client or `null` on rejection.
+	 *
+	 * @param address - Transport-level source address, used for ban checks. Adapters
+	 * that cannot determine it may omit it; ban-by-address is then not enforced.
+	 */
+	handleConnection(
+		socket: WebSocket,
+		id: string,
+		token: string,
+		key: string,
+		address?: string
+	): IClient | null;
 	/** Process an incoming WebSocket message from an authenticated client. */
 	handleMessage(client: IClient, data: RawData | string): void;
 	/** Handle a client WebSocket disconnect. */
@@ -54,6 +65,19 @@ export interface ConduitServerCore {
 	stop(): void;
 }
 
+/**
+ * Decides whether a connection attempt is banned.
+ *
+ * Supplied by the host application -- typically `@conduit/admin`, which owns the
+ * ban list. The server deliberately holds no ban state of its own: admin is an
+ * optional dependency, and duplicating the list here would create a sync problem.
+ *
+ * @param clientId - Peer ID the connection is claiming.
+ * @param address - Transport-level source address, when the adapter knows it.
+ * @returns `true` to refuse the connection.
+ */
+export type BanPredicate = (clientId: string, address?: string) => boolean;
+
 /** Options accepted by {@link createConduitServerCore}. */
 export interface CreateConduitServerCoreOptions {
 	/** Partial server configuration (merged with defaults). */
@@ -64,6 +88,11 @@ export interface CreateConduitServerCoreOptions {
 	onClientConnect?: (client: IClient) => void;
 	/** Callback invoked when a client disconnects. */
 	onClientDisconnect?: (clientId: string) => void;
+	/**
+	 * Optional ban check consulted before a client is admitted. When omitted the
+	 * server admits clients as normal.
+	 */
+	isBanned?: BanPredicate;
 }
 
 /** Create a new transport-agnostic Conduit signaling server core. */
@@ -101,7 +130,8 @@ export function createConduitServerCore(
 		socket: WebSocket,
 		id: string,
 		token: string,
-		key: string
+		key: string,
+		address?: string
 	): IClient | null {
 		const clientLogger = logger.child({ clientId: id });
 
@@ -147,6 +177,20 @@ export function createConduitServerCore(
 			return null;
 		}
 
+		// Reject banned peers. Checked after key validation so that an
+		// unauthenticated caller cannot use the response as a ban-list oracle.
+		if (options.isBanned?.(id, address)) {
+			clientLogger.warn("Connection rejected: banned");
+			socket.send(
+				JSON.stringify({
+					type: MessageType.ERROR,
+					payload: { msg: "Banned" },
+				})
+			);
+			socket.close();
+			return null;
+		}
+
 		// Check if ID is already taken
 		const existingClient = realm.getClient(id);
 		if (existingClient && existingClient.token !== token) {
@@ -174,6 +218,12 @@ export function createConduitServerCore(
 			return null;
 		}
 
+		// Whether this connection may collect mail queued for the ID. Decided
+		// before the client is registered, since registering makes it "existing".
+		const mayCollectQueue = existingClient
+			? true // Same live session: the token was already checked above.
+			: realm.mayCollectQueuedMessages(id, token);
+
 		// Create or update client
 		let client: IClient;
 		if (existingClient) {
@@ -196,13 +246,22 @@ export function createConduitServerCore(
 			})
 		);
 
-		// Deliver any queued messages
+		// Deliver any queued messages. getMessages() also clears the queue, so a
+		// party that may not collect them discards the mail rather than leaving it
+		// for the next claimant.
 		const queuedMessages = realm.getMessageQueue().getMessages(id);
 		if (queuedMessages.length > 0) {
-			clientLogger.debug("Delivering queued messages", queuedMessages.length);
-		}
-		for (const message of queuedMessages) {
-			client.send(message);
+			if (mayCollectQueue) {
+				clientLogger.debug("Delivering queued messages", queuedMessages.length);
+				for (const message of queuedMessages) {
+					client.send(message);
+				}
+			} else {
+				clientLogger.warn(
+					"Discarding messages queued for a previously-held ID",
+					queuedMessages.length
+				);
+			}
 		}
 
 		options.onClientConnect?.(client);

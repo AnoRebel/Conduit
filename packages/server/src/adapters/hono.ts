@@ -8,15 +8,18 @@
  * import { createConduitMiddleware } from '@conduit/server/adapters/hono';
  *
  * const app = new Hono();
- * const { middleware, upgradeWebSocket } = createConduitMiddleware();
+ * const { middleware, getRoutes, destroy } = createConduitMiddleware();
  *
  * app.use('/conduit/*', middleware);
- * app.get('/conduit/ws', upgradeWebSocket);
  * ```
+ *
+ * This adapter handles HTTP routes only -- it performs no WebSocket upgrade.
+ * WebSocket signaling requires the node or bun adapter.
  */
 
 import { VERSION } from "@conduit/shared";
 import type { ServerConfig } from "../config.js";
+import { resolveCorsOrigin } from "../core/cors.js";
 import {
 	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
@@ -83,7 +86,7 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 		}
 
 		// Set CORS headers
-		setCorsHeaders(c, config);
+		setCorsHeaders(c, config, c.req.header("origin"));
 
 		// Handle preflight
 		if (c.req.method === "OPTIONS") {
@@ -180,17 +183,23 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 	};
 }
 
-function setCorsHeaders(c: HonoContext, config: ServerConfig): void {
+function setCorsHeaders(
+	c: HonoContext,
+	config: ServerConfig,
+	requestOrigin: string | undefined
+): void {
 	if (config.corsOrigin === false) {
 		return;
 	}
 
-	if (config.corsOrigin === true) {
-		c.header("Access-Control-Allow-Origin", "*");
-	} else if (typeof config.corsOrigin === "string") {
-		c.header("Access-Control-Allow-Origin", config.corsOrigin);
-	} else if (Array.isArray(config.corsOrigin)) {
-		c.header("Access-Control-Allow-Origin", config.corsOrigin.join(", "));
+	const { allowOrigin, vary } = resolveCorsOrigin(requestOrigin, config.corsOrigin);
+
+	if (allowOrigin !== undefined) {
+		c.header("Access-Control-Allow-Origin", allowOrigin);
+	}
+
+	if (vary) {
+		c.header("Vary", "Origin");
 	}
 
 	c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");

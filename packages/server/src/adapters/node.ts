@@ -18,6 +18,8 @@ import { parse as parseUrl } from "node:url";
 import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
+import { resolveClientAddress } from "../core/clientAddress.js";
+import { resolveCorsOrigin } from "../core/cors.js";
 import {
 	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
@@ -88,7 +90,7 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 		}
 
 		// Set CORS headers
-		setCorsHeaders(res, config);
+		setCorsHeaders(res, config, req.headers.origin);
 
 		// Handle preflight
 		if (req.method === "OPTIONS") {
@@ -181,12 +183,18 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 		"connection",
 		(
 			socket: WebSocket,
-			_request: IncomingMessage,
+			request: IncomingMessage,
 			params: { key: string; id: string; token: string }
 		) => {
 			const { key, id, token } = params;
 
-			const client = core.handleConnection(socket, id, token, key);
+			const client = core.handleConnection(
+				socket,
+				id,
+				token,
+				key,
+				resolveClientAddress(request, config)
+			);
 
 			if (!client) {
 				return;
@@ -271,17 +279,18 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 	};
 }
 
-function setCorsHeaders(res: ServerResponse, config: ServerConfig): void {
+function setCorsHeaders(res: ServerResponse, config: ServerConfig, requestOrigin?: string): void {
 	if (config.corsOrigin === false) {
 		return;
 	}
 
-	if (config.corsOrigin === true) {
-		res.setHeader("Access-Control-Allow-Origin", "*");
-	} else if (typeof config.corsOrigin === "string") {
-		res.setHeader("Access-Control-Allow-Origin", config.corsOrigin);
-	} else if (Array.isArray(config.corsOrigin)) {
-		res.setHeader("Access-Control-Allow-Origin", config.corsOrigin.join(", "));
+	const { allowOrigin, vary } = resolveCorsOrigin(requestOrigin, config.corsOrigin);
+
+	if (allowOrigin) {
+		res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+	}
+	if (vary) {
+		res.setHeader("Vary", "Origin");
 	}
 
 	res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");

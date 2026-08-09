@@ -12,6 +12,7 @@
 
 import { MessageType, VERSION } from "@conduit/shared";
 import type { ServerConfig } from "../config.js";
+import { resolveCorsOrigin } from "../core/cors.js";
 import {
 	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
@@ -87,7 +88,7 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 				const pathname = url.pathname;
 
 				// Set CORS headers
-				const corsHeaders = getCorsHeaders(config);
+				const corsHeaders = getCorsHeaders(config, request.headers.get("origin") ?? undefined);
 
 				// HTTPS enforcement check
 				if (config.requireSecure) {
@@ -265,18 +266,23 @@ export function createConduitServer(options: BunAdapterOptions = {}): BunConduit
 	};
 }
 
-function getCorsHeaders(config: ServerConfig): Record<string, string> {
+function getCorsHeaders(
+	config: ServerConfig,
+	requestOrigin: string | undefined
+): Record<string, string> {
 	const headers: Record<string, string> = {
 		"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 		"Access-Control-Allow-Headers": "Content-Type",
 	};
 
-	if (config.corsOrigin === true) {
-		headers["Access-Control-Allow-Origin"] = "*";
-	} else if (typeof config.corsOrigin === "string") {
-		headers["Access-Control-Allow-Origin"] = config.corsOrigin;
-	} else if (Array.isArray(config.corsOrigin)) {
-		headers["Access-Control-Allow-Origin"] = config.corsOrigin.join(", ");
+	const { allowOrigin, vary } = resolveCorsOrigin(requestOrigin, config.corsOrigin);
+
+	if (allowOrigin !== undefined) {
+		headers["Access-Control-Allow-Origin"] = allowOrigin;
+	}
+
+	if (vary) {
+		headers.Vary = "Origin";
 	}
 
 	return headers;

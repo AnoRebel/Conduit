@@ -18,6 +18,7 @@ import { parse as parseUrl } from "node:url";
 import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
+import { resolveCorsOrigin } from "../core/cors.js";
 import { type CreateConduitServerCoreOptions, createConduitServerCore } from "../core/index.js";
 
 // Fastify types (avoid importing fastify to keep it optional)
@@ -90,7 +91,8 @@ export async function fastifyConduitPlugin(
 			}
 		}
 
-		setCorsHeaders(rep, config);
+		const requestOrigin = req.headers.origin;
+		setCorsHeaders(rep, config, typeof requestOrigin === "string" ? requestOrigin : undefined);
 
 		if (req.method === "OPTIONS") {
 			rep.code(200).send("");
@@ -224,17 +226,23 @@ export async function fastifyConduitPlugin(
 	});
 }
 
-function setCorsHeaders(reply: FastifyReply, config: ServerConfig): void {
+function setCorsHeaders(
+	reply: FastifyReply,
+	config: ServerConfig,
+	requestOrigin: string | undefined
+): void {
 	if (config.corsOrigin === false) {
 		return;
 	}
 
-	if (config.corsOrigin === true) {
-		reply.header("Access-Control-Allow-Origin", "*");
-	} else if (typeof config.corsOrigin === "string") {
-		reply.header("Access-Control-Allow-Origin", config.corsOrigin);
-	} else if (Array.isArray(config.corsOrigin)) {
-		reply.header("Access-Control-Allow-Origin", config.corsOrigin.join(", "));
+	const { allowOrigin, vary } = resolveCorsOrigin(requestOrigin, config.corsOrigin);
+
+	if (allowOrigin !== undefined) {
+		reply.header("Access-Control-Allow-Origin", allowOrigin);
+	}
+
+	if (vary) {
+		reply.header("Vary", "Origin");
 	}
 
 	reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");

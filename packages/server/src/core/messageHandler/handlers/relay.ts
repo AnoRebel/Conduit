@@ -2,6 +2,7 @@ import { type IMessage, MessageType } from "@conduit/shared";
 import type { ServerConfig } from "../../../config.js";
 import type { IClient } from "../../client.js";
 import type { IRealm } from "../../realm.js";
+import { validateId } from "../../validation.js";
 
 export interface RelayPayload {
 	connectionId?: string;
@@ -26,6 +27,15 @@ export function handleRelay(
 	const { dst, payload } = message;
 
 	if (!dst) {
+		return;
+	}
+
+	// Destinations must satisfy the same format rules as peer IDs.
+	if (!validateId(dst).valid) {
+		client.send({
+			type: MessageType.ERROR,
+			payload: { msg: "Invalid destination" },
+		});
 		return;
 	}
 
@@ -82,6 +92,15 @@ export function handleRelayOpen(
 		return;
 	}
 
+	// Destinations must satisfy the same format rules as peer IDs.
+	if (!validateId(dst).valid) {
+		client.send({
+			type: MessageType.ERROR,
+			payload: { msg: "Invalid destination" },
+		});
+		return;
+	}
+
 	const destinationClient = realm.getClient(dst);
 
 	if (destinationClient) {
@@ -127,6 +146,15 @@ export function handleRelayClose(
 	const { dst, payload } = message;
 
 	if (!dst) {
+		return;
+	}
+
+	// Destinations must satisfy the same format rules as peer IDs.
+	if (!validateId(dst).valid) {
+		client.send({
+			type: MessageType.ERROR,
+			payload: { msg: "Invalid destination" },
+		});
 		return;
 	}
 
