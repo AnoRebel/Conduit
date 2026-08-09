@@ -1,4 +1,9 @@
 {
+  // This package is pinned to TypeScript 6 while the rest of the monorepo is on
+  // TypeScript 7, because vue-tsc does not support TS 7 yet (Volar embeds the
+  // compiler in-process; TS 7's native build does not expose that API).
+  // See vuejs/language-tools#6124 and the CONTRIBUTING "Compiler versions"
+  // section. Remove the pin once vue-tsc ships TS 7 support.
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "strict": true,

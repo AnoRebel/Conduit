@@ -5,10 +5,10 @@
   "type": "module",
   "main": "./dist/conduit.cjs",
   "module": "./dist/conduit.js",
-  "types": "./dist/conduit.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/conduit.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/conduit.js",
       "require": "./dist/conduit.cjs"
     },
@@ -30,7 +30,7 @@
     "./src/global.ts"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.build.json",
     "dev": "vite build --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -59,18 +59,17 @@
     "@msgpack/msgpack": "^3.1.3",
     "eventemitter3": "^5.0.4",
     "peerjs-js-binarypack": "^2.1.0",
-    "webrtc-adapter": "^9.0.4"
+    "webrtc-adapter": "^9.0.6"
   },
   "optionalDependencies": {
-    "web-streams-polyfill": "^4.2.0"
+    "web-streams-polyfill": "^4.3.0"
   },
   "devDependencies": {
-    "happy-dom": "^20.7.0",
-    "terser": "^5.46.0",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1",
-    "vite-plugin-dts": "^4.5.4",
-    "vitest": "^4.0.18"
+    "happy-dom": "^20.11.2",
+    "terser": "^5.49.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -82,5 +81,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "bun@1.3.10"
+  "packageManager": "bun@1.3.14"
 }

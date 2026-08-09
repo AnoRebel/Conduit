@@ -1,0 +1,15 @@
+{
+  // Declaration-only build. Vite emits the JavaScript bundles; this emits the
+  // .d.ts tree consumed via the "types" conditions in package.json exports.
+  // Kept separate from tsconfig.json so `typecheck` can stay --noEmit.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+}

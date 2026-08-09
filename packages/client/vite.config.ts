@@ -1,17 +1,10 @@
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
-import dts from "vite-plugin-dts";
 
+// Declarations are emitted separately by `tsc -p tsconfig.build.json`
+// (see the package `build` script). vite-plugin-dts cannot be used here:
+// TypeScript 7 removed the JavaScript Compiler API the plugin depends on.
 export default defineConfig({
-	plugins: [
-		dts({
-			include: ["src/**/*.ts"],
-			exclude: ["src/**/*.spec.ts", "src/**/*.test.ts"],
-			rollupTypes: true,
-			outDir: "dist",
-			entryRoot: "src",
-		}),
-	],
 	build: {
 		target: ["chrome83", "edge83", "firefox80", "safari15"],
 		lib: {

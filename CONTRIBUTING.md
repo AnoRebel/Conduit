@@ -125,6 +125,27 @@ Code style is enforced by [Biome](https://biomejs.dev/):
 - No unused imports or variables (enforced by Biome)
 - Use `node:` protocol for Node.js built-in imports
 
+#### Compiler versions differ by package (intentional)
+
+The monorepo deliberately runs two TypeScript majors:
+
+| Package | TypeScript | Type checker |
+| --- | --- | --- |
+| root, `shared`, `server`, `admin`, `client` | 7.x | `tsc` |
+| `admin-ui` | 6.x | `vue-tsc` |
+
+`admin-ui` is pinned to TypeScript 6 because `vue-tsc` does not support
+TypeScript 7 — Volar embeds the compiler in-process and TS 7's native build does
+not expose that programmatic API
+([vuejs/language-tools#6124](https://github.com/vuejs/language-tools/issues/6124)).
+
+This costs nothing at the boundary: each package compiles independently and
+`@conduit/shared` is consumed as built output, not as source.
+
+**Removal trigger:** when `vue-tsc` ships TypeScript 7 support, bump
+`packages/admin-ui` to match the other packages and delete this section. No
+application source changes are required.
+
 ### Vue (admin-ui)
 
 - Composition API with `<script setup>`
