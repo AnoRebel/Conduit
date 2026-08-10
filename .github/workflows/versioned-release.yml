@@ -14,11 +14,13 @@ on:
           - custom
         default: patch
       custom_version:
-        description: "Custom version (only if release_type is 'custom', e.g., 1.2.3 or 1.2.3-beta.1)"
+        description: "Custom version (only if release_type is 'custom', e.g., 1.2.3 or
+          1.2.3-beta.1)"
         required: false
         type: string
       prerelease_tag:
-        description: "Prerelease tag (e.g., alpha, beta, rc) - leave empty for stable release"
+        description: "Prerelease tag (e.g., alpha, beta, rc) - leave empty for stable
+          release"
         required: false
         type: string
       skip_tests:
@@ -36,7 +38,7 @@ permissions:
   contents: write
 
 env:
-  BUN_VERSION: "1.3.10"
+  BUN_VERSION: "1.3.14"
 
 jobs:
   prepare:
@@ -48,7 +50,7 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -135,7 +137,7 @@ jobs:
     if: ${{ !inputs.skip_tests }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -156,7 +158,7 @@ jobs:
       - name: Test
         run: bun run test
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
 
@@ -166,11 +168,12 @@ jobs:
 
   release:
     name: Create Release
-    needs: [prepare, test]
-    if: ${{ always() && needs.prepare.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    needs: [ prepare, test ]
+    if: ${{ always() && needs.prepare.result == 'success' && (needs.test.result ==
+      'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -289,7 +292,7 @@ jobs:
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Release ${{ needs.prepare.outputs.new_version }}
