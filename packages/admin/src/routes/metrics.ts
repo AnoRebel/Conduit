@@ -24,7 +24,7 @@ export const metricsRoutes: Route[] = [
 			if (duration) {
 				// Parse duration like "1h", "30m", "24h"
 				const match = duration.match(/^(\d+)(m|h|d)$/);
-				if (!match || !match[1] || !match[2]) {
+				if (!match?.[1] || !match[2]) {
 					return error("Invalid duration format. Use format like '30m', '1h', '24h'");
 				}
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	DEFAULT_RATE_LIMIT_CONFIG,
 	RateLimiter,
@@ -41,23 +41,37 @@ describe("RateLimiter", () => {
 		});
 
 		it("should reject requests beyond burst limit", () => {
-			// Consume all 100 tokens
-			for (let i = 0; i < 100; i++) {
-				rateLimiter.tryConsume("client1");
+			// The bucket refills on wall-clock time, so the clock is frozen here:
+			// otherwise a slow loop lets a token regenerate and the request that
+			// should be rejected succeeds instead.
+			vi.useFakeTimers();
+			try {
+				// Consume all 100 tokens
+				for (let i = 0; i < 100; i++) {
+					rateLimiter.tryConsume("client1");
+				}
+				// Next request should be rejected
+				expect(rateLimiter.tryConsume("client1")).toBe(false);
+			} finally {
+				vi.useRealTimers();
 			}
-			// Next request should be rejected
-			expect(rateLimiter.tryConsume("client1")).toBe(false);
 		});
 
 		it("should track different clients separately", () => {
-			// Exhaust client1's tokens
-			for (let i = 0; i < 100; i++) {
-				rateLimiter.tryConsume("client1");
-			}
-			expect(rateLimiter.tryConsume("client1")).toBe(false);
+			// Frozen clock for the same reason as the burst-limit test above.
+			vi.useFakeTimers();
+			try {
+				// Exhaust client1's tokens
+				for (let i = 0; i < 100; i++) {
+					rateLimiter.tryConsume("client1");
+				}
+				expect(rateLimiter.tryConsume("client1")).toBe(false);
 
-			// client2 should still have full bucket
-			expect(rateLimiter.tryConsume("client2")).toBe(true);
+				// client2 should still have full bucket
+				expect(rateLimiter.tryConsume("client2")).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it("should refill tokens over time", async () => {

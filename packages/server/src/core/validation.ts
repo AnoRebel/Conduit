@@ -31,7 +31,7 @@ export function validateId(id: unknown): ValidationResult {
 	if (typeof id !== "string") {
 		return { valid: false, error: "ID must be a string" };
 	}
-	if (!id || !id.trim()) {
+	if (!id?.trim()) {
 		return { valid: false, error: "ID cannot be empty" };
 	}
 	if (id.length > MAX_ID_LENGTH) {
@@ -50,7 +50,7 @@ export function validateToken(token: unknown): ValidationResult {
 	if (typeof token !== "string") {
 		return { valid: false, error: "Token must be a string" };
 	}
-	if (!token || !token.trim()) {
+	if (!token?.trim()) {
 		return { valid: false, error: "Token cannot be empty" };
 	}
 	if (token.length > MAX_TOKEN_LENGTH) {
@@ -69,7 +69,7 @@ export function validateKey(key: unknown): ValidationResult {
 	if (typeof key !== "string") {
 		return { valid: false, error: "Key must be a string" };
 	}
-	if (!key || !key.trim()) {
+	if (!key?.trim()) {
 		return { valid: false, error: "Key cannot be empty" };
 	}
 	if (key.length > MAX_KEY_LENGTH) {

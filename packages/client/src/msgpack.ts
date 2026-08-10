@@ -49,5 +49,5 @@ if (typeof globalThis !== "undefined") {
 	);
 }
 
-export { encode, decode };
+export { decode, encode };
 export default serializer;

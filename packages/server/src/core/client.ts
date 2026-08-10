@@ -47,7 +47,7 @@ export class Client implements IClient {
 
 	/** Send a signaling message to the client; returns `true` on success. */
 	send(message: IMessage): boolean {
-		if (!this._socket || this._socket.readyState !== 1) {
+		if (this._socket?.readyState !== 1) {
 			return false;
 		}
 

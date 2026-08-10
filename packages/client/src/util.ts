@@ -91,7 +91,7 @@ export const util: ConduitUtil = {
 
 	validateId(id: string): boolean {
 		// Reject empty or whitespace-only ids
-		if (!id || !id.trim()) return false;
+		if (!id?.trim()) return false;
 		// Only alphanumeric, -, _ (max 64 chars)
 		return /^[A-Za-z0-9_-]{1,64}$/.test(id);
 	},
