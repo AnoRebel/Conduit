@@ -13,6 +13,12 @@ bunx jsr add @conduit/client
 npx jsr add @conduit/client
 ```
 
+> **Note for npm consumers:** the package now ships a tree of `.d.ts` declaration
+> files instead of three bundled ones (TypeScript 7 removed the compiler API the
+> declaration bundler relied on). Type resolution is unchanged — the `exports` map
+> in `package.json` points at the new paths. JSR consumers are unaffected, since
+> JSR publishes from source.
+
 ## Usage
 
 ### Basic Data Connection
@@ -124,7 +130,8 @@ const conduit = new Conduit('my-id', {
   port: 9000,
   path: '/',
   secure: true,
-  key: 'conduit',
+  // Must match the key the signaling server was started with
+  key: 'your-server-key',
 });
 ```
 
@@ -156,7 +163,7 @@ new Conduit(id: string, options?: ConduitOptions)
 
 ```typescript
 interface ConduitOptions {
-  key?: string;              // API key (default: 'conduit')
+  key?: string;              // API key (must match the server's configured key)
   host?: string;             // Server host (default: 'conduit.anorebel.net')
   port?: number;             // Server port (default: 443)
   path?: string;             // Server path (default: '/')

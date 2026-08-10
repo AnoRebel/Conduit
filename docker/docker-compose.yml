@@ -11,7 +11,10 @@ services:
     environment:
       - PORT=9000
       - HOST=0.0.0.0
-      - CONDUIT_KEY=conduit
+      # Required: the server refuses to start on the well-known default key.
+      # Set CONDUIT_KEY in your environment or a .env file next to this compose
+      # file, e.g. CONDUIT_KEY=$(openssl rand -base64 24)
+      - CONDUIT_KEY=${CONDUIT_KEY:?set CONDUIT_KEY to a generated secret}
       - ALLOW_DISCOVERY=true
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/"]
@@ -31,7 +34,10 @@ services:
     environment:
       - PORT=9000
       - HOST=0.0.0.0
-      - CONDUIT_KEY=conduit
+      # Required: the server refuses to start on the well-known default key.
+      # Set CONDUIT_KEY in your environment or a .env file next to this compose
+      # file, e.g. CONDUIT_KEY=$(openssl rand -base64 24)
+      - CONDUIT_KEY=${CONDUIT_KEY:?set CONDUIT_KEY to a generated secret}
       - ALLOW_DISCOVERY=false
       - ADMIN_ENABLED=true
       - ADMIN_API_KEY=${ADMIN_API_KEY:-changeme}
@@ -73,7 +79,10 @@ services:
     environment:
       - PORT=9000
       - HOST=0.0.0.0
-      - CONDUIT_KEY=conduit
+      # Required: the server refuses to start on the well-known default key.
+      # Set CONDUIT_KEY in your environment or a .env file next to this compose
+      # file, e.g. CONDUIT_KEY=$(openssl rand -base64 24)
+      - CONDUIT_KEY=${CONDUIT_KEY:?set CONDUIT_KEY to a generated secret}
       - ALLOW_DISCOVERY=false
       - ADMIN_ENABLED=true
       - ADMIN_AUTH_TYPE=apiKey

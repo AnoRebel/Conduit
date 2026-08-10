@@ -167,10 +167,17 @@ const server = createConduitServer({
     port: 9000,
     host: '0.0.0.0',
     path: '/',
-    key: 'conduit',
+    // Required. The server refuses to start without a key, or with the
+    // well-known default "conduit". Keep this out of source control.
+    key: process.env.CONDUIT_KEY,
     allowDiscovery: false,
     requireSecure: true, // Enforce HTTPS/WSS
     allowedOrigins: ['https://your-app.com'],
+    // Trust X-Forwarded-For only when a reverse proxy sets it. Left false,
+    // rate limiting and bans use the transport-level peer address, so a
+    // client cannot spoof the header to evade them. Pass a string to read a
+    // different header, e.g. 'CF-Connecting-IP'.
+    proxied: false,
     relay: {
       enabled: true,
       maxMessageSize: 65536,
@@ -345,16 +352,20 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 
 ## Security
 
-Conduit includes comprehensive security features for production deployments:
-
+- **Required Signaling Key** - The server refuses to start without a key, or with the well-known default. Set `CONDUIT_KEY` or `--key`; `--allow-insecure-key` exists for local development only. The key is masked in startup output.
 - **Timing-Safe Key Comparison** - API key authentication uses constant-time comparison to prevent timing attacks
+- **Ban Enforcement** - Banned peer IDs and source addresses are rejected at connection time, and a peer banned while connected is disconnected. Requires the admin API, which owns the ban list.
+- **Uniform Adapter Protections** - Rate limiting, role checks, CSRF content-type validation, and body-size limits are enforced identically by every admin adapter (Node, Express, Fastify, Hono), asserted by a parity test suite.
+- **Least-Privilege Roles** - A credential that does not explicitly carry the `admin` role is treated as `viewer`, and viewers cannot perform state-changing requests. Grant admin per method with `apiKeyRole`, `basicRole`, or `sessionRole`, or via a JWT `role` claim.
 - **Body Size Limits** - Request bodies are capped at 1MB to prevent denial-of-service via large payloads
-- **CSRF Protection** - Content-Type validation on mutating requests prevents cross-site request forgery
-- **Rate Limiting** - Token bucket rate limiting is enforced on both the signaling server and the admin API
-- **JWT Role Enforcement** - JWT tokens carry a `role` claim (`viewer` or `admin`); viewers can only read (`GET`), admins have full access
-- **Input Validation** - Client IDs, tokens, and keys are validated against safe patterns; JSON parsing includes depth limits
+- **CSRF Protection** - Mutating requests must declare a JSON content type; a missing or form-submittable content type is rejected
+- **Rate Limiting** - Token bucket rate limiting is enforced on the signaling server, the admin API, and admin realtime authentication
+- **Proxy Trust** - `X-Forwarded-For` is honoured only when the server is configured to sit behind a proxy (`proxied` / `trustProxy`), so a client cannot spoof its address to evade rate limits or bans
+- **Peer Identity Protection** - Messages queued for a peer ID are not delivered to a different party that later claims it; server-generated IDs are 96-bit CSPRNG values
+- **Input Validation** - Client IDs, tokens, keys, and message destinations are validated against safe patterns; JSON parsing includes depth limits
+- **Pinned JWT Algorithms** - Token verification accepts only HS256, so a token cannot dictate how it is verified
 - **HTTPS/WSS Enforcement** - Optional `requireSecure: true` rejects non-HTTPS/WSS connections in production
-- **Origin Validation** - Restrict WebSocket connections to specific origins via `allowedOrigins`
+- **Origin Validation** - Restrict WebSocket connections to specific origins via `allowedOrigins` (node, bun, express, and fastify adapters)
 - **Graceful Shutdown** - Server sends `GOAWAY` messages to clients before shutting down
 
 ## Comparison with Alternatives
@@ -382,7 +393,7 @@ Conduit includes comprehensive security features for production deployments:
 - Video/audio calls between browsers
 - A complete solution with signaling server, client, and admin tools
 - Framework flexibility (Express, Fastify, Hono, Bun)
-- Production-ready security (rate limiting, origin validation, bans)
+- Built-in rate limiting, origin validation, and enforced bans
 
 **Choose PeerJS when you need:**
 - Simple P2P connections without fallback requirements
@@ -447,6 +458,73 @@ Conduit includes comprehensive security features for production deployments:
 | NAT Traversal | STUN/TURN required | Not needed |
 | Reliability | Depends on network | Server-dependent |
 | Scalability | Excellent | Limited by server |
+
+## Upgrading
+
+### Breaking changes in this release
+
+**1. A signaling key is now required.**
+
+The server previously defaulted to the key `conduit`, which is published in
+this README and therefore offers no protection. It now refuses to start
+without a key, or with that default:
+
+```bash
+# Set a real key (new environment variable)
+CONDUIT_KEY="$(openssl rand -base64 24)" conduit start
+# or
+conduit start --key "$(openssl rand -base64 24)"
+
+# Local development only — starts with a warning
+conduit start --key conduit --allow-insecure-key
+```
+
+`conduit init` now generates a key instead of offering the default.
+
+**2. Admin credentials are least-privilege by default.**
+
+Previously any valid API key, Basic credential, or session was silently
+treated as an `admin`, and there was no way to issue a read-only credential.
+A credential that does not explicitly carry the `admin` role is now a
+`viewer`, and viewers cannot perform state-changing requests.
+
+If you use an API key for writes, grant it the role explicitly:
+
+```typescript
+createAdminConfig({
+  auth: { methods: ["apiKey"], apiKey: process.env.ADMIN_API_KEY, apiKeyRole: "admin" },
+});
+```
+
+`basicRole` and `sessionRole` work the same way. JWTs continue to carry
+their role in the `role` claim.
+
+**3. Express, Fastify, and Hono admin adapters now enforce the same rules
+as the Node adapter.**
+
+Those three adapters previously performed no rate limiting, role checks,
+CSRF validation, or body-size limits. They now do. Expect `403` on
+viewer-role writes, `429` on rate-limit breaches, `415` on requests that do
+not declare a JSON content type, and `413` on oversized bodies — responses
+the Node adapter already returned.
+
+**4. `X-Forwarded-For` is no longer trusted by default.**
+
+Set `proxied` (signaling server) or `trustProxy` (admin API) when running
+behind a reverse proxy, otherwise rate limiting and bans use the
+transport-level peer address:
+
+```typescript
+createConduitServer({ config: { proxied: true } });
+createAdminConfig({ trustProxy: true });
+```
+
+**5. `@conduit/client` type declarations changed shape (npm only).**
+
+The package now ships a tree of `.d.ts` files rather than three bundled
+ones, because TypeScript 7 removed the compiler API the bundler relied on.
+Type resolution is unchanged for consumers — the `exports` map points at the
+new paths. JSR consumers are unaffected, as JSR publishes from source.
 
 ## Migration from PeerJS
 

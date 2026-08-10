@@ -23,7 +23,7 @@ import (
 
 func main() {
 	client, err := conduit.New("localhost:9000",
-		conduit.WithKey("conduit"),
+		conduit.WithKey("your-server-key"), // Must match the key the server was started with
 		conduit.WithPath("/"),
 		conduit.WithSecure(false),
 	)
@@ -77,7 +77,7 @@ Use functional options to configure the client:
 
 ```go
 client, err := conduit.New("localhost:9000",
-	conduit.WithKey("conduit"),          // API key (default: "conduit")
+	conduit.WithKey("your-server-key"),  // API key (must match the server's configured key)
 	conduit.WithID("my-custom-id"),      // Pre-set client ID (default: server-assigned)
 	conduit.WithToken("auth-token"),     // Auth token (optional)
 	conduit.WithPath("/"),               // URL path prefix (default: "/")

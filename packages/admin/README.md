@@ -172,11 +172,19 @@ interface AdminConfig {
   auth: {
     methods: ('apiKey' | 'jwt' | 'basic')[];  // Auth methods to enable
     apiKey?: string;                            // For API Key auth
+    apiKeyRole?: 'admin' | 'viewer';            // Role for API key callers (default: 'viewer')
     jwtSecret?: string;                         // For JWT auth
     jwtExpiresIn?: number;                      // JWT expiry in seconds (default: 3600)
     basicCredentials?: { username: string; password: string }; // For Basic auth
+    basicRole?: 'admin' | 'viewer';             // Role for Basic auth callers (default: 'viewer')
     sessionTimeout?: number;                    // Session timeout in ms (default: 3600000)
+    sessionRole?: 'admin' | 'viewer';           // Role for session callers (default: 'viewer')
   };
+
+  // Trust X-Forwarded-For when deriving the client address used for rate
+  // limiting. Leave false unless a reverse proxy sets the header, otherwise a
+  // client can spoof it to obtain an unlimited budget.
+  trustProxy: boolean;         // Default: false
 
   rateLimit: {
     enabled: boolean;          // Default: true
@@ -425,7 +433,7 @@ curl -H "Authorization: Bearer ${token}" \
 
 #### Role-Based Access
 
-JWT tokens carry a `role` claim that controls access:
+Every authenticated caller carries a role, which controls access:
 
 | Role | Permissions |
 |------|-------------|
@@ -433,6 +441,23 @@ JWT tokens carry a `role` claim that controls access:
 | `admin` | Full access — `GET`, `POST`, `PUT`, `PATCH`, `DELETE` |
 
 Viewers can monitor metrics, list clients, and view audit logs but cannot disconnect clients, manage bans, or modify configuration.
+
+A credential that does not explicitly say it is privileged is treated as a
+`viewer`. JWTs carry their role in the `role` claim; the other methods take it
+from configuration:
+
+```typescript
+createAdminConfig({
+  // Without apiKeyRole, this key is a viewer and cannot perform writes.
+  auth: { methods: ['apiKey'], apiKey: process.env.ADMIN_API_KEY, apiKeyRole: 'admin' },
+});
+```
+
+This lets you issue a read-only credential for dashboards and monitoring, and
+reserve write access for credentials that explicitly ask for it.
+
+These rules are enforced identically by every adapter (Node, Express, Fastify,
+Hono), which a parity test suite asserts.
 
 ### Basic Auth
 
@@ -455,17 +480,25 @@ const admin = createAdminCore({
 
 The admin API includes multiple layers of security:
 
+- **Uniform Adapter Enforcement** — Rate limiting, role checks, CSRF validation, and body-size limits are applied identically by every adapter (Node, Express, Fastify, Hono), asserted by a parity test suite
 - **Timing-Safe Key Comparison** — API key authentication uses constant-time comparison (`crypto.timingSafeEqual`) to prevent timing attacks
-- **Rate Limiting** — The admin API enforces its own rate limits (default: 100 requests per minute) to prevent brute force attacks
-- **CSRF Protection** — Mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) require a valid `Content-Type` header, preventing simple cross-site request forgery
+- **Least-Privilege Roles** — A credential that does not explicitly carry the `admin` role is a `viewer` and cannot perform state-changing requests
+- **Rate Limiting** — The admin API enforces its own rate limits (default: 100 requests per minute), including on realtime authentication attempts, to prevent brute force attacks
+- **Trusted Proxy Handling** — `X-Forwarded-For` is used for rate limiting only when `trustProxy` is enabled, so a client cannot spoof its address to obtain an unlimited budget
+- **CSRF Protection** — Mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) must declare a JSON `Content-Type`; a missing or form-submittable type is rejected
 - **Body Size Limits** — Request bodies are capped at 1MB to prevent denial-of-service via large payloads
-- **JWT Role Enforcement** — JWT tokens include a `role` claim; `viewer` tokens can only make `GET` requests, `admin` tokens have full access
-- **Audit Logging** — All administrative actions are logged with timestamps, actor, and details
+- **Pinned JWT Algorithms** — Token verification accepts only HS256, so a token cannot dictate how it is verified
+- **Bounded Realtime Frames** — Admin WebSocket frames are capped at 64KB and measured before parsing
+- **Validated Broadcasts** — Operator broadcasts are restricted to a safe subset of message types with a bounded payload
+- **Startup Validation** — Enabling an auth method without its credential fails at startup rather than serving an API where every request is rejected
+- **Audit Logging** — All administrative actions are logged with timestamps, actor, and details, identified by cryptographically random IDs
 
 ### Security Best Practices
 
 - **Always use HTTPS/WSS in production**
 - **Use strong, unique API keys** — Generate with `openssl rand -base64 32`
+- **Grant `admin` only where writes are needed** — Leave monitoring and dashboard credentials as viewers
+- **Set `trustProxy` to match your deployment** — Enable it only when a reverse proxy actually sets `X-Forwarded-For`
 - **Restrict admin API access** — Use firewall rules or reverse proxy
 - **Enable audit logging** — Track all administrative actions
 - **Use viewer tokens for monitoring** — Give `viewer` role to read-only integrations

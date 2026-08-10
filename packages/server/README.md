@@ -24,7 +24,9 @@ const server = createConduitServer({
   config: {
     port: 9000,
     path: '/',
-    key: 'conduit',
+    // Required — the server refuses to start with no key or with the
+    // well-known default 'conduit'.
+    key: process.env.CONDUIT_KEY,
     allowDiscovery: false,
   },
 });
@@ -81,8 +83,9 @@ conduit start \
 |------|-------------|---------|
 | `-p, --port <port>` | Port to listen on | `9000` |
 | `-H, --host <host>` | Host to bind to | `0.0.0.0` |
-| `-k, --key <key>` | API key for clients | `conduit` |
+| `-k, --key <key>` | API key for clients (or set `CONDUIT_KEY`) | - (required) |
 | `--path <path>` | Path prefix | `/` |
+| `--allow-insecure-key` | Start anyway with a missing or default key (local development only) | `false` |
 | `--allow-discovery` | Allow peer discovery API | `false` |
 | `--concurrent-limit <n>` | Max concurrent connections | `5000` |
 | `--alive-timeout <ms>` | Connection alive timeout | `60000` |
@@ -104,6 +107,7 @@ The CLI also reads these environment variables (env vars take precedence over CL
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `CONDUIT_KEY` | Signaling API key (takes precedence over `--key`) | - (required) |
 | `ADMIN_ENABLED` | Enable admin API (`true` or `1`) | `false` |
 | `ADMIN_PATH` | Admin API path prefix | `/admin` |
 | `ADMIN_AUTH_TYPE` | Authentication method (`apiKey`, `jwt`, `basic`) | `apiKey` |
@@ -221,7 +225,9 @@ const fastify = Fastify();
 fastify.register(fastifyConduitPlugin, {
   config: {
     path: '/',
-    key: 'conduit',
+    // Required — the server refuses to start with no key or with the
+    // well-known default 'conduit'.
+    key: process.env.CONDUIT_KEY,
   },
 });
 
@@ -280,7 +286,11 @@ interface ServerConfig {
   port: number;           // Server port (default: 9000)
   host: string;           // Server host (default: '0.0.0.0')
   path: string;           // Base path (default: '/')
-  key: string;            // API key (default: 'conduit')
+  key: string;            // API key — required, no default. Set via the
+                          // CONDUIT_KEY env var or --key. The server refuses to
+                          // start when it is unset, empty, or the well-known
+                          // default 'conduit'; --allow-insecure-key overrides
+                          // this for local development only.
   expireTimeout: number;  // Message expiry in ms (default: 5000)
   aliveTimeout: number;   // Connection timeout in ms (default: 60000)
   concurrentLimit: number; // Max concurrent connections (default: 5000)
@@ -291,7 +301,11 @@ interface ServerConfig {
   auth?: {
     mode: 'key' | 'none';  // Auth mode (default: 'key')
   };
-  proxied: boolean | string; // Behind proxy (default: false)
+  proxied: boolean | string; // Trust forwarded headers — only enable behind a
+                          // reverse proxy. Gates whether X-Forwarded-For is
+                          // trusted for the client address; a string names the
+                          // header to read (e.g. 'CF-Connecting-IP').
+                          // (default: false)
   requireSecure: boolean; // Require HTTPS/WSS (default: false)
   relay: {
     enabled: boolean;     // Enable WebSocket relay (default: true)
@@ -387,7 +401,7 @@ services:
       - "9000:9000"
     environment:
       - PORT=9000
-      - CONDUIT_KEY=conduit
+      - CONDUIT_KEY=${CONDUIT_KEY:?set CONDUIT_KEY to a generated secret}
       - ADMIN_ENABLED=true
       - ADMIN_API_KEY=your-secure-key
 ```
@@ -419,6 +433,12 @@ API key comparisons use constant-time algorithms to prevent timing attacks. Alwa
 ```bash
 openssl rand -base64 32
 ```
+
+The server refuses to start when the signaling key is unset, empty, or the well-known default `conduit`. Pass `--allow-insecure-key` to override this for local development only.
+
+### Ban Enforcement
+
+Bans are enforced at connection time: banned peer IDs and source addresses are rejected before the connection is established. This requires the admin API (`--admin`), which is where bans are recorded. Address bans behind a reverse proxy depend on `proxied` being set so the forwarded client address is trusted.
 
 ### HTTPS/WSS Enforcement
 
@@ -486,7 +506,7 @@ server.logger.child({ requestId: '123' }).debug('Scoped log');
 - **Set appropriate CORS origins** - Don't use `corsOrigin: true` in production
 - **Disable discovery in production** unless you need peer listing
 - **Rate limiting is enabled by default** - Tune limits for your use case
-- **Use a unique API key** for your deployment - Generate with `openssl rand -base64 32`
+- **Use a unique API key** for your deployment - Required; the server refuses to start without one. Generate with `openssl rand -base64 32`
 - **Restrict WebSocket origins** with `allowedOrigins` for web apps
 
 ## License
