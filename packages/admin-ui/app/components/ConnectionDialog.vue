@@ -125,6 +125,10 @@ async function handleConnect() {
 							<Input
 								id="serverUrl"
 								v-model="serverUrl"
+								type="url"
+								inputmode="url"
+								autocomplete="url"
+								spellcheck="false"
 								:placeholder="defaultServerUrl || 'https://your-server.com/admin/v1'"
 								class="pl-9"
 							/>
@@ -230,6 +234,9 @@ async function handleConnect() {
 							<Input
 								id="wsUrl"
 								v-model="wsUrl"
+								inputmode="url"
+								autocomplete="url"
+								spellcheck="false"
 								placeholder="Auto-derived from server URL"
 							/>
 							<p class="text-xs text-muted-foreground">

@@ -42,6 +42,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 const colorMode = useColorMode();
 const route = useRoute();
+// Sourced from package.json via runtimeConfig so it tracks the release.
+const appVersion = useRuntimeConfig().public.version;
 const connection = useConnection();
 const store = useAdminStore();
 
@@ -346,7 +348,7 @@ function onTourSkip() {
 								isAtBottom ? 'justify-between' : 'justify-center',
 							]"
 						>
-							<p class="text-xs">Conduit Admin v1.0.0</p>
+							<p class="text-xs">Conduit Admin v{{ appVersion }}</p>
 							<template v-if="isAtBottom">
 								<div class="flex items-center gap-4 text-xs">
 									<a href="https://github.com/AnoRebel/Conduit#readme" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Documentation</a>

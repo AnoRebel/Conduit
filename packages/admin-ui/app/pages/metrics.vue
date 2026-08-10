@@ -52,7 +52,10 @@ const durations = [
 
 onMounted(async () => {
 	isLoading.value = true;
-	await store.fetchMetricsHistory(selectedDuration.value);
+	// Both are needed: the charts read history, while "Current Statistics" reads
+	// the live snapshot in store.metrics. Fetching only history left every
+	// current-value stat showing its 0 fallback.
+	await Promise.all([store.fetchMetrics(), store.fetchMetricsHistory(selectedDuration.value)]);
 	isLoading.value = false;
 });
 

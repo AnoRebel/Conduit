@@ -1,4 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
+import pkg from "./package.json" with { type: "json" };
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -37,6 +38,9 @@ export default defineNuxtConfig({
 		},
 		// Public keys (exposed to client)
 		public: {
+			// Read from package.json so the footer cannot drift from the release,
+			// and so sync-version.ts needs no extra target.
+			version: pkg.version,
 			siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "https://conduit-ui.anorebel.net",
 			adminApiUrl: process.env.NUXT_PUBLIC_ADMIN_API_URL || "/admin/v1",
 			adminWsUrl: process.env.NUXT_PUBLIC_ADMIN_WS_URL || "",

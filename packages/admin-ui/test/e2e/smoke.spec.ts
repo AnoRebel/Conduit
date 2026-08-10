@@ -36,7 +36,10 @@ beforeAll(async () => {
 	});
 
 	server = await startPreviewServer(PORT);
-});
+	// The Nitro server takes roughly 8s to answer, which exceeds Bun's 5s default
+	// hook timeout. Without this the hook is killed before startPreviewServer's
+	// own readiness wait can finish, and the suite fails intermittently.
+}, 90_000);
 
 afterAll(async () => {
 	await browser.close();
