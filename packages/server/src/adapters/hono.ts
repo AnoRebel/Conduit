@@ -1,24 +1,31 @@
 /**
  * @module @conduit/server/adapters/hono
  *
- * Hono middleware adapter for Conduit Server.
+ * Hono middleware adapter for Conduit Server, including WebSocket signaling.
  *
  * ```typescript
  * import { Hono } from 'hono';
+ * import { upgradeWebSocket, websocket } from 'hono/bun';
  * import { createConduitMiddleware } from '@conduit/server/adapters/hono';
  *
  * const app = new Hono();
- * const { middleware, getRoutes, destroy } = createConduitMiddleware();
+ * const conduit = createConduitMiddleware();
  *
- * app.use('/conduit/*', middleware);
+ * app.use('/conduit/*', conduit.middleware);
+ * app.get('/conduit/ws', upgradeWebSocket(conduit.createWebSocketHandler));
+ *
+ * export default { fetch: app.fetch, websocket };
  * ```
  *
- * This adapter handles HTTP routes only -- it performs no WebSocket upgrade.
- * WebSocket signaling requires the node or bun adapter.
+ * Hono's `upgradeWebSocket` is runtime-specific -- import it from `hono/bun`,
+ * `hono/deno`, `hono/cloudflare-workers`, or `@hono/node-server` -- so this
+ * adapter does not import it. It supplies the event handlers, and the caller
+ * supplies the upgrade helper for the runtime they deploy to.
  */
 
-import { VERSION } from "@conduit/shared";
+import { MessageType, VERSION } from "@conduit/shared";
 import type { ServerConfig } from "../config.js";
+import type { IClient } from "../core/client.js";
 import { resolveCorsOrigin } from "../core/cors.js";
 import {
 	type ConduitServerCore,
@@ -41,6 +48,31 @@ interface HonoContext {
 
 type HonoMiddleware = (c: HonoContext, next: () => Promise<void>) => Promise<Response | void>;
 
+/**
+ * Hono's WebSocket connection handle, structurally typed.
+ *
+ * Mirrors the `WSContext` passed to `upgradeWebSocket` handlers. Declared here
+ * rather than imported because `hono` is an optional peer dependency.
+ */
+export interface HonoWSContext {
+	send(data: string | ArrayBuffer | Uint8Array): void;
+	close(code?: number, reason?: string): void;
+	readyState: number;
+}
+
+/** A message event delivered to the `onMessage` handler. */
+export interface HonoMessageEvent {
+	data: unknown;
+}
+
+/** The handler object Hono's `upgradeWebSocket` expects. */
+export interface HonoWSEvents {
+	onOpen?(event: unknown, ws: HonoWSContext): void;
+	onMessage?(event: HonoMessageEvent, ws: HonoWSContext): void;
+	onClose?(event: unknown, ws: HonoWSContext): void;
+	onError?(event: unknown, ws: HonoWSContext): void;
+}
+
 /** Options for the Hono adapter, extending core server options. */
 export interface HonoAdapterOptions extends CreateConduitServerCoreOptions {}
 
@@ -56,6 +88,20 @@ export interface HonoConduitServer {
 		method: string;
 		handler: (c: HonoContext) => Response | Promise<Response>;
 	}[];
+	/**
+	 * Build the WebSocket event handlers for a signaling connection.
+	 *
+	 * Pass this straight to your runtime's `upgradeWebSocket`:
+	 *
+	 * ```typescript
+	 * app.get('/conduit/ws', upgradeWebSocket(conduit.createWebSocketHandler));
+	 * ```
+	 *
+	 * Connection parameters are read from the query string (`key`, `id`,
+	 * `token`), and the origin allowlist is enforced before the socket is
+	 * admitted, matching the node and bun adapters.
+	 */
+	createWebSocketHandler(c: HonoContext): HonoWSEvents;
 	/** Stop the Conduit server core and release resources. */
 	destroy(): void;
 }
@@ -69,6 +115,7 @@ export interface HonoConduitServer {
 export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoConduitServer {
 	const core = createConduitServerCore(options);
 	const config = core.config;
+	const logger = core.logger;
 
 	core.start();
 
@@ -171,7 +218,97 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 		return routes;
 	}
 
+	/**
+	 * Build the WebSocket event handlers for one signaling connection.
+	 *
+	 * Validation happens here, before the socket is handed to the core: Hono has
+	 * already completed the upgrade by the time these handlers run, so a
+	 * rejected connection is closed rather than refused. Close codes follow the
+	 * application range (4xxx) so a client can tell the reasons apart.
+	 */
+	function createWebSocketHandler(c: HonoContext): HonoWSEvents {
+		// Read connection parameters at upgrade time; `c` is not retained.
+		const origin = c.req.header("origin");
+		const key = c.req.query("key");
+		const id = c.req.query("id");
+		const token = c.req.query("token");
+
+		// WebSockets are not subject to the same-origin policy, so an allowlist is
+		// the only thing stopping any site from opening a signaling connection.
+		const originAllowed =
+			!config.allowedOrigins ||
+			config.allowedOrigins.length === 0 ||
+			(!!origin && config.allowedOrigins.includes(origin));
+
+		// A key is required unless auth is disabled entirely.
+		const parametersPresent = (!!key || config.auth.mode === "none") && !!id && !!token;
+
+		let client: IClient | null = null;
+
+		return {
+			onOpen(_event, ws) {
+				if (!originAllowed) {
+					logger.warn("Rejecting WebSocket from disallowed origin", origin);
+					ws.close(4003, "Forbidden origin");
+					return;
+				}
+
+				if (!parametersPresent) {
+					ws.close(4000, "Missing parameters");
+					return;
+				}
+
+				// Adapt Hono's WSContext to the socket shape the core expects.
+				const socket = {
+					readyState: 1,
+					send: (data: string) => ws.send(data),
+					close: () => ws.close(),
+				} as unknown as import("ws").WebSocket;
+
+				client = core.handleConnection(socket, id as string, token as string, key ?? config.key);
+			},
+
+			onMessage(event, _ws) {
+				if (!client) {
+					return;
+				}
+
+				const { data } = event;
+				const text =
+					typeof data === "string"
+						? data
+						: data instanceof ArrayBuffer
+							? new TextDecoder().decode(data)
+							: String(data);
+
+				core.handleMessage(client, text);
+			},
+
+			onClose() {
+				if (client) {
+					core.handleDisconnect(client);
+					client = null;
+				}
+			},
+
+			onError() {
+				if (client) {
+					core.handleDisconnect(client);
+					client = null;
+				}
+			},
+		};
+	}
+
 	function destroy(): void {
+		// Give connected clients a chance to fail over before the core stops.
+		for (const clientId of core.realm.getClientIds()) {
+			core.realm.getClient(clientId)?.send({
+				type: MessageType.GOAWAY,
+				payload: { msg: "Server is shutting down" },
+			});
+		}
+
 		core.stop();
 	}
 
@@ -179,6 +316,7 @@ export function createConduitMiddleware(options: HonoAdapterOptions = {}): HonoC
 		core,
 		middleware,
 		getRoutes,
+		createWebSocketHandler,
 		destroy,
 	};
 }

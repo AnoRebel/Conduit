@@ -238,12 +238,19 @@ fastify.listen({ port: 9000 });
 
 ```typescript
 import { Hono } from 'hono';
+import { upgradeWebSocket, websocket } from 'hono/bun';
 import { createConduitMiddleware } from '@conduit/server/adapters/hono';
 
 const app = new Hono();
 const conduit = createConduitMiddleware({ config: { path: '/' } });
 
 app.use('/*', conduit.middleware);
+
+// WebSocket signaling. `upgradeWebSocket` is runtime-specific — import it from
+// 'hono/bun', 'hono/deno', 'hono/cloudflare-workers', or '@hono/node-server'.
+app.get('/conduit', upgradeWebSocket(conduit.createWebSocketHandler));
+
+export default { fetch: app.fetch, websocket };
 ```
 
 ### Bun
@@ -365,7 +372,7 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 - **Input Validation** - Client IDs, tokens, keys, and message destinations are validated against safe patterns; JSON parsing includes depth limits
 - **Pinned JWT Algorithms** - Token verification accepts only HS256, so a token cannot dictate how it is verified
 - **HTTPS/WSS Enforcement** - Optional `requireSecure: true` rejects non-HTTPS/WSS connections in production
-- **Origin Validation** - Restrict WebSocket connections to specific origins via `allowedOrigins` (node, bun, express, and fastify adapters)
+- **Origin Validation** - Restrict WebSocket connections to specific origins via `allowedOrigins`, enforced by every adapter
 - **Graceful Shutdown** - Server sends `GOAWAY` messages to clients before shutting down
 
 ## Comparison with Alternatives

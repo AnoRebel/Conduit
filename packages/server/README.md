@@ -238,7 +238,8 @@ fastify.listen({ port: 9000 });
 
 ```typescript
 import { Hono } from 'hono';
-import { serve } from '@hono/node-server';
+import { serve, upgradeWebSocket } from '@hono/node-server';
+import { WebSocketServer } from 'ws';
 import { createConduitMiddleware } from '@conduit/server/adapters/hono';
 
 const app = new Hono();
@@ -255,11 +256,22 @@ routes.forEach(({ path, method, handler }) => {
   app.on(method, path, handler);
 });
 
-serve({ fetch: app.fetch, port: 9000 });
+// WebSocket signaling
+app.get('/conduit', upgradeWebSocket(conduit.createWebSocketHandler));
+
+serve({ fetch: app.fetch, port: 9000, websocket: { server: new WebSocketServer({ noServer: true }) } });
 
 // Graceful shutdown — sends GOAWAY to connected clients
 conduit.destroy();
 ```
+
+`upgradeWebSocket` is runtime-specific. Import it from `@hono/node-server` on
+Node, or from `hono/bun`, `hono/deno`, or `hono/cloudflare-workers` on those
+runtimes — `@conduit/server` supplies the handlers, not the upgrade helper.
+
+Connection parameters are read from the query string (`key`, `id`, `token`),
+and `allowedOrigins` is enforced before the socket is admitted, matching the
+other adapters.
 
 ### Bun
 
