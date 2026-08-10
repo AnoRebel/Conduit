@@ -54,13 +54,26 @@ function deriveWsUrl(serverUrl: string): string {
 	}
 }
 
+/**
+ * The single settings ref shared by every caller.
+ *
+ * `useLocalStorage` returns a NEW ref per call, and its cross-instance sync
+ * relies on the `storage` event, which browsers do not fire in the document
+ * that performed the write. One ref per `useConnection()` call therefore left
+ * the five call sites (dialog, API, WebSocket, layout, dashboard) with
+ * independent state: settings saved in the dialog were invisible to
+ * `useAdminApi`, whose `serverUrl` fell back to the build-time default and
+ * sent the very next request to the wrong server.
+ */
+const useConnectionSettings = createSharedComposable(() =>
+	useLocalStorage<ConnectionSettings>("conduit-connection", { ...DEFAULT_SETTINGS })
+);
+
 export function useConnection() {
 	const config = useRuntimeConfig();
 
-	// Persisted connection settings — auto-syncs with localStorage
-	const stored = useLocalStorage<ConnectionSettings>("conduit-connection", {
-		...DEFAULT_SETTINGS,
-	});
+	// Persisted connection settings — one ref shared by all callers.
+	const stored = useConnectionSettings();
 
 	// The effective server URL — from stored settings or env fallback
 	const serverUrl = computed(() => {
