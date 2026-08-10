@@ -11,7 +11,8 @@
     "build": "NITRO_PRESET=bun nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "test:e2e": "bun test test/e2e"
   },
   "dependencies": {
     "@internationalized/date": "^3.12.3",
