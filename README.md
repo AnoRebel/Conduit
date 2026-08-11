@@ -469,7 +469,37 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 
 ## Upgrading
 
-### Breaking changes in this release
+### Breaking changes in 3.0.0
+
+**The signaling key is enforced by the library, not only the CLI.**
+
+2.0.0 required a key, but only `conduit start` checked it. Creating a server
+programmatically still fell back to the public default:
+
+```typescript
+// Started in 2.0.0 on the key "conduit". Throws in 3.0.0.
+const server = createConduitServer({ config: { port: 9000 } });
+```
+
+Pass a key, as the CLI already required:
+
+```typescript
+const server = createConduitServer({
+  config: { port: 9000, key: process.env.CONDUIT_KEY },
+});
+
+// Local development only
+const dev = createConduitServer({
+  config: { port: 9000 },
+  allowInsecureKey: true,
+});
+```
+
+Servers using `auth: { mode: "none" }` are unaffected, and no CLI behaviour
+changed. If you deploy with the CLI or a Docker image and already set
+`CONDUIT_KEY`, this release requires nothing of you.
+
+### Breaking changes in 2.0.0
 
 **1. A signaling key is now required.**
 
