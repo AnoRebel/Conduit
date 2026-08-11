@@ -24,7 +24,7 @@ describe("Node adapter (createConduitServer)", () => {
 	it("should create a server with expected interface", async () => {
 		const { createConduitServer } = await import("../src/adapters/node.js");
 		const server = createConduitServer({
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		expect(server.server).toBeDefined();
@@ -56,7 +56,7 @@ describe("Node adapter (createConduitServer)", () => {
 	it("should have requireSecure defaulting to false", async () => {
 		const { createConduitServer } = await import("../src/adapters/node.js");
 		const server = createConduitServer({
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 		expect(server.core.config.requireSecure).toBe(false);
 		server.wss.close();
@@ -65,7 +65,7 @@ describe("Node adapter (createConduitServer)", () => {
 	it("should have auth.mode defaulting to key", async () => {
 		const { createConduitServer } = await import("../src/adapters/node.js");
 		const server = createConduitServer({
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 		expect(server.core.config.auth.mode).toBe("key");
 		server.wss.close();
@@ -86,7 +86,7 @@ describe("Express adapter (ExpressConduitServer)", () => {
 
 		const server = http.createServer();
 		const middleware = ExpressConduitServer(server, {
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		expect(middleware).toBeTypeOf("function");
@@ -101,7 +101,7 @@ describe("Express adapter (ExpressConduitServer)", () => {
 
 		const server = http.createServer();
 		const middleware = ExpressConduitServer(server, {
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		// Simulate a request to "/"
@@ -194,7 +194,7 @@ describe("Express adapter (ExpressConduitServer)", () => {
 
 		const server = http.createServer();
 		const middleware = ExpressConduitServer(server, {
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const req = { url: "/unknown", method: "GET" };
@@ -222,7 +222,7 @@ describe("Express adapter (ExpressConduitServer)", () => {
 
 		const server = http.createServer();
 		const middleware = ExpressConduitServer(server, {
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const req = { url: "/", method: "OPTIONS" };
@@ -359,7 +359,7 @@ describe("Hono adapter (createConduitMiddleware)", () => {
 		const { createConduitMiddleware } = await import("../src/adapters/hono.js");
 
 		const conduit = createConduitMiddleware({
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		expect(conduit.core).toBeDefined();
@@ -431,6 +431,7 @@ describe("Hono adapter (createConduitMiddleware)", () => {
 		const conduit = createConduitMiddleware({
 			config: {
 				requireSecure: true,
+				key: "test-key",
 				logging: { level: "silent", pretty: false },
 			},
 		});
@@ -461,7 +462,7 @@ describe("Hono adapter (createConduitMiddleware)", () => {
 		const { createConduitMiddleware } = await import("../src/adapters/hono.js");
 
 		const conduit = createConduitMiddleware({
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const mockContext = {
@@ -500,7 +501,7 @@ describe("Bun adapter (createConduitServer)", () => {
 		const { createConduitServer } = await import("../src/adapters/bun.js");
 
 		const conduit = createConduitServer({
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		expect(conduit.core).toBeDefined();
@@ -516,6 +517,7 @@ describe("Bun adapter (createConduitServer)", () => {
 			config: {
 				port: 8765,
 				host: "127.0.0.1",
+				key: "test-key",
 				logging: { level: "silent", pretty: false },
 			},
 		});
@@ -535,7 +537,7 @@ describe("Bun adapter (createConduitServer)", () => {
 		const { createConduitServer } = await import("../src/adapters/bun.js");
 
 		const conduit = createConduitServer({
-			config: { path: "/", logging: { level: "silent", pretty: false } },
+			config: { path: "/", key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const opts = conduit.getServeOptions();
@@ -573,7 +575,7 @@ describe("Bun adapter (createConduitServer)", () => {
 		const { createConduitServer } = await import("../src/adapters/bun.js");
 
 		const conduit = createConduitServer({
-			config: { path: "/", logging: { level: "silent", pretty: false } },
+			config: { path: "/", key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const opts = conduit.getServeOptions();
@@ -588,7 +590,7 @@ describe("Bun adapter (createConduitServer)", () => {
 		const { createConduitServer } = await import("../src/adapters/bun.js");
 
 		const conduit = createConduitServer({
-			config: { requireSecure: true, logging: { level: "silent", pretty: false } },
+			config: { requireSecure: true, key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const opts = conduit.getServeOptions();
@@ -606,7 +608,7 @@ describe("Bun adapter (createConduitServer)", () => {
 		const { createConduitServer } = await import("../src/adapters/bun.js");
 
 		const conduit = createConduitServer({
-			config: { requireSecure: true, logging: { level: "silent", pretty: false } },
+			config: { requireSecure: true, key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const opts = conduit.getServeOptions();
@@ -651,7 +653,7 @@ describe("Bun adapter (createConduitServer)", () => {
 		const { createConduitServer } = await import("../src/adapters/bun.js");
 
 		const conduit = createConduitServer({
-			config: { logging: { level: "silent", pretty: false } },
+			config: { key: "test-key", logging: { level: "silent", pretty: false } },
 		});
 
 		const opts = conduit.getServeOptions();

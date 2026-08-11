@@ -67,12 +67,70 @@ export interface ServerConfig {
 	logging: LoggingConfig;
 }
 
+/**
+ * The documented default key from Conduit 1.x.
+ *
+ * Published in the README and therefore no protection at all. Retained only so
+ * the server can recognise and reject it; see {@link assertSecureKey}.
+ */
+export const INSECURE_DEFAULT_KEY = "conduit";
+
+/**
+ * Whether a signaling key is set and is not the well-known default.
+ *
+ * Exported so hosts (the CLI, tests, embedders) can check a key without
+ * triggering the throw.
+ */
+export function isKeyAcceptable(key: unknown): boolean {
+	return typeof key === "string" && key.trim() !== "" && key !== INSECURE_DEFAULT_KEY;
+}
+
+/** Options for {@link assertSecureKey}. */
+export interface AssertSecureKeyOptions {
+	/**
+	 * Permit the insecure default. Intended for local development only; the CLI
+	 * exposes this as `--allow-insecure-key`.
+	 */
+	allowInsecureKey?: boolean;
+}
+
+/**
+ * Throw unless the configured signaling key is safe to serve with.
+ *
+ * Enforced in the library rather than only in the CLI: a key published in the
+ * project's own README offers no protection, and embedding the server directly
+ * must not be a way to bypass that.
+ *
+ * @throws When auth mode is `"key"` and the key is missing or the public default.
+ */
+export function assertSecureKey(
+	config: Pick<ServerConfig, "key" | "auth">,
+	options: AssertSecureKeyOptions = {}
+): void {
+	if (config.auth.mode !== "key" || options.allowInsecureKey) {
+		return;
+	}
+
+	if (!isKeyAcceptable(config.key)) {
+		throw new Error(
+			(config.key === INSECURE_DEFAULT_KEY
+				? `Refusing to start: the signaling key "${INSECURE_DEFAULT_KEY}" is the documented default and is public.`
+				: "Refusing to start: no signaling key is configured.") +
+				"\n\nSet config.key to a generated secret, e.g. randomBytes(24).toString('base64url')." +
+				"\nFor local development only, pass allowInsecureKey: true to proceed anyway."
+		);
+	}
+}
+
 /** Default server configuration values. */
 export const defaultConfig: ServerConfig = {
 	port: 9000,
 	host: "0.0.0.0",
 	path: "/",
-	key: "conduit",
+	// Deliberately the insecure default: assertSecureKey rejects it, so an
+	// embedder who never sets a key gets a clear error rather than a server
+	// silently authenticated by a value published in the README.
+	key: INSECURE_DEFAULT_KEY,
 	auth: {
 		mode: "key",
 	},

@@ -130,6 +130,10 @@ program
 					maxMessageSize: 65536,
 				},
 			},
+			// The core enforces the key too, so the CLI's escape hatch has to reach
+			// it -- otherwise --allow-insecure-key would pass the check above and
+			// then throw here.
+			allowInsecureKey: options.allowInsecureKey,
 			// Late-bound: the admin core owns the ban list but is created after the
 			// server. Reading through the holder keeps the server free of ban state
 			// and works whether or not the admin API is enabled.

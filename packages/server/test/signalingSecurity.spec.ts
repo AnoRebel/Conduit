@@ -338,3 +338,63 @@ describe("resolveCorsOrigin", () => {
 		expect(resolveCorsOrigin("https://evil.example", allowed).allowOrigin).toBeUndefined();
 	});
 });
+
+// ============================================================================
+// Signaling key enforcement
+// ============================================================================
+
+describe("signaling key enforcement", () => {
+	const silent = { level: "silent", pretty: false } as const;
+
+	it("refuses the public default key", () => {
+		expect(() => createConduitServerCore({ config: { key: "conduit", logging: silent } })).toThrow(
+			/documented default/
+		);
+	});
+
+	it("refuses a config that never sets a key", () => {
+		// The default config carries the public key, so an embedder who sets
+		// nothing must be refused rather than served.
+		expect(() => createConduitServerCore({ config: { logging: silent } })).toThrow(
+			/documented default/
+		);
+	});
+
+	it("refuses an empty key", () => {
+		expect(() => createConduitServerCore({ config: { key: "   ", logging: silent } })).toThrow(
+			/no signaling key/
+		);
+	});
+
+	it("names the setting to change", () => {
+		expect(() => createConduitServerCore({ config: { logging: silent } })).toThrow(/config\.key/);
+	});
+
+	it("accepts an operator-supplied key", () => {
+		const core = createConduitServerCore({
+			config: { key: "a-generated-secret", logging: silent },
+		});
+
+		expect(core.config.key).toBe("a-generated-secret");
+		core.stop();
+	});
+
+	it("permits the default when the caller explicitly opts out", () => {
+		const core = createConduitServerCore({
+			config: { key: "conduit", logging: silent },
+			allowInsecureKey: true,
+		});
+
+		expect(core.config.key).toBe("conduit");
+		core.stop();
+	});
+
+	it("does not require a key when auth is disabled", () => {
+		const core = createConduitServerCore({
+			config: { auth: { mode: "none" }, logging: silent },
+		});
+
+		expect(core.config.auth.mode).toBe("none");
+		core.stop();
+	});
+});

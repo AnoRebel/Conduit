@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { type IMessage, MessageType } from "@conduit/shared";
 import type { RawData, WebSocket } from "ws";
-import { createConfig, type ServerConfig } from "../config.js";
+import { assertSecureKey, createConfig, type ServerConfig } from "../config.js";
 import { createLogger, type ILogger, wrapLogger } from "../logger.js";
 import { Client, type IClient } from "./client.js";
 import { DefaultMessageHandler, type MessageHandler } from "./messageHandler/index.js";
@@ -93,6 +93,13 @@ export interface CreateConduitServerCoreOptions {
 	 * server admits clients as normal.
 	 */
 	isBanned?: BanPredicate;
+	/**
+	 * Permit the well-known default signaling key.
+	 *
+	 * Local development only. Without this, creating the core throws when the
+	 * key is missing or is the public default.
+	 */
+	allowInsecureKey?: boolean;
 }
 
 /** Create a new transport-agnostic Conduit signaling server core. */
@@ -100,6 +107,10 @@ export function createConduitServerCore(
 	options: CreateConduitServerCoreOptions = {}
 ): ConduitServerCore {
 	const config = createConfig(options.config);
+
+	// Refuse the public default key here, not only in the CLI: embedding the
+	// server directly must not be a way to bypass the check.
+	assertSecureKey(config, { allowInsecureKey: options.allowInsecureKey });
 
 	// Initialize structured logger
 	const pinoLogger = createLogger({
