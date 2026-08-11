@@ -1,5 +1,5 @@
 # Multi-stage build for Conduit server with Admin API enabled
-FROM imbios/bun-node:1.3.10-24-debian AS builder
+FROM imbios/bun-node:1.3.14-24-debian AS builder
 
 WORKDIR /app
 
@@ -22,13 +22,13 @@ COPY packages/admin packages/admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
 # Production stage — debian slim for glibc compatibility (bun+musl has networking issues)
-FROM oven/bun:1.3.10-slim AS production
+FROM oven/bun:1.3.14-slim AS production
 
 WORKDIR /app
 
 # Create a standalone package.json with only external runtime dependencies
 # (no workspace:* references — those are overlaid as built artifacts below)
-RUN echo '{"name":"conduit-server","private":true,"type":"module","dependencies":{"commander":"^14.0.3","pino":"^10.3.1","ws":"^8.19.0","jsonwebtoken":"^9.0.3"}}' > package.json
+RUN echo '{"name":"conduit-server","private":true,"type":"module","dependencies":{"commander":"^15.0.0","pino":"^10.3.1","ws":"^8.21.3","jsonwebtoken":"^9.0.3"}}' > package.json
 
 # Install only external production dependencies and clean cache
 RUN bun install --production --ignore-scripts && rm -rf /root/.bun/install/cache
@@ -55,7 +55,17 @@ ENV PORT=9000 \
 # Expose port
 EXPOSE ${PORT}
 
+# Report whether the process is actually serving, not merely that the image
+# built. Without this a crash-looping container still reports as deployed.
+# Uses bun rather than curl/wget, which the slim base image does not ship.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+	CMD bun -e "fetch('http://127.0.0.1:'+(process.env.PORT||9000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 # Run server with admin API
 # Defaults for admin/auth config are set here to avoid BuildKit secrets-in-ENV warnings.
 # Override any of these at runtime via docker run --env or compose environment.
-CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --key \"${CONDUIT_KEY:-conduit}\" --admin --admin-path \"${ADMIN_PATH:-/admin}\" --auth \"${AUTH_MODE:-key}\" --db \"${ADMIN_DB_PATH:-/data/conduit.db}\""]
+# CONDUIT_KEY is read from the environment by the CLI rather than passed as
+# --key: substituting a default here would hand the server the public
+# "conduit" key, which it refuses, producing a crash loop whose error names a
+# value the operator never set. Unset, the CLI reports exactly what to provide.
+CMD ["/bin/sh", "-c", "exec bun run bin/conduit.js start --port \"${PORT}\" --host \"${HOST}\" --admin --admin-path \"${ADMIN_PATH:-/admin}\" --auth \"${AUTH_MODE:-key}\" --db \"${ADMIN_DB_PATH:-/data/conduit.db}\""]
