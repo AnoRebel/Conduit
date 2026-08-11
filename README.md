@@ -4,7 +4,7 @@
 [![JSR @conduit/server](https://jsr.io/badges/@conduit/server)](https://jsr.io/@conduit/server)
 [![JSR @conduit/client](https://jsr.io/badges/@conduit/client)](https://jsr.io/@conduit/client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-469-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-603-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
 
 WebRTC peer-to-peer data, video, and audio connections made simple.
 
@@ -167,8 +167,9 @@ const server = createConduitServer({
     port: 9000,
     host: '0.0.0.0',
     path: '/',
-    // Required. The server refuses to start without a key, or with the
-    // well-known default "conduit". Keep this out of source control.
+    // Set a real key. The server refuses to start without one, or with the
+    // well-known default "conduit"; when embedding the server yourself, pass
+    // your own key here. Keep this out of source control.
     key: process.env.CONDUIT_KEY,
     allowDiscovery: false,
     requireSecure: true, // Enforce HTTPS/WSS
@@ -359,7 +360,7 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 
 ## Security
 
-- **Required Signaling Key** - The server refuses to start without a key, or with the well-known default. Set `CONDUIT_KEY` or `--key`; `--allow-insecure-key` exists for local development only. The key is masked in startup output.
+- **Required Signaling Key** - The server refuses to start without a key, or with the well-known default, enforced by the library rather than only the CLI. Set `CONDUIT_KEY` or `--key`; `--allow-insecure-key` exists for local development only. The key is masked in startup output.
 - **Timing-Safe Key Comparison** - API key authentication uses constant-time comparison to prevent timing attacks
 - **Ban Enforcement** - Banned peer IDs and source addresses are rejected at connection time, and a peer banned while connected is disconnected. Requires the admin API, which owns the ban list.
 - **Uniform Adapter Protections** - Rate limiting, role checks, CSRF content-type validation, and body-size limits are enforced identically by every admin adapter (Node, Express, Fastify, Hono), asserted by a parity test suite.
@@ -597,8 +598,8 @@ docker compose --profile admin up -d
 
 Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for the builder stage and [`oven/bun`](https://hub.docker.com/r/oven/bun) for production:
 
-- **Builder stage**: `imbios/bun-node:1.3.10-24-debian`
-- **Production stage**: `oven/bun:1.3.10-slim`
+- **Builder stage**: `imbios/bun-node:1.3.14-24-debian`
+- **Production stage**: `oven/bun:1.3.14-slim`
 
 | Image | Description | Port |
 |-------|-------------|------|
@@ -660,7 +661,7 @@ docker compose --profile all-in-one up -d
 |----------|-------------|---------|
 | `PORT` | Server port | `9000` |
 | `HOST` | Bind address | `0.0.0.0` |
-| `CONDUIT_KEY` | API key for clients | `conduit` |
+| `CONDUIT_KEY` | Signaling key for clients (required; the server refuses to start without it) | - |
 | `ALLOW_DISCOVERY` | Enable peer discovery endpoint | `false` |
 | `ADMIN_ENABLED` | Enable admin API | `false` |
 | `ADMIN_PATH` | Admin API path prefix | `/admin` |
@@ -686,7 +687,7 @@ bun install
 # Build all packages
 bun run build
 
-# Run tests (469 tests across all packages)
+# Run tests (603 tests across all packages)
 bun run test
 
 # Type checking

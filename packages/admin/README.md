@@ -21,11 +21,16 @@ npx jsr add @conduit/admin
 - **Rate Limit Control** - Dynamically update rate limiting settings
 - **Audit Logging** - Track all administrative actions
 - **Multiple Auth Methods** - API Key, JWT, or Basic authentication
-- **Role-Based Access** - JWT viewers (read-only) vs admins (full access)
-- **Framework Adapters** - Express, Fastify, Hono, or standalone Node.js HTTP
+- **Role-Based Access** - Viewers (read-only) vs admins (full access), on every auth method
+- **Framework Adapters** - Express, Fastify, Hono, or standalone Node.js HTTP, all enforcing identical protections
 - **WebSocket Support** - Real-time updates via WebSocket subscriptions
 - **Standalone Mode** - Connect to multiple remote servers from a single dashboard
 - **SQLite Persistence** - Optional embedded database for bans, audit logs, and metrics (using `bun:sqlite`)
+
+## Dashboard
+
+The [`@conduit/admin-ui`](../admin-ui) package provides a web dashboard for this
+API — see its [screenshots](../admin-ui/README.md#screenshots).
 
 ## Quick Start
 
@@ -262,18 +267,23 @@ Implement custom persistence by conforming to the `PersistenceStore` interface:
 ```typescript
 interface PersistenceStore {
   // Bans
-  getBans(): Promise<Ban[]>;
-  addBan(ban: Ban): Promise<void>;
-  removeBan(type: string, value: string): Promise<void>;
-  clearBans(): Promise<void>;
+  saveBan(entry: BanEntry): void;
+  removeBan(type: 'client' | 'ip', id: string): boolean;
+  getBans(): BanEntry[];
+  getBan(type: 'client' | 'ip', id: string): BanEntry | undefined;
+  clearBans(): void;
 
   // Audit
-  getAuditLogs(options?: { limit?: number; offset?: number; action?: string }): Promise<AuditEntry[]>;
-  addAuditLog(entry: AuditEntry): Promise<void>;
-  clearAuditLogs(): Promise<void>;
+  saveAuditEntry(entry: AuditEntry): void;
+  getAuditEntries(limit?: number): AuditEntry[];
+  getAuditEntriesByUser(userId: string, limit?: number): AuditEntry[];
+  getAuditEntriesByAction(action: AuditAction, limit?: number): AuditEntry[];
+  getAuditEntriesInRange(startTime: number, endTime: number): AuditEntry[];
+  clearAudit(): void;
+  getAuditSize(): number;
 
   // Lifecycle
-  close(): Promise<void>;
+  close(): void;
 }
 ```
 
@@ -337,38 +347,45 @@ The SQLite store uses WAL mode for concurrent read/write performance, indexed qu
 | `PATCH` | `/config/rate-limit` | Update rate limit settings |
 | `PATCH` | `/config/features` | Toggle server features |
 
+A broadcast reaches every connected peer, so its `type` must be one of `ERROR`,
+`EXPIRE`, `HEARTBEAT`, or `LEAVE`; any other type is rejected. The serialized
+`payload` is capped at 64KB.
+
 ## WebSocket Events
 
 Connect to the WebSocket endpoint for real-time updates:
 
-```typescript
-const ws = new WebSocket('ws://localhost:9000/admin/ws');
+Authentication happens during the handshake: pass the credential as a `token` (or
+`apiKey`) query parameter, or an `X-API-Key` header. A connection that does not
+present a valid API key or JWT is closed with code `4001`.
 
-// Authenticate
-ws.send(JSON.stringify({
-  type: 'auth',
-  apiKey: 'your-api-key',
-}));
+```typescript
+const ws = new WebSocket('ws://localhost:9000/admin/ws?token=your-api-key');
 
 // Subscribe to events
 ws.send(JSON.stringify({
   type: 'subscribe',
-  events: ['metrics', 'clients', 'errors'],
+  payload: { events: ['metrics:update', 'client:connected', 'error:occurred'] },
 }));
 
 // Receive updates
 ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Event:', data.type, data.payload);
+  const message = JSON.parse(event.data);
+  console.log('Event:', message.type, message.data);
 };
 ```
 
+New connections are subscribed to `metrics:update`, `client:connected`, and
+`client:disconnected` by default. Frames larger than 64KB are dropped before
+parsing, and authentication attempts are rate limited per source address.
+
 ### Available Events
 
-- `metrics` - Periodic metrics snapshots
-- `clients` - Client connect/disconnect events
-- `errors` - Error occurrences
-- `audit` - Audit log entries
+- `metrics:update` - Periodic metrics snapshots
+- `client:connected` / `client:disconnected` - Client connect/disconnect events
+- `error:occurred` - Error occurrences
+- `ban:added` / `ban:removed` - Ban changes
+- `audit:entry` - Audit log entries
 
 ## Standalone Mode
 
@@ -392,11 +409,14 @@ const admin = createStandaloneAdmin({
   ],
 });
 
+// Connect to every configured server
+await admin.connectAll();
+
 // Get aggregated metrics from all servers
 const metrics = admin.getAggregatedMetrics();
 
 // Execute action on specific server
-await admin.executeAction('prod-1', 'disconnectClient', { clientId: 'abc123' });
+await admin.getServer('prod-1')?.executeAction('disconnectClient', { clientId: 'abc123' });
 ```
 
 ## Authentication
@@ -424,9 +444,12 @@ const admin = createAdminCore({
 });
 
 // Generate token with role
-const token = admin.auth.generateToken({ userId: 'admin', role: 'admin' });
+const token = admin.auth.generateJWT('admin', 'admin');
+```
 
-// Use token
+Use the token as a bearer credential:
+
+```bash
 curl -H "Authorization: Bearer ${token}" \
   http://localhost:9000/admin/status
 ```

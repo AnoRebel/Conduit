@@ -4,6 +4,52 @@ Vue 3/Nuxt 4 admin dashboard for monitoring and managing Conduit servers.
 
 **Live instance**: [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net)
 
+## Screenshots
+
+Captured against a live Conduit server.
+
+### Dashboard
+
+Live metrics, server status, and quick actions.
+
+![Dashboard](./docs/screenshots/dashboard.png)
+
+### Connect
+
+Connect to any Conduit server by URL and credentials — no rebuild required.
+
+![Connection dialog](./docs/screenshots/connect.png)
+
+### Clients
+
+Connected peers with status, connection time, and per-client message counts.
+
+![Clients](./docs/screenshots/clients.png)
+
+### Metrics
+
+Theme-reactive charts for throughput, connections, and memory, with current statistics.
+
+![Metrics](./docs/screenshots/metrics.png)
+
+### Bans
+
+Ban and unban clients or IP addresses, with stats and type filters.
+
+![Bans](./docs/screenshots/bans.png)
+
+### Audit Log
+
+Every administrative action, filterable by type.
+
+![Audit log](./docs/screenshots/audit.png)
+
+### Settings
+
+Rate limiting and feature configuration.
+
+![Settings](./docs/screenshots/settings.png)
+
 ## Features
 
 - **Real-time Dashboard** - Live metrics, mini activity charts, and status indicators

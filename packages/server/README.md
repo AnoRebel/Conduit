@@ -24,8 +24,8 @@ const server = createConduitServer({
   config: {
     port: 9000,
     path: '/',
-    // Required — the server refuses to start with no key or with the
-    // well-known default 'conduit'.
+    // Set a real key. The server refuses to start with no key or with the
+    // well-known default 'conduit'; when embedding the server, supply your own.
     key: process.env.CONDUIT_KEY,
     allowDiscovery: false,
   },
@@ -225,8 +225,8 @@ const fastify = Fastify();
 fastify.register(fastifyConduitPlugin, {
   config: {
     path: '/',
-    // Required — the server refuses to start with no key or with the
-    // well-known default 'conduit'.
+    // Set a real key. The server refuses to start with no key or with the
+    // well-known default 'conduit'; when embedding the server, supply your own.
     key: process.env.CONDUIT_KEY,
   },
 });
@@ -298,7 +298,7 @@ interface ServerConfig {
   port: number;           // Server port (default: 9000)
   host: string;           // Server host (default: '0.0.0.0')
   path: string;           // Base path (default: '/')
-  key: string;            // API key — required, no default. Set via the
+  key: string;            // API key (library default: 'conduit'). Set via the
                           // CONDUIT_KEY env var or --key. The server refuses to
                           // start when it is unset, empty, or the well-known
                           // default 'conduit'; --allow-insecure-key overrides
@@ -380,7 +380,7 @@ Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) 
 
 ```dockerfile
 # Builder stage
-FROM imbios/bun-node:1.3.10-24-debian AS builder
+FROM imbios/bun-node:1.3.14-24-debian AS builder
 WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install --ignore-scripts
@@ -388,7 +388,7 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM oven/bun:1.3.10-slim AS production
+FROM oven/bun:1.3.14-slim AS production
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/bin ./bin
@@ -446,7 +446,7 @@ API key comparisons use constant-time algorithms to prevent timing attacks. Alwa
 openssl rand -base64 32
 ```
 
-The server refuses to start when the signaling key is unset, empty, or the well-known default `conduit`. Pass `--allow-insecure-key` to override this for local development only.
+The server refuses to start when the signaling key is unset, empty, or the well-known default `conduit` — enforced by the library itself, so embedding it directly is not a way around the check. Pass `--allow-insecure-key` (CLI) or `allowInsecureKey: true` (library) to override for local development only.
 
 ### Ban Enforcement
 

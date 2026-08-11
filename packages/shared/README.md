@@ -16,8 +16,8 @@ npx jsr add @conduit/shared
 
 - **Message Types** — `MessageType` enum for all signaling protocol messages
 - **Socket Event Types** — `SocketEventType` for WebSocket events
-- **Error Types** — `Errors` enum for standardized error codes
-- **Interfaces** — `IClient`, `IMessage`, `IRealm`, and other shared contracts
+- **Error Types** — `ConduitErrorType` and `ServerErrorType` enums for standardized error codes
+- **Interfaces** — `IMessage`, `IClientInfo`, `IServerConfig`, and other shared contracts
 - **Version** — Centralized `VERSION` string for all packages
 
 ## Usage
@@ -26,8 +26,8 @@ npx jsr add @conduit/shared
 import {
   MessageType,
   SocketEventType,
-  Errors,
-  type IClient,
+  ConduitErrorType,
+  type IClientInfo,
   type IMessage,
   VERSION,
 } from "@conduit/shared";
