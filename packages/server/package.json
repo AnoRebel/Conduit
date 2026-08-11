@@ -1,6 +1,6 @@
 {
   "name": "@conduit/server",
-  "version": "1.0.5",
+  "version": "2.0.0",
   "description": "Conduit server - WebRTC signaling server for peer-to-peer connections",
   "type": "module",
   "main": "./dist/index.js",
