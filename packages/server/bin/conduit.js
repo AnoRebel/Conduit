@@ -95,9 +95,11 @@ program
 		const adminUiDir = env("ADMIN_UI_DIR") || options.adminUi;
 		const adminUiPath = env("ADMIN_UI_PATH") || options.adminUiPath || "/ui";
 
+		// Read from the program version rather than a literal, so the banner
+		// cannot drift from the release the way a hardcoded string did.
 		console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║                   Conduit Server v1.0.1
+║                   Conduit Server v${program.version()}
 ╚═══════════════════════════════════════════════════════════╝
 `);
 
