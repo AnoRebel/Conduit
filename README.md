@@ -31,7 +31,7 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 | [`@conduit/shared`](./packages/shared) | Shared types and enums | [![JSR](https://jsr.io/badges/@conduit/shared)](https://jsr.io/@conduit/shared) |
 | [`@conduit/admin`](./packages/admin) | Admin API and monitoring tools | [![JSR](https://jsr.io/badges/@conduit/admin)](https://jsr.io/@conduit/admin) |
 | [`@conduit/admin-ui`](./packages/admin-ui) | Vue 3/Nuxt 4 admin dashboard | — |
-| [`conduit-go`](./packages/go-client) | Go client library | — |
+| [`conduit-go`](./packages/go-client) | Go signaling client (no built-in WebRTC transport) | — |
 
 ## Quick Start
 

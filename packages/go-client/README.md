@@ -2,6 +2,15 @@
 
 A Go client library for the [Conduit](https://github.com/AnoRebel/conduit) WebRTC signaling server.
 
+> **Scope: signaling only.** This client speaks the Conduit signaling
+> protocol — it connects, exchanges `OFFER`, `ANSWER` and `CANDIDATE`
+> messages with other peers, and lists connected conduits. It does **not**
+> establish WebRTC peer connections, data channels, or media streams; pair it
+> with a Go WebRTC stack such as [pion/webrtc](https://github.com/pion/webrtc)
+> to carry the SDP and ICE payloads it relays. For an end-to-end client with
+> built-in data channels and media calls, use
+> [`@conduit/client`](../client).
+
 ## Installation
 
 ```bash
