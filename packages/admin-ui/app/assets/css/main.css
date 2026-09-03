@@ -200,6 +200,40 @@
 	body {
 		@apply bg-background text-foreground;
 	}
+
+	/*
+	 * Restore a pointer cursor on interactive elements.
+	 *
+	 * Tailwind v4's Preflight sets `cursor: default` on buttons to match the
+	 * raw browser behaviour, which left every button, select trigger, sortable
+	 * column header and switch in the dashboard feeling inert on hover.
+	 *
+	 * The role selectors are not redundant with `button`: reka-ui renders menu
+	 * items and select options as `div`s carrying only a role, so a rule
+	 * targeting elements alone would miss them.
+	 */
+	button:not(:disabled),
+	[role="button"]:not(:disabled),
+	[role="menuitem"]:not([aria-disabled="true"]),
+	[role="menuitemcheckbox"]:not([aria-disabled="true"]),
+	[role="menuitemradio"]:not([aria-disabled="true"]),
+	[role="option"]:not([aria-disabled="true"]),
+	[role="tab"]:not([aria-disabled="true"]),
+	[role="switch"]:not(:disabled),
+	[role="checkbox"]:not(:disabled),
+	[role="radio"]:not(:disabled),
+	label[for]:not(:has(:disabled)),
+	summary {
+		cursor: pointer;
+	}
+
+	/* A disabled control should say so rather than invite a click. */
+	button:disabled,
+	[role="button"][aria-disabled="true"],
+	[aria-disabled="true"][role="menuitem"],
+	[aria-disabled="true"][role="option"] {
+		cursor: not-allowed;
+	}
 }
 
 /* Page transitions */
