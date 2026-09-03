@@ -141,7 +141,7 @@ describe("handleConnection", () => {
 		expect(socket.close).toHaveBeenCalled();
 		// Should have sent an ERROR message
 		expect(socket.send).toHaveBeenCalledTimes(1);
-		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
 		expect(sentData.type).toBe(MessageType.ERROR);
 	});
 
@@ -159,7 +159,7 @@ describe("handleConnection", () => {
 
 		expect(client).toBeNull();
 		expect(socket.close).toHaveBeenCalled();
-		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
 		expect(sentData.type).toBe(MessageType.ERROR);
 	});
 
@@ -274,7 +274,7 @@ describe("handleMessage", () => {
 
 		// Should have sent an error message
 		expect(socket.send).toHaveBeenCalledTimes(1);
-		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
 		expect(sentData.type).toBe(MessageType.ERROR);
 	});
 
@@ -286,7 +286,7 @@ describe("handleMessage", () => {
 		core.handleMessage(client, JSON.stringify({ payload: "no type" }));
 
 		expect(socket.send).toHaveBeenCalledTimes(1);
-		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
 		expect(sentData.type).toBe(MessageType.ERROR);
 	});
 
@@ -298,7 +298,7 @@ describe("handleMessage", () => {
 		core.handleMessage(client, JSON.stringify({ type: "UNKNOWN_TYPE" }));
 
 		expect(socket.send).toHaveBeenCalledTimes(1);
-		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
 		expect(sentData.type).toBe(MessageType.ERROR);
 	});
 
@@ -312,7 +312,7 @@ describe("handleMessage", () => {
 		core.handleMessage(client, JSON.stringify({ type: MessageType.OFFER, payload: hugePayload }));
 
 		expect(socket.send).toHaveBeenCalledTimes(1);
-		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
 		expect(sentData.type).toBe(MessageType.ERROR);
 	});
 
@@ -335,7 +335,7 @@ describe("handleMessage", () => {
 		core.handleMessage(client, heartbeatMsg);
 
 		expect(socket.send).toHaveBeenCalledTimes(1);
-		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+		const sentData = JSON.parse((socket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]);
 		expect(sentData.type).toBe(MessageType.ERROR);
 		expect(sentData.payload.msg).toContain("Rate limit");
 	});
@@ -372,7 +372,7 @@ describe("handleMessage", () => {
 		// The receiver should have received the forwarded message
 		expect(receiverSocket.send).toHaveBeenCalledTimes(1);
 		const forwardedData = JSON.parse(
-			(receiverSocket.send as ReturnType<typeof vi.fn>).mock.calls[0][0]
+			(receiverSocket.send as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
 		);
 		expect(forwardedData.type).toBe(MessageType.OFFER);
 		expect(forwardedData.src).toBe("sender1");
