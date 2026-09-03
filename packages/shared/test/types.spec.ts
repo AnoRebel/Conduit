@@ -10,10 +10,14 @@ import type {
 	IMediaConnectionOptions,
 	IMessage,
 	IOfferPayload,
+	IPublishPayload,
 	IRelayPayload,
+	IRoomBroadcastPayload,
 	IServerConfig,
 	IServerMessage,
 	PartialServerConfig,
+	PayloadOf,
+	TypedMessage,
 } from "../src/index.js";
 import {
 	ConduitErrorType,
@@ -334,5 +338,132 @@ describe("IBrowserSupport", () => {
 		expect(support.webRTC).toBe(true);
 		expect(support.binaryDataChannel).toBe(false);
 		expect(support.mediaStream).toBe(false);
+	});
+});
+
+describe("TypedMessage union", () => {
+	it("should narrow exhaustively over every message type", () => {
+		// A switch that returns from every arm and assigns the fallthrough to
+		// `never` fails to compile if a union member is unhandled, so this is a
+		// compile-time exhaustiveness check as much as a runtime one.
+		const describeMessage = (message: TypedMessage): string => {
+			switch (message.type) {
+				case MessageType.OPEN:
+					return "open";
+				case MessageType.LEAVE:
+					return "leave";
+				case MessageType.OFFER:
+					return "offer";
+				case MessageType.ANSWER:
+					return "answer";
+				case MessageType.CANDIDATE:
+					return "candidate";
+				case MessageType.HEARTBEAT:
+					return "heartbeat";
+				case MessageType.ERROR:
+					return "error";
+				case MessageType.EXPIRE:
+					return "expire";
+				case MessageType.ID_TAKEN:
+					return "id-taken";
+				case MessageType.RELAY:
+					return "relay";
+				case MessageType.RELAY_OPEN:
+					return "relay-open";
+				case MessageType.RELAY_CLOSE:
+					return "relay-close";
+				case MessageType.GOAWAY:
+					return "goaway";
+				case MessageType.JOIN:
+					return `join:${message.payload.room}`;
+				case MessageType.LEAVE_ROOM:
+					return `leave-room:${message.payload.room}`;
+				case MessageType.ROOM_STATE:
+					return `room-state:${message.payload.members.length}`;
+				case MessageType.PEER_JOINED:
+					return `peer-joined:${message.payload.peerId}`;
+				case MessageType.PEER_LEFT:
+					return `peer-left:${message.payload.peerId}`;
+				case MessageType.SUBSCRIBE:
+					return `subscribe:${message.payload.topic}`;
+				case MessageType.UNSUBSCRIBE:
+					return `unsubscribe:${message.payload.topic}`;
+				case MessageType.SUBSCRIBED:
+					return `subscribed:${message.payload.topic}`;
+				case MessageType.UNSUBSCRIBED:
+					return `unsubscribed:${message.payload.topic}`;
+				case MessageType.PUBLISH:
+					return `publish:${message.payload.topic}`;
+				case MessageType.TOPIC_MESSAGE:
+					return `topic-message:${message.payload.topic}`;
+				case MessageType.ROOM_BROADCAST:
+					return `room-broadcast:${message.payload.room}`;
+				default: {
+					const unhandled: never = message;
+					return unhandled;
+				}
+			}
+		};
+
+		expect(
+			describeMessage({
+				type: MessageType.JOIN,
+				payload: { room: "lobby" },
+			})
+		).toBe("join:lobby");
+
+		expect(
+			describeMessage({
+				type: MessageType.ROOM_STATE,
+				dst: "peer-a",
+				payload: { room: "lobby", members: ["peer-b", "peer-c"] },
+			})
+		).toBe("room-state:2");
+
+		expect(
+			describeMessage({
+				type: MessageType.TOPIC_MESSAGE,
+				src: "peer-a",
+				dst: "peer-b",
+				payload: { topic: "chat.general", data: "hi" },
+			})
+		).toBe("topic-message:chat.general");
+	});
+
+	it("should map each message type to its payload via PayloadOf", () => {
+		const join: PayloadOf<typeof MessageType.JOIN> = { room: "lobby" };
+		const publish: PayloadOf<typeof MessageType.PUBLISH> = {
+			topic: "chat.general",
+			data: { text: "hello" },
+		};
+		const broadcast: PayloadOf<typeof MessageType.ROOM_BROADCAST> = {
+			room: "lobby",
+			data: 42,
+		};
+		// Pre-existing mappings must keep resolving as they did before.
+		const offer: PayloadOf<typeof MessageType.OFFER> = {
+			sdp: { type: "offer", sdp: "v=0" },
+			type: ConnectionType.Data,
+			connectionId: "conn-1",
+		};
+		const heartbeat: PayloadOf<typeof MessageType.HEARTBEAT> = undefined;
+
+		expect(join.room).toBe("lobby");
+		expect(publish.topic).toBe("chat.general");
+		expect(broadcast.room).toBe("lobby");
+		expect(offer.connectionId).toBe("conn-1");
+		expect(heartbeat).toBeUndefined();
+	});
+
+	it("should keep room and topic payloads structurally distinct", () => {
+		// Room-addressed and topic-addressed payloads must not be interchangeable;
+		// conflating them is how a room name would become a topic key.
+		const roomPayload: IRoomBroadcastPayload = { room: "lobby", data: 1 };
+		const topicPayload: IPublishPayload = { topic: "chat.general", data: 1 };
+
+		expect("room" in roomPayload).toBe(true);
+		expect("topic" in roomPayload).toBe(false);
+		expect("topic" in topicPayload).toBe(true);
+		expect("room" in topicPayload).toBe(false);
 	});
 });
