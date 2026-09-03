@@ -55,3 +55,8 @@ tmp/
 .claude
 openspec
 .mcp.json
+
+# Build artifacts produced by the release workflow. Its `git add -A` swept
+# these into the repository, adding ~2.4MB of tarballs per release to history
+# for files GitHub already hosts as release assets.
+release-assets/
