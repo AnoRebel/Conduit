@@ -34,6 +34,51 @@ export interface MetricsSnapshot {
 	rateLimit: RateLimitMetrics;
 	errors: ErrorMetrics;
 	memory: MemoryUsage;
+	/** Room, topic, and multicast activity. Absent on servers without group support. */
+	groups?: GroupMetrics;
+}
+
+/** Room, topic, and multicast metrics. */
+export interface GroupMetrics {
+	activeRooms: number;
+	activeTopics: number;
+	subscriptions: number;
+	/** Messages produced by multicast fan-out, which is what reflects egress. */
+	multicastDeliveries: number;
+}
+
+/** A room and how many peers are in it. */
+export interface RoomSummary {
+	name: string;
+	members: number;
+}
+
+/** A room's full membership. */
+export interface RoomDetail extends RoomSummary {
+	peers: { peerId: string; nodeId: string }[];
+}
+
+/** Outcome of placing peers into a room from the admin UI. */
+export interface AddMembersResult {
+	/** Peers that are now members because of the call. */
+	added: string[];
+	/** Peers that could not be added, each with the reason. */
+	skipped: { peerId: string; reason: "not-connected" | "already-member" | "room-full" }[];
+}
+
+/** One participating server instance. */
+export interface ClusterNode {
+	nodeId: string;
+	peers: number;
+}
+
+/** Cluster participation and backend health. */
+export interface ClusterStatus {
+	distributed: boolean;
+	nodeId: string;
+	nodes: ClusterNode[];
+	backendReachable: boolean;
+	backendError?: string;
 }
 
 export interface RateLimitMetrics {
