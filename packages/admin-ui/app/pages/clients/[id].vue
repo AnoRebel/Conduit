@@ -114,7 +114,9 @@ async function confirmBan() {
 }
 
 function formatTime(timestamp: number) {
-	return new Date(timestamp).toLocaleString();
+	// Shared formatter pins the viewer's timezone explicitly rather than
+	// inheriting whatever the runtime happens to be set to.
+	return formatMetricDate(timestamp);
 }
 
 function formatDuration(ms: number) {
