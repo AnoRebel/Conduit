@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
+import { InMemoryClusterBackend } from "../cluster/memory.js";
+import type { ClusterBackend } from "../cluster/types.js";
 import type { IClient } from "./client.js";
 import { type IMessageQueue, MessageQueue } from "./messageQueue.js";
 
@@ -48,10 +50,27 @@ export interface IRealm {
 	mayCollectQueuedMessages(id: string, token: string): boolean;
 	/** Record that a peer ID has been released by its holder. */
 	releaseId(id: string, token: string): void;
+	/**
+	 * The cluster backend backing this realm.
+	 *
+	 * Deliberately reached as a separate object rather than through the methods
+	 * above: every member of this interface is synchronous and must stay that
+	 * way, because handlers use their results on the next line. Cross-instance
+	 * lookups are asynchronous, so they live here and are awaited only inside
+	 * the delivery path.
+	 *
+	 * Note what this means for {@link getClient}: it answers "connected to *this*
+	 * instance", never "exists in the cluster". That is already what it meant
+	 * before distribution; only the interpretation of `undefined` changes, from
+	 * "no such peer" to "not local".
+	 */
+	readonly cluster: ClusterBackend;
 }
 
 /** In-memory implementation of {@link IRealm}. */
 export class Realm implements IRealm {
+	/** The cluster backend; single-node in-memory unless one is supplied. */
+	readonly cluster: ClusterBackend;
 	private readonly _clients: Map<string, IClient> = new Map();
 	private readonly _messageQueue: MessageQueue = new MessageQueue();
 	/** IDs previously held by a session, kept briefly to detect ID takeover. */
@@ -59,7 +78,20 @@ export class Realm implements IRealm {
 	/** IDs this server issued, which are unguessable by construction. */
 	private readonly _serverGeneratedIds: Set<string> = new Set();
 
-	/** Look up a client by ID. */
+	constructor(cluster?: ClusterBackend) {
+		// Defaulting here rather than requiring one keeps every existing caller
+		// working unchanged, and means the distributed code path is the only
+		// code path rather than a branch that runs solely in production.
+		this.cluster = cluster ?? new InMemoryClusterBackend();
+	}
+
+	/**
+	 * Look up a client connected to this instance.
+	 *
+	 * Returns `undefined` for a peer connected to another node. Callers that
+	 * must reach the whole cluster go through the delivery path, which consults
+	 * {@link cluster} on a local miss.
+	 */
 	getClient(id: string): IClient | undefined {
 		return this._clients.get(id);
 	}

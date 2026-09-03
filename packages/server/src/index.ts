@@ -53,11 +53,22 @@ export {
 // ============================================================================
 
 export {
+	assertSecureClusterBackend,
+	assertSecureKey,
+	type ClusterBackendKind,
+	type ClusterConfig,
 	createConfig,
 	defaultConfig,
+	INSECURE_DEFAULT_KEY,
+	isKeyAcceptable,
 	type LoggingConfig,
 	type RateLimitConfig,
+	type RedisClusterConfig,
+	type RoomsConfig,
+	type ServerAuthConfig,
 	type ServerConfig,
+	type ServerConfigOverrides,
+	type TopicsConfig,
 } from "./config.js";
 
 // ============================================================================
@@ -82,6 +93,10 @@ export {
 // Client and realm management
 export { Client, type IClient } from "./core/client.js";
 export {
+	getMulticastDeliveryCount,
+	resetMulticastDeliveryCount,
+} from "./core/delivery.js";
+export {
 	type ConduitServerCore,
 	type CreateConduitServerCoreOptions,
 	createConduitServerCore,
@@ -90,6 +105,23 @@ export {
 export { DefaultMessageHandler, type MessageHandler } from "./core/messageHandler/index.js";
 export { type IMessageQueue, MessageQueue } from "./core/messageQueue.js";
 export { type IRealm, Realm } from "./core/realm.js";
+
+// ============================================================================
+// Cluster (distributed realm)
+// ============================================================================
+
+export {
+	type BackendHealth,
+	type ClusterBackend,
+	createClusterBackend,
+	type ForwardedEnvelope,
+	type ForwardHandler,
+	InMemoryClusterBackend,
+	type PeerLocation,
+	RedisClusterBackend,
+	type RedisClusterBackendOptions,
+	type RedisLike,
+} from "./cluster/index.js";
 
 // ============================================================================
 // Server Adapters
@@ -115,12 +147,18 @@ export {
 	MAX_KEY_LENGTH,
 	MAX_MESSAGE_SIZE,
 	MAX_PAYLOAD_DEPTH,
+	MAX_ROOM_NAME_LENGTH,
 	MAX_TOKEN_LENGTH,
+	MAX_TOPIC_NAME_LENGTH,
+	MAX_TOPIC_SEGMENTS,
 	safeJsonParse,
 	type ValidationResult,
 	validateId,
 	validateKey,
 	validateMessage,
 	validatePayloadDestination,
+	validateRoomName,
 	validateToken,
+	validateTopicName,
+	validateTopicPattern,
 } from "./core/validation.js";
