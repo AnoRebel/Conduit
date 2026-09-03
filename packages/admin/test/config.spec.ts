@@ -183,7 +183,7 @@ describe("createAdminConfig", () => {
 
 		expect(config.standalone).toBeDefined();
 		expect(config.standalone?.servers).toHaveLength(1);
-		expect(config.standalone?.servers[0].id).toBe("srv1");
+		expect(config.standalone?.servers).toMatchObject([{ id: "srv1" }]);
 	});
 });
 

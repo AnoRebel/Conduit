@@ -12,6 +12,7 @@ import {
 	type Route,
 	type RouteContext,
 	type RouteResponse,
+	roomsRoutes,
 	unauthorized,
 } from "../src/routes/index.js";
 import { metricsRoutes } from "../src/routes/metrics.js";
@@ -137,7 +138,8 @@ describe("createRoutes", () => {
 			metricsRoutes.length +
 			bansRoutes.length +
 			auditRoutes.length +
-			configRoutes.length;
+			configRoutes.length +
+			roomsRoutes.length;
 
 		expect(routes).toHaveLength(expectedCount);
 	});
@@ -161,7 +163,7 @@ describe("createRoutes", () => {
 		const unauthRoutes = routes.filter(r => !r.requiresAuth);
 
 		expect(unauthRoutes).toHaveLength(1);
-		expect(unauthRoutes[0].path).toBe("/health");
+		expect(unauthRoutes).toMatchObject([{ path: "/health" }]);
 	});
 });
 
@@ -171,13 +173,10 @@ describe("createRoutes", () => {
 
 describe("statusRoutes", () => {
 	it("should have GET /status and GET /health", () => {
-		expect(statusRoutes).toHaveLength(2);
-		expect(statusRoutes[0].method).toBe("GET");
-		expect(statusRoutes[0].path).toBe("/status");
-		expect(statusRoutes[0].requiresAuth).toBe(true);
-		expect(statusRoutes[1].method).toBe("GET");
-		expect(statusRoutes[1].path).toBe("/health");
-		expect(statusRoutes[1].requiresAuth).toBe(false);
+		expect(statusRoutes).toMatchObject([
+			{ method: "GET", path: "/status", requiresAuth: true },
+			{ method: "GET", path: "/health", requiresAuth: false },
+		]);
 	});
 
 	it("/health handler should return ok status", () => {

@@ -26,7 +26,7 @@ describe("audit record identifiers", () => {
 		const spy = vi.spyOn(Date, "now").mockReturnValue(now);
 
 		const ids = new Set(
-			Array.from({ length: 200 }, () => audit.log("client.disconnect", "user1").id)
+			Array.from({ length: 200 }, () => audit.log("disconnect_client", "user1").id)
 		);
 
 		spy.mockRestore();
@@ -37,8 +37,8 @@ describe("audit record identifiers", () => {
 	it("does not derive identifiers from a predictable sequence", () => {
 		const audit = createAuditLogger({ enabled: true, maxEntries: 10 });
 
-		const first = audit.log("client.disconnect", "user1").id;
-		const second = audit.log("client.disconnect", "user1").id;
+		const first = audit.log("disconnect_client", "user1").id;
+		const second = audit.log("disconnect_client", "user1").id;
 
 		// Same prefix and timestamp shape, but the random suffix must differ.
 		expect(first).not.toBe(second);
@@ -60,7 +60,7 @@ describe("audit record identifiers", () => {
 			store: failing as any,
 		});
 
-		expect(() => audit.log("client.disconnect", "user1")).not.toThrow();
+		expect(() => audit.log("disconnect_client", "user1")).not.toThrow();
 	});
 });
 

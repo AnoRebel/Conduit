@@ -56,13 +56,13 @@ describe("AuditLogger", () => {
 		});
 
 		it("should return entries in reverse chronological order", () => {
-			auditLogger.log("action1" as AuditAction, "admin");
-			auditLogger.log("action2" as AuditAction, "admin");
-			auditLogger.log("action3" as AuditAction, "admin");
+			auditLogger.log("ban_client", "admin");
+			auditLogger.log("unban_client", "admin");
+			auditLogger.log("clear_queue", "admin");
 
 			const entries = auditLogger.getEntries();
-			expect(entries[0].action).toBe("action3");
-			expect(entries[2].action).toBe("action1");
+			expect(entries[0]).toMatchObject({ action: "clear_queue" });
+			expect(entries[2]).toMatchObject({ action: "ban_client" });
 		});
 
 		it("should respect limit parameter", () => {
@@ -80,16 +80,16 @@ describe("AuditLogger", () => {
 			}
 
 			const entries = auditLogger.getEntries(2);
-			expect(entries[0].action).toBe("action4");
-			expect(entries[1].action).toBe("action3");
+			expect(entries[0]).toMatchObject({ action: "action4" });
+			expect(entries[1]).toMatchObject({ action: "action3" });
 		});
 	});
 
 	describe("getEntriesByUser", () => {
 		it("should filter by user", () => {
-			auditLogger.log("action1" as AuditAction, "admin1");
-			auditLogger.log("action2" as AuditAction, "admin2");
-			auditLogger.log("action3" as AuditAction, "admin1");
+			auditLogger.log("ban_client", "admin1");
+			auditLogger.log("unban_client", "admin2");
+			auditLogger.log("clear_queue", "admin1");
 
 			const entries = auditLogger.getEntriesByUser("admin1");
 			expect(entries).toHaveLength(2);
@@ -97,7 +97,7 @@ describe("AuditLogger", () => {
 		});
 
 		it("should return empty array for unknown user", () => {
-			auditLogger.log("action1" as AuditAction, "admin1");
+			auditLogger.log("ban_client", "admin1");
 			expect(auditLogger.getEntriesByUser("unknown")).toEqual([]);
 		});
 
@@ -113,18 +113,18 @@ describe("AuditLogger", () => {
 
 	describe("getEntriesByAction", () => {
 		it("should filter by action", () => {
-			auditLogger.log("login" as AuditAction, "admin1");
-			auditLogger.log("logout" as AuditAction, "admin2");
-			auditLogger.log("login" as AuditAction, "admin3");
+			auditLogger.log("auth.login", "admin1");
+			auditLogger.log("auth.logout", "admin2");
+			auditLogger.log("auth.login", "admin3");
 
-			const entries = auditLogger.getEntriesByAction("login" as AuditAction);
+			const entries = auditLogger.getEntriesByAction("auth.login");
 			expect(entries).toHaveLength(2);
-			expect(entries.every(e => e.action === "login")).toBe(true);
+			expect(entries.every(e => e.action === "auth.login")).toBe(true);
 		});
 
 		it("should return empty array for unknown action", () => {
-			auditLogger.log("action1" as AuditAction, "admin");
-			expect(auditLogger.getEntriesByAction("unknown" as AuditAction)).toEqual([]);
+			auditLogger.log("ban_client", "admin");
+			expect(auditLogger.getEntriesByAction("clear_audit")).toEqual([]);
 		});
 
 		it("should respect limit parameter", () => {
@@ -139,26 +139,26 @@ describe("AuditLogger", () => {
 
 	describe("getEntriesInRange", () => {
 		it("should filter by time range", async () => {
-			auditLogger.log("action1" as AuditAction, "admin");
+			auditLogger.log("ban_client", "admin");
 			await new Promise(r => setTimeout(r, 10));
 			const middle = Date.now();
-			auditLogger.log("action2" as AuditAction, "admin");
+			auditLogger.log("unban_client", "admin");
 			await new Promise(r => setTimeout(r, 10));
 			const end = Date.now();
 
 			const entries = auditLogger.getEntriesInRange(middle, end);
 			expect(entries).toHaveLength(1);
-			expect(entries[0].action).toBe("action2");
+			expect(entries[0]).toMatchObject({ action: "unban_client" });
 		});
 
 		it("should include entries at boundary", () => {
-			const entry = auditLogger.log("action1" as AuditAction, "admin");
+			const entry = auditLogger.log("ban_client", "admin");
 			const entries = auditLogger.getEntriesInRange(entry.timestamp, entry.timestamp);
 			expect(entries).toHaveLength(1);
 		});
 
 		it("should return empty for range with no entries", () => {
-			auditLogger.log("action1" as AuditAction, "admin");
+			auditLogger.log("ban_client", "admin");
 			const entries = auditLogger.getEntriesInRange(0, 1);
 			expect(entries).toEqual([]);
 		});
@@ -166,8 +166,8 @@ describe("AuditLogger", () => {
 
 	describe("clear", () => {
 		it("should remove all entries", () => {
-			auditLogger.log("action1" as AuditAction, "admin");
-			auditLogger.log("action2" as AuditAction, "admin");
+			auditLogger.log("ban_client", "admin");
+			auditLogger.log("unban_client", "admin");
 			auditLogger.clear();
 			expect(auditLogger.getEntries()).toEqual([]);
 			expect(auditLogger.size).toBe(0);
@@ -188,16 +188,16 @@ describe("AuditLogger", () => {
 	describe("disabled mode", () => {
 		it("should not store entries when disabled", () => {
 			const disabled = createAuditLogger({ enabled: false });
-			disabled.log("action1" as AuditAction, "admin");
-			disabled.log("action2" as AuditAction, "admin");
+			disabled.log("ban_client", "admin");
+			disabled.log("unban_client", "admin");
 			expect(disabled.size).toBe(0);
 			expect(disabled.getEntries()).toEqual([]);
 		});
 
 		it("should still return entry object when logging", () => {
 			const disabled = createAuditLogger({ enabled: false });
-			const entry = disabled.log("action1" as AuditAction, "admin");
-			expect(entry.action).toBe("action1");
+			const entry = disabled.log("ban_client", "admin");
+			expect(entry.action).toBe("ban_client");
 			expect(entry.userId).toBe("admin");
 		});
 	});
@@ -218,17 +218,17 @@ describe("AuditLogger", () => {
 			}
 
 			const entries = limited.getEntries();
-			expect(entries[0].action).toBe("action4");
-			expect(entries[2].action).toBe("action2");
+			expect(entries[0]).toMatchObject({ action: "action4" });
+			expect(entries[2]).toMatchObject({ action: "action2" });
 		});
 	});
 
 	describe("size property", () => {
 		it("should reflect current number of entries", () => {
 			expect(auditLogger.size).toBe(0);
-			auditLogger.log("action1" as AuditAction, "admin");
+			auditLogger.log("ban_client", "admin");
 			expect(auditLogger.size).toBe(1);
-			auditLogger.log("action2" as AuditAction, "admin");
+			auditLogger.log("unban_client", "admin");
 			expect(auditLogger.size).toBe(2);
 			auditLogger.clear();
 			expect(auditLogger.size).toBe(0);
