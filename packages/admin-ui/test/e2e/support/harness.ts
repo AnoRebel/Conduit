@@ -116,6 +116,7 @@ export const TOP_LEVEL_VIEWS = [
 	{ name: "dashboard", path: "/" },
 	{ name: "metrics", path: "/metrics" },
 	{ name: "clients", path: "/clients" },
+	{ name: "rooms", path: "/rooms" },
 	{ name: "bans", path: "/bans" },
 	{ name: "audit", path: "/audit" },
 	{ name: "settings", path: "/settings" },
