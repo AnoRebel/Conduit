@@ -12,8 +12,10 @@ import { ConduitError } from "./conduitError.js";
 import { AutoConnection, DataConnection, WebSocketConnection } from "./dataconnection/index.js";
 import { LogLevel, logger } from "./logger.js";
 import { MediaConnection } from "./mediaconnection.js";
+import { Room } from "./room.js";
 import { Socket } from "./socket.js";
 import { supports } from "./supports.js";
+import { Topic } from "./topic.js";
 import { util } from "./util.js";
 
 /** Events emitted by the {@link Conduit} peer instance. */
@@ -130,6 +132,10 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 	> = new Map();
 	/** Messages received before the target connection was created. */
 	private _lostMessages: Map<string, ServerMessage[]> = new Map();
+	/** Rooms this peer has joined, by name. */
+	private _rooms: Map<string, Room> = new Map();
+	/** Topic subscriptions this peer holds, by pattern. */
+	private _topics: Map<string, Topic> = new Map();
 
 	/** Resolved configuration options for this peer. */
 	readonly options: ConduitOptions;
@@ -277,8 +283,28 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 				break;
 
 			case MessageType.ERROR: {
-				const errorPayload = payload as { msg: string };
-				this._abort(ConduitErrorType.ServerError, errorPayload?.msg || "Unknown error");
+				const errorPayload = payload as { msg: string; room?: string; topic?: string };
+				const msg = errorPayload?.msg || "Unknown error";
+
+				// An error naming a room or topic belongs to that handle: a refused
+				// join is a failed request, not a fatal condition for the peer.
+				// Errors without such context keep the existing fatal behaviour.
+				const room = errorPayload?.room ? this._rooms.get(errorPayload.room) : undefined;
+				if (room) {
+					this._rooms.delete(errorPayload.room as string);
+					room._error(msg);
+					room._close();
+					break;
+				}
+				const topic = errorPayload?.topic ? this._topics.get(errorPayload.topic) : undefined;
+				if (topic) {
+					this._topics.delete(errorPayload.topic as string);
+					topic._error(msg);
+					topic._close();
+					break;
+				}
+
+				this._abort(ConduitErrorType.ServerError, msg);
 				break;
 			}
 
@@ -308,6 +334,70 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 			case MessageType.RELAY_CLOSE:
 				this._handleConnectionMessage(message);
 				break;
+
+			case MessageType.ROOM_STATE: {
+				const p = message.payload as { room: string; members: string[] };
+				this._rooms.get(p.room)?._setMembers(p.members ?? []);
+				break;
+			}
+
+			case MessageType.PEER_JOINED: {
+				const p = message.payload as { room: string; peerId: string };
+				this._rooms.get(p.room)?._peerJoined(p.peerId);
+				break;
+			}
+
+			case MessageType.PEER_LEFT: {
+				const p = message.payload as { room: string; peerId: string };
+				this._rooms.get(p.room)?._peerLeft(p.peerId);
+				break;
+			}
+
+			case MessageType.LEAVE_ROOM: {
+				// The server's confirmation that this peer has left.
+				const p = message.payload as { room: string };
+				const room = this._rooms.get(p.room);
+				this._rooms.delete(p.room);
+				room?._close();
+				break;
+			}
+
+			case MessageType.ROOM_BROADCAST: {
+				const p = message.payload as { room: string; data: unknown };
+				if (src) {
+					this._rooms.get(p.room)?._message(p.data, src);
+				}
+				break;
+			}
+
+			case MessageType.SUBSCRIBED: {
+				const p = message.payload as { topic: string };
+				this._topics.get(p.topic)?._confirm();
+				break;
+			}
+
+			case MessageType.UNSUBSCRIBED: {
+				const p = message.payload as { topic: string };
+				const topic = this._topics.get(p.topic);
+				this._topics.delete(p.topic);
+				topic?._close();
+				break;
+			}
+
+			case MessageType.TOPIC_MESSAGE: {
+				const p = message.payload as { topic: string; data: unknown };
+				if (!src) {
+					break;
+				}
+				// A publication may match several of this peer's subscriptions; the
+				// server sends one copy, so deliver it to every matching handle.
+				for (const [pattern, topic] of this._topics) {
+					if (patternMatches(pattern, p.topic)) {
+						topic._message(p.data, p.topic, src);
+					}
+				}
+				break;
+			}
 
 			default:
 				logger.warn("Unknown message type:", type);
@@ -620,6 +710,17 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		}
 		this._connections.clear();
 
+		// Release room and topic handles so they cannot keep an application's
+		// listeners alive after the peer is gone.
+		for (const room of this._rooms.values()) {
+			room._close();
+		}
+		this._rooms.clear();
+		for (const topic of this._topics.values()) {
+			topic._close();
+		}
+		this._topics.clear();
+
 		this.disconnect();
 		this.emit("close");
 		this.removeAllListeners();
@@ -628,6 +729,132 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 	/**
 	 * Get a list of all connected conduits (discovery)
 	 */
+	/**
+	 * Join a named room.
+	 *
+	 * Resolves when the server confirms the join and reports the membership.
+	 * Rejects if no confirmation arrives within the timeout, which is what an
+	 * older server ignoring the message looks like from here.
+	 */
+	join(room: string, options: { timeout?: number } = {}): Promise<Room> {
+		const existing = this._rooms.get(room);
+		if (existing) {
+			return Promise.resolve(existing);
+		}
+
+		const handle = new Room(room, (type, payload) => this._sendSignal(type, payload));
+		this._rooms.set(room, handle);
+
+		return new Promise<Room>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				cleanup();
+				this._rooms.delete(room);
+				handle._close();
+				reject(
+					new ConduitError(
+						ConduitErrorType.ServerError,
+						`Timed out joining room "${room}". The server may not support rooms.`
+					)
+				);
+			}, options.timeout ?? 10000);
+
+			const onOpen = () => {
+				cleanup();
+				resolve(handle);
+			};
+			const onError = (error: Error) => {
+				cleanup();
+				this._rooms.delete(room);
+				handle._close();
+				reject(error);
+			};
+			const cleanup = () => {
+				clearTimeout(timeout);
+				handle.off("open", onOpen);
+				handle.off("error", onError);
+			};
+
+			handle.once("open", onOpen);
+			handle.once("error", onError);
+
+			this._sendSignal(MessageType.JOIN, { room });
+		});
+	}
+
+	/** Rooms this peer has joined. */
+	get rooms(): readonly Room[] {
+		return Array.from(this._rooms.values());
+	}
+
+	/**
+	 * Subscribe to a topic name, or a namespace prefix ending in `.*`.
+	 *
+	 * Resolves when the server confirms the subscription.
+	 */
+	subscribe(pattern: string, options: { timeout?: number } = {}): Promise<Topic> {
+		const existing = this._topics.get(pattern);
+		if (existing) {
+			return Promise.resolve(existing);
+		}
+
+		const handle = new Topic(pattern, (type, payload) => this._sendSignal(type, payload));
+		this._topics.set(pattern, handle);
+
+		return new Promise<Topic>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				cleanup();
+				this._topics.delete(pattern);
+				handle._close();
+				reject(
+					new ConduitError(
+						ConduitErrorType.ServerError,
+						`Timed out subscribing to "${pattern}". The server may not support topics.`
+					)
+				);
+			}, options.timeout ?? 10000);
+
+			const onOpen = () => {
+				cleanup();
+				resolve(handle);
+			};
+			const onError = (error: Error) => {
+				cleanup();
+				this._topics.delete(pattern);
+				handle._close();
+				reject(error);
+			};
+			const cleanup = () => {
+				clearTimeout(timeout);
+				handle.off("open", onOpen);
+				handle.off("error", onError);
+			};
+
+			handle.once("open", onOpen);
+			handle.once("error", onError);
+
+			this._sendSignal(MessageType.SUBSCRIBE, { topic: pattern });
+		});
+	}
+
+	/** Publish a message to a topic. */
+	publish(topic: string, data: unknown, options: { selfDeliver?: boolean } = {}): void {
+		this._sendSignal(MessageType.PUBLISH, {
+			topic,
+			data,
+			...(options.selfDeliver === undefined ? {} : { selfDeliver: options.selfDeliver }),
+		});
+	}
+
+	/** Topic subscriptions this peer holds. */
+	get topics(): readonly Topic[] {
+		return Array.from(this._topics.values());
+	}
+
+	/** Send a signaling message to the server. */
+	private _sendSignal(type: MessageType, payload: unknown): void {
+		this.socket.send({ type, payload });
+	}
+
 	listAllConduits(): Promise<string[]> {
 		return this._api.listAllConduits();
 	}
@@ -647,4 +874,22 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		const error = new ConduitError(type, message);
 		this.emit("error", error);
 	}
+}
+
+/**
+ * Whether a subscription pattern matches a published topic.
+ *
+ * Mirrors the server's rule: an exact name, or a namespace prefix ending in
+ * `.*`. Applied client-side only to route one delivered copy to every matching
+ * handle -- the server has already decided what this peer receives.
+ */
+function patternMatches(pattern: string, topic: string): boolean {
+	if (pattern === topic) {
+		return true;
+	}
+	if (!pattern.endsWith(".*")) {
+		return false;
+	}
+	const prefix = pattern.slice(0, -1);
+	return topic.startsWith(prefix);
 }

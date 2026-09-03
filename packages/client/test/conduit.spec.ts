@@ -337,9 +337,11 @@ describe("util", () => {
 		const chunks = util.chunk(blob);
 
 		expect(chunks.length).toBeGreaterThan(1);
-		expect(chunks[0].__peerData).toBeDefined();
-		expect(chunks[0].n).toBe(0);
-		expect(chunks[0].total).toBe(chunks.length);
+		const [firstChunk] = chunks;
+		if (!firstChunk) throw new Error("expected at least one chunk");
+		expect(firstChunk.__peerData).toBeDefined();
+		expect(firstChunk.n).toBe(0);
+		expect(firstChunk.total).toBe(chunks.length);
 	});
 });
 
