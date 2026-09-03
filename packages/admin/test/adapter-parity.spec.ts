@@ -274,6 +274,64 @@ describe.each(ADAPTERS)("$name adapter", ({ create }) => {
 	const json = { "content-type": "application/json" };
 	const auth = { "x-api-key": API_KEY };
 
+	describe("room and cluster routes", () => {
+		it("refuses an unauthenticated room listing on every adapter", async () => {
+			// Room membership must not be readable without a credential.
+			const drive = create(createCore());
+
+			const res = await drive({ method: "GET", path: "/rooms" });
+
+			expect(res.status).toBe(401);
+		});
+
+		it("refuses an unauthenticated cluster status on every adapter", async () => {
+			const drive = create(createCore());
+
+			const res = await drive({ method: "GET", path: "/cluster" });
+
+			expect(res.status).toBe(401);
+		});
+
+		it("refuses room dissolution for a credential without the admin role", async () => {
+			// Dissolution is state-changing, so the same role gate as other writes
+			// must apply on every adapter.
+			const drive = create(createCore());
+
+			const res = await drive({
+				method: "POST",
+				path: "/rooms/lobby/dissolve",
+				headers: { ...auth, ...json },
+			});
+
+			expect(res.status).toBe(403);
+		});
+
+		it("applies CSRF content-type checking to room dissolution", async () => {
+			const drive = create(
+				createCore({
+					auth: { methods: ["apiKey"], apiKey: API_KEY, apiKeyRole: "admin" },
+				})
+			);
+
+			// A browser-form content type must be refused before the action runs.
+			const res = await drive({
+				method: "POST",
+				path: "/rooms/lobby/dissolve",
+				headers: { ...auth, "content-type": "application/x-www-form-urlencoded" },
+			});
+
+			expect(res.status).toBe(415);
+		});
+
+		it("allows an authorized room listing on every adapter", async () => {
+			const drive = create(createCore());
+
+			const res = await drive({ method: "GET", path: "/rooms", headers: auth });
+
+			expect(res.status).toBe(200);
+		});
+	});
+
 	describe("role-based access control", () => {
 		it("rejects a write when the credential carries no explicit admin role", async () => {
 			// An API key with no configured role resolves to the least-privileged

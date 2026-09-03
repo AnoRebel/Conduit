@@ -62,6 +62,7 @@ import { bansRoutes } from "./bans.js";
 import { clientRoutes } from "./clients.js";
 import { configRoutes } from "./config.js";
 import { metricsRoutes } from "./metrics.js";
+import { roomsRoutes } from "./rooms.js";
 // Import route handlers
 import { statusRoutes } from "./status.js";
 
@@ -74,6 +75,7 @@ export function createRoutes(): Route[] {
 		...bansRoutes,
 		...auditRoutes,
 		...configRoutes,
+		...roomsRoutes,
 	];
 }
 
@@ -82,4 +84,5 @@ export { bansRoutes } from "./bans.js";
 export { clientRoutes } from "./clients.js";
 export { configRoutes } from "./config.js";
 export { metricsRoutes } from "./metrics.js";
+export { roomsRoutes } from "./rooms.js";
 export { statusRoutes } from "./status.js";

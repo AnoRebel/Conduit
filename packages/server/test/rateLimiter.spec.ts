@@ -172,3 +172,85 @@ describe("DEFAULT_RATE_LIMIT_CONFIG", () => {
 		expect(DEFAULT_RATE_LIMIT_CONFIG.refillRate).toBe(50);
 	});
 });
+
+describe("weighted consumption", () => {
+	it("should depend on cost, depleting the bucket proportionally", () => {
+		const limiter = new RateLimiter({ maxTokens: 10, refillRate: 0 });
+
+		// One cost-10 call exhausts a bucket that would have served 10 cost-1 calls.
+		expect(limiter.tryConsume("peer", 10)).toBe(true);
+		expect(limiter.tryConsume("peer")).toBe(false);
+	});
+
+	it("should charge a fan-out the same as the equivalent number of unicasts", () => {
+		const fanOut = new RateLimiter({ maxTokens: 10, refillRate: 0 });
+		const unicast = new RateLimiter({ maxTokens: 10, refillRate: 0 });
+
+		expect(fanOut.tryConsume("peer", 5)).toBe(true);
+		for (let i = 0; i < 5; i++) {
+			expect(unicast.tryConsume("peer")).toBe(true);
+		}
+
+		// Both budgets are now equally depleted: addressing many recipients buys
+		// no extra throughput over addressing them one at a time.
+		expect(fanOut.tryConsume("peer", 5)).toBe(true);
+		for (let i = 0; i < 5; i++) {
+			expect(unicast.tryConsume("peer")).toBe(true);
+		}
+		expect(fanOut.tryConsume("peer")).toBe(false);
+		expect(unicast.tryConsume("peer")).toBe(false);
+	});
+
+	it("should refuse atomically without partial deduction", () => {
+		const limiter = new RateLimiter({ maxTokens: 10, refillRate: 0 });
+		expect(limiter.tryConsume("peer", 8)).toBe(true);
+
+		// 5 > the 2 remaining: refuse and leave the bucket untouched.
+		expect(limiter.tryConsume("peer", 5)).toBe(false);
+
+		// The 2 tokens must still be there — a partial deduction would mean a
+		// partially delivered multicast.
+		expect(limiter.tryConsume("peer", 2)).toBe(true);
+		expect(limiter.tryConsume("peer")).toBe(false);
+	});
+
+	it("should never satisfy a cost exceeding the bucket capacity", () => {
+		const limiter = new RateLimiter({ maxTokens: 10, refillRate: 1000 });
+		expect(limiter.tryConsume("peer", 11)).toBe(false);
+		// The bucket is undisturbed, so ordinary traffic still flows.
+		expect(limiter.tryConsume("peer")).toBe(true);
+	});
+
+	it("should treat a missing cost as one token", () => {
+		const limiter = new RateLimiter({ maxTokens: 2, refillRate: 0 });
+		expect(limiter.tryConsume("peer")).toBe(true);
+		expect(limiter.tryConsume("peer")).toBe(true);
+		expect(limiter.tryConsume("peer")).toBe(false);
+	});
+
+	it("should not let a malformed cost buy a free pass", () => {
+		// Zero, negative, NaN and Infinity are all charged as the minimum unit
+		// rather than waved through: a caller cannot spend nothing.
+		const limiter = new RateLimiter({ maxTokens: 3, refillRate: 0 });
+		expect(limiter.tryConsume("peer", 0)).toBe(true);
+		expect(limiter.tryConsume("peer", -5)).toBe(true);
+		expect(limiter.tryConsume("peer", Number.NaN)).toBe(true);
+		// Three minimum charges have now drained a three-token bucket.
+		expect(limiter.tryConsume("peer")).toBe(false);
+	});
+
+	it("should charge a non-finite cost as the minimum unit", () => {
+		const limiter = new RateLimiter({ maxTokens: 2, refillRate: 0 });
+		expect(limiter.tryConsume("peer", Number.POSITIVE_INFINITY)).toBe(true);
+		expect(limiter.tryConsume("peer")).toBe(true);
+		expect(limiter.tryConsume("peer")).toBe(false);
+	});
+
+	it("should round a fractional cost up rather than down", () => {
+		const limiter = new RateLimiter({ maxTokens: 4, refillRate: 0 });
+		// 1.2 is charged as 2, so two calls consume the whole bucket.
+		expect(limiter.tryConsume("peer", 1.2)).toBe(true);
+		expect(limiter.tryConsume("peer", 1.2)).toBe(true);
+		expect(limiter.tryConsume("peer")).toBe(false);
+	});
+});

@@ -58,8 +58,17 @@ try {
 		);
 		(button as HTMLButtonElement | undefined)?.click();
 	});
-	// Allow the connection handshake and first data fetch to complete.
-	await page.waitForTimeout(4000);
+	// Allow the connection handshake and first data fetch to complete. Poll
+	// rather than guess: the dashboard is only worth photographing once the
+	// stat cards hold real values.
+	for (let i = 0; i < 40; i++) {
+		const ready = await page.evaluate(
+			() => !document.body.innerText.includes("Disconnected") && !!document.querySelector("h1")
+		);
+		if (ready) break;
+		await page.waitForTimeout(250);
+	}
+	await page.waitForTimeout(1200);
 
 	await page.screenshot(join(OUT_DIR, "01-after-connect.png"));
 
@@ -72,7 +81,37 @@ try {
 	// --- Capture each view with data -----------------------------------------
 	for (const view of TOP_LEVEL_VIEWS) {
 		await page.navigate(`${server.url}${view.path}`, { waitForLoadState: "load" });
-		await page.waitForTimeout(2500);
+
+		// A fixed pause races the six parallel fetches that `store.initialize()`
+		// makes on mount: the sidebar still read "Disconnected" in captures taken
+		// while /status was in flight. Poll for the connected state instead, so a
+		// slow machine waits longer rather than photographing a half-loaded page.
+		for (let i = 0; i < 40; i++) {
+			const ready = await page.evaluate(() => !document.body.innerText.includes("Disconnected"));
+			if (ready) break;
+			await page.waitForTimeout(250);
+		}
+		await page.waitForTimeout(1200);
+
+		// The dashboard animates cards in with v-motion `visible-once`, which
+		// only completes once an element scrolls into view. A headless capture
+		// otherwise photographs half-finished transitions, so force every
+		// animated element to its final state before shooting.
+		await page.evaluate(() => {
+			const style = document.createElement("style");
+			style.textContent =
+				"*,*::before,*::after{animation:none!important;transition:none!important}";
+			document.head.appendChild(style);
+			for (const el of document.querySelectorAll<HTMLElement>(
+				"[data-tour-guide], .grid > *, main *"
+			)) {
+				if (Number(getComputedStyle(el).opacity) < 1) {
+					el.style.opacity = "1";
+					el.style.transform = "none";
+				}
+			}
+		});
+		await page.waitForTimeout(300);
 		await page.screenshot(join(OUT_DIR, `view-${view.name}.png`));
 
 		const state = await page.evaluate(() => ({

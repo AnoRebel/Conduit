@@ -5,13 +5,19 @@ import {
 	MAX_KEY_LENGTH,
 	MAX_MESSAGE_SIZE,
 	MAX_PAYLOAD_DEPTH,
+	MAX_ROOM_NAME_LENGTH,
 	MAX_TOKEN_LENGTH,
+	MAX_TOPIC_NAME_LENGTH,
+	MAX_TOPIC_SEGMENTS,
 	safeJsonParse,
 	validateId,
 	validateKey,
 	validateMessage,
 	validatePayloadDestination,
+	validateRoomName,
 	validateToken,
+	validateTopicName,
+	validateTopicPattern,
 } from "../src/core/validation.js";
 
 describe("Constants", () => {
@@ -298,5 +304,131 @@ describe("safeJsonParse", () => {
 		const json = '{"key": "value"}';
 		const result = safeJsonParse(json, 1000);
 		expect(result.success).toBe(true);
+	});
+});
+
+describe("validateRoomName", () => {
+	it("should accept well-formed room names", () => {
+		expect(validateRoomName("lobby").valid).toBe(true);
+		expect(validateRoomName("team-standup").valid).toBe(true);
+		expect(validateRoomName("org:acme.room_1").valid).toBe(true);
+		expect(validateRoomName("a").valid).toBe(true);
+	});
+
+	it("should reject non-strings", () => {
+		expect(validateRoomName(undefined).valid).toBe(false);
+		expect(validateRoomName(null).valid).toBe(false);
+		expect(validateRoomName(42).valid).toBe(false);
+		expect(validateRoomName({}).valid).toBe(false);
+	});
+
+	it("should reject empty and whitespace-only names", () => {
+		expect(validateRoomName("").valid).toBe(false);
+		expect(validateRoomName("   ").valid).toBe(false);
+	});
+
+	it("should reject names over the maximum length", () => {
+		const tooLong = "a".repeat(MAX_ROOM_NAME_LENGTH + 1);
+		const result = validateRoomName(tooLong);
+		expect(result.valid).toBe(false);
+		expect(result.error).toContain(String(MAX_ROOM_NAME_LENGTH));
+	});
+
+	it("should accept a name exactly at the maximum length", () => {
+		expect(validateRoomName("a".repeat(MAX_ROOM_NAME_LENGTH)).valid).toBe(true);
+	});
+
+	it("should reject characters outside the allowlist", () => {
+		// Path separators, wildcards, whitespace, and control characters must not
+		// be admitted: a room name is an opaque capability, not a path.
+		expect(validateRoomName("room/../etc").valid).toBe(false);
+		expect(validateRoomName("room name").valid).toBe(false);
+		expect(validateRoomName("room*").valid).toBe(false);
+		expect(validateRoomName("room\n").valid).toBe(false);
+		expect(validateRoomName("room#1").valid).toBe(false);
+		expect(validateRoomName("rööm").valid).toBe(false);
+	});
+});
+
+describe("validateTopicName", () => {
+	it("should accept well-formed topic names", () => {
+		expect(validateTopicName("chat").valid).toBe(true);
+		expect(validateTopicName("chat.general").valid).toBe(true);
+		expect(validateTopicName("a.b.c.d").valid).toBe(true);
+	});
+
+	it("should reject a wildcard in a published topic", () => {
+		// Publishing is always to a literal topic; a wildcard here would let a
+		// publisher address an entire namespace at once.
+		expect(validateTopicName("chat.*").valid).toBe(false);
+		expect(validateTopicName("*").valid).toBe(false);
+	});
+
+	it("should reject empty segments", () => {
+		expect(validateTopicName("chat..general").valid).toBe(false);
+		expect(validateTopicName(".chat").valid).toBe(false);
+		expect(validateTopicName("chat.").valid).toBe(false);
+	});
+
+	it("should reject names over the maximum length", () => {
+		const result = validateTopicName("a".repeat(MAX_TOPIC_NAME_LENGTH + 1));
+		expect(result.valid).toBe(false);
+		expect(result.error).toContain(String(MAX_TOPIC_NAME_LENGTH));
+	});
+
+	it("should reject excessive namespace depth", () => {
+		const tooDeep = Array.from({ length: MAX_TOPIC_SEGMENTS + 1 }, () => "a").join(".");
+		const result = validateTopicName(tooDeep);
+		expect(result.valid).toBe(false);
+		expect(result.error).toContain(String(MAX_TOPIC_SEGMENTS));
+	});
+
+	it("should accept a topic exactly at the segment limit", () => {
+		const atLimit = Array.from({ length: MAX_TOPIC_SEGMENTS }, () => "a").join(".");
+		expect(validateTopicName(atLimit).valid).toBe(true);
+	});
+
+	it("should reject non-strings and invalid characters", () => {
+		expect(validateTopicName(null).valid).toBe(false);
+		expect(validateTopicName("chat general").valid).toBe(false);
+		expect(validateTopicName("chat/general").valid).toBe(false);
+	});
+});
+
+describe("validateTopicPattern", () => {
+	it("should accept an exact topic name", () => {
+		expect(validateTopicPattern("chat.general").valid).toBe(true);
+	});
+
+	it("should accept a single trailing prefix wildcard", () => {
+		expect(validateTopicPattern("chat.*").valid).toBe(true);
+		expect(validateTopicPattern("a.b.c.*").valid).toBe(true);
+	});
+
+	it("should reject unsupported wildcard forms", () => {
+		// Only a trailing `.*` is supported. Mid-pattern and multi-level
+		// wildcards would make resolution scale with total subscription count.
+		expect(validateTopicPattern("chat.*.urgent").valid).toBe(false);
+		expect(validateTopicPattern("*.general").valid).toBe(false);
+		expect(validateTopicPattern("chat.**").valid).toBe(false);
+		expect(validateTopicPattern("chat.*.*").valid).toBe(false);
+		expect(validateTopicPattern("*").valid).toBe(false);
+		expect(validateTopicPattern("chat*").valid).toBe(false);
+	});
+
+	it("should reject an empty literal prefix before the wildcard", () => {
+		expect(validateTopicPattern(".*").valid).toBe(false);
+	});
+
+	it("should enforce length and depth on the literal prefix", () => {
+		expect(validateTopicPattern("a".repeat(MAX_TOPIC_NAME_LENGTH + 1)).valid).toBe(false);
+		const tooDeep = `${Array.from({ length: MAX_TOPIC_SEGMENTS + 1 }, () => "a").join(".")}.*`;
+		expect(validateTopicPattern(tooDeep).valid).toBe(false);
+	});
+
+	it("should reject non-strings and empty patterns", () => {
+		expect(validateTopicPattern(undefined).valid).toBe(false);
+		expect(validateTopicPattern("").valid).toBe(false);
+		expect(validateTopicPattern("   ").valid).toBe(false);
 	});
 });

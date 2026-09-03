@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -39,24 +38,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Pagination,
-	PaginationContent,
-	PaginationFirst,
-	PaginationLast,
-	PaginationNext,
-	PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableEmpty,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import type { ClientInfo } from "~/types";
+import type { DataTableColumns } from "~/types/table";
 
 const store = useAdminStore();
 const breadcrumbItems = [{ label: "Clients" }];
@@ -80,26 +63,22 @@ onMounted(async () => {
 });
 
 // Pagination
-const currentPage = ref(1);
-const itemsPerPage = ref(10);
+/**
+ * Columns drive the header row and sorting; per-row markup stays in the
+ * template via DataTable's `row` slot, preserving this page's context menus.
+ */
+const columns: DataTableColumns<ClientInfo> = [
+	{ accessorKey: "id", header: "Client ID" },
+	{ id: "status", header: "Status", enableSorting: false },
+	{ accessorKey: "connectedAt", header: "Connected At" },
+	{ id: "messages", header: "Messages", enableSorting: false },
+	{ id: "actions", header: "Actions", enableSorting: false },
+];
 
 const filteredClients = computed(() => {
 	if (!searchQuery.value) return store.clients;
 	const query = searchQuery.value.toLowerCase();
 	return store.clients.filter(client => client.id.toLowerCase().includes(query));
-});
-
-const totalPages = computed(() => Math.ceil(filteredClients.value.length / itemsPerPage.value));
-
-const paginatedClients = computed(() => {
-	const start = (currentPage.value - 1) * itemsPerPage.value;
-	const end = start + itemsPerPage.value;
-	return filteredClients.value.slice(start, end);
-});
-
-// Reset to first page when search changes
-watch(searchQuery, () => {
-	currentPage.value = 1;
 });
 
 function openDisconnectDialog(id: string) {
@@ -133,7 +112,9 @@ async function confirmBan() {
 }
 
 function formatTime(timestamp: number) {
-	return new Date(timestamp).toLocaleString();
+	// Shared formatter pins the viewer's timezone explicitly rather than
+	// inheriting whatever the runtime happens to be set to.
+	return formatMetricDate(timestamp);
 }
 
 async function refresh() {
@@ -198,161 +179,114 @@ function navigateToClient(id: string) {
 		</div>
 
 		<!-- Clients table -->
-		<Card
+		<div
 			v-motion
 			:initial="{ opacity: 0, y: 12 }"
 			:enter="{ opacity: 1, y: 0, transition: { duration: 350, delay: 150 } }"
 			data-tour-guide="clients-list"
 		>
-			<div class="overflow-x-auto">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Client ID</TableHead>
-							<TableHead>Status</TableHead>
-							<TableHead class="hidden sm:table-cell">Connected At</TableHead>
-							<TableHead class="hidden md:table-cell">Messages</TableHead>
-							<TableHead class="text-right">Actions</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						<!-- Loading state -->
-						<template v-if="isLoading">
-							<TableRow v-for="i in 5" :key="i">
-								<TableCell><Skeleton class="h-4 w-32" /></TableCell>
-								<TableCell><Skeleton class="h-5 w-20" /></TableCell>
-								<TableCell class="hidden sm:table-cell"><Skeleton class="h-4 w-28" /></TableCell>
-								<TableCell class="hidden md:table-cell"><Skeleton class="h-4 w-16" /></TableCell>
-								<TableCell class="text-right"><Skeleton class="h-8 w-8 ml-auto" /></TableCell>
-							</TableRow>
-						</template>
-
-						<!-- Data -->
-						<template v-else>
-							<ContextMenu v-for="(client, index) in paginatedClients" :key="client.id">
-								<ContextMenuTrigger as-child>
-									<TableRow
-										v-motion
-										:initial="{ opacity: 0, x: -10 }"
-										:visible-once="{ opacity: 1, x: 0, transition: { duration: 250, delay: index * 50 } }"
-										class="cursor-context-menu"
-									>
-										<TableCell>
-											<NuxtLink
-												:to="`/clients/${client.id}`"
-												class="text-primary hover:underline font-mono text-sm"
-											>
-												{{ client.id }}
-											</NuxtLink>
-										</TableCell>
-										<TableCell>
-											<Badge :variant="client.connected ? 'default' : 'secondary'">
-												{{ client.connected ? "Connected" : "Disconnected" }}
-											</Badge>
-										</TableCell>
-										<TableCell class="text-muted-foreground hidden sm:table-cell">
-											{{ formatTime(client.connectedAt) }}
-										</TableCell>
-										<TableCell class="text-muted-foreground hidden md:table-cell">
-											{{ client.messagesReceived }} / {{ client.messagesSent }}
-										</TableCell>
-										<TableCell class="text-right" data-tour-guide="client-actions">
-											<DropdownMenu>
-												<DropdownMenuTrigger as-child>
-													<Button variant="ghost" size="icon-sm">
-														<MoreHorizontal class="h-4 w-4" />
-														<span class="sr-only">Actions</span>
-													</Button>
-												</DropdownMenuTrigger>
-												<DropdownMenuContent align="end">
-													<DropdownMenuItem as-child>
-														<NuxtLink :to="`/clients/${client.id}`">
-															View Details
-														</NuxtLink>
-													</DropdownMenuItem>
-													<DropdownMenuSeparator />
-													<DropdownMenuItem
-														variant="destructive"
-														@click="openDisconnectDialog(client.id)"
-													>
-														<UserX class="h-4 w-4" />
-														Disconnect
-													</DropdownMenuItem>
-													<DropdownMenuItem
-														variant="destructive"
-														@click="openBanDialog(client.id)"
-													>
-														<Ban class="h-4 w-4" />
-														Ban Client
-													</DropdownMenuItem>
-												</DropdownMenuContent>
-											</DropdownMenu>
-										</TableCell>
-									</TableRow>
-								</ContextMenuTrigger>
-								<ContextMenuContent>
-									<ContextMenuItem @click="navigateToClient(client.id)">
-										<ExternalLink class="h-4 w-4" />
-										View Details
-									</ContextMenuItem>
-									<ContextMenuItem @click="copyClientId(client.id)">
-										<Copy class="h-4 w-4" />
-										Copy Client ID
-									</ContextMenuItem>
-									<ContextMenuSeparator />
-									<ContextMenuItem
-										variant="destructive"
-										@click="openDisconnectDialog(client.id)"
-									>
-										<UserX class="h-4 w-4" />
-										Disconnect
-									</ContextMenuItem>
-									<ContextMenuItem
-										variant="destructive"
-										@click="openBanDialog(client.id)"
-									>
-										<Ban class="h-4 w-4" />
-										Ban Client
-									</ContextMenuItem>
-								</ContextMenuContent>
-							</ContextMenu>
-
-							<TableEmpty v-if="filteredClients.length === 0" :colspan="5">
-								No clients found
-							</TableEmpty>
-						</template>
-					</TableBody>
-				</Table>
-			</div>
+			<DataTable
+				:data="filteredClients"
+				:columns="columns"
+				:page-size="10"
+				item-label="client"
+				item-label-plural="clients"
+				empty-message="No clients connected"
+			>
+				<!-- Each row keeps its context menu and action buttons. -->
+				<template #row="{ row: client, index }">
+					<ContextMenu>
+									<ContextMenuTrigger as-child>
+										<TableRow
+											v-motion
+											:initial="{ opacity: 0, x: -10 }"
+											:visible-once="{ opacity: 1, x: 0, transition: { duration: 250, delay: index * 50 } }"
+											class="cursor-context-menu"
+										>
+											<TableCell>
+												<NuxtLink
+													:to="`/clients/${client.id}`"
+													class="text-primary hover:underline font-mono text-sm"
+												>
+													{{ client.id }}
+												</NuxtLink>
+											</TableCell>
+											<TableCell>
+												<Badge :variant="client.connected ? 'default' : 'secondary'">
+													{{ client.connected ? "Connected" : "Disconnected" }}
+												</Badge>
+											</TableCell>
+											<TableCell class="text-muted-foreground hidden sm:table-cell">
+												{{ formatTime(client.connectedAt) }}
+											</TableCell>
+											<TableCell class="text-muted-foreground hidden md:table-cell">
+												{{ client.messagesReceived }} / {{ client.messagesSent }}
+											</TableCell>
+											<TableCell class="text-right" data-tour-guide="client-actions">
+												<DropdownMenu>
+													<DropdownMenuTrigger as-child>
+														<Button variant="ghost" size="icon-sm">
+															<MoreHorizontal class="h-4 w-4" />
+															<span class="sr-only">Actions</span>
+														</Button>
+													</DropdownMenuTrigger>
+													<DropdownMenuContent align="end">
+														<DropdownMenuItem as-child>
+															<NuxtLink :to="`/clients/${client.id}`">
+																View Details
+															</NuxtLink>
+														</DropdownMenuItem>
+														<DropdownMenuSeparator />
+														<DropdownMenuItem
+															variant="destructive"
+															@click="openDisconnectDialog(client.id)"
+														>
+															<UserX class="h-4 w-4" />
+															Disconnect
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															variant="destructive"
+															@click="openBanDialog(client.id)"
+														>
+															<Ban class="h-4 w-4" />
+															Ban Client
+														</DropdownMenuItem>
+													</DropdownMenuContent>
+												</DropdownMenu>
+											</TableCell>
+										</TableRow>
+									</ContextMenuTrigger>
+									<ContextMenuContent>
+										<ContextMenuItem @click="navigateToClient(client.id)">
+											<ExternalLink class="h-4 w-4" />
+											View Details
+										</ContextMenuItem>
+										<ContextMenuItem @click="copyClientId(client.id)">
+											<Copy class="h-4 w-4" />
+											Copy Client ID
+										</ContextMenuItem>
+										<ContextMenuSeparator />
+										<ContextMenuItem
+											variant="destructive"
+											@click="openDisconnectDialog(client.id)"
+										>
+											<UserX class="h-4 w-4" />
+											Disconnect
+										</ContextMenuItem>
+										<ContextMenuItem
+											variant="destructive"
+											@click="openBanDialog(client.id)"
+										>
+											<Ban class="h-4 w-4" />
+											Ban Client
+										</ContextMenuItem>
+									</ContextMenuContent>
+					</ContextMenu>
+				</template>
+			</DataTable>
 
 			<!-- Pagination -->
-			<div
-				v-if="totalPages > 1"
-				v-motion
-				:initial="{ opacity: 0 }"
-				:enter="{ opacity: 1, transition: { duration: 300, delay: 200 } }"
-				class="flex flex-col sm:flex-row items-center justify-between border-t px-4 py-3 gap-3"
-			>
-				<p class="text-sm text-muted-foreground">
-					Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
-					{{ Math.min(currentPage * itemsPerPage, filteredClients.length) }}
-					of {{ filteredClients.length }} clients
-				</p>
-				<Pagination
-					v-model:page="currentPage"
-					:total="filteredClients.length"
-					:items-per-page="itemsPerPage"
-					:sibling-count="1"
-				>
-					<PaginationContent>
-						<PaginationFirst />
-						<PaginationPrevious />
-						<PaginationNext />
-						<PaginationLast />
-					</PaginationContent>
-				</Pagination>
-			</div>
-		</Card>
+		</div>
 
 		<!-- Disconnect Confirmation Dialog -->
 		<AlertDialog v-model:open="disconnectDialogOpen">

@@ -3,6 +3,7 @@ import {
 	BarChart3,
 	Cable,
 	Circle,
+	DoorOpen,
 	FileText,
 	LayoutDashboard,
 	Moon,
@@ -50,9 +51,21 @@ const store = useAdminStore();
 // Connection sheet state
 const showConnectionSheet = ref(false);
 
+// The layout renders the connection indicator on every page, but `status` is
+// only fetched by the dashboard's `store.initialize()`. Landing directly on
+// /rooms (or any other view) therefore left the sidebar reading "Disconnected"
+// against a perfectly healthy server. Fetch it here when it is missing, so the
+// indicator reflects the connection rather than which page was opened first.
+onMounted(async () => {
+	if (connection.isConfigured.value && !store.status) {
+		await store.fetchStatus();
+	}
+});
+
 const navigation = [
 	{ name: "Dashboard", href: "/", icon: LayoutDashboard },
 	{ name: "Clients", href: "/clients", icon: Users },
+	{ name: "Rooms", href: "/rooms", icon: DoorOpen },
 	{ name: "Bans", href: "/bans", icon: ShieldBan },
 	{ name: "Metrics", href: "/metrics", icon: BarChart3 },
 	{ name: "Audit Log", href: "/audit", icon: FileText },
@@ -132,15 +145,21 @@ onUnmounted(() => {
 // Handle connection change from sheet
 async function onConnectionChanged() {
 	showConnectionSheet.value = false;
-	store.cleanup();
+	// Reset rather than cleanup: switching instances must not leave the previous
+	// server's clients, rooms and bans on screen while the new ones load, where
+	// they would read as belonging to the server just connected to.
+	store.reset();
 	await store.initialize();
-	toast.success("Reconnected to server");
+	toast.success("Connected to server");
 }
 
 // Disconnect and show connection dialog
 function handleDisconnect() {
-	store.cleanup();
+	// Clear the fetched data as well as the credentials, so logging out does not
+	// leave one server's state readable on the connection screen.
+	store.reset();
 	connection.clearSettings();
+	showConnectionSheet.value = false;
 	toast.info("Disconnected from server");
 }
 
@@ -205,9 +224,13 @@ function onTourSkip() {
 				</SidebarGroup>
 			</SidebarContent>
 
-			<!-- Sidebar Footer — Connection Status -->
+			<!-- Sidebar Footer — Connection Status.
+				 Reflects settings held in localStorage, which SSR cannot see, so
+				 this renders on the client only rather than hydrating over
+				 server output that necessarily disagrees. -->
 			<SidebarFooter class="border-t border-sidebar-border/50">
 				<div class="flex items-center gap-2 px-2 py-2 overflow-hidden">
+					<ClientOnly>
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger as-child>
@@ -245,6 +268,7 @@ function onTourSkip() {
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
+					</ClientOnly>
 				</div>
 			</SidebarFooter>
 
@@ -277,7 +301,12 @@ function onTourSkip() {
 
 				<div class="flex-1" />
 
-				<!-- Connection badge -->
+				<!-- Connection badge.
+					 Gated on settings read from localStorage, which does not exist
+					 during SSR, so the server and client disagree on whether to
+					 render it. ClientOnly makes that difference deliberate rather
+					 than a hydration mismatch. -->
+				<ClientOnly>
 				<TooltipProvider v-if="connection.isConfigured.value">
 					<Tooltip>
 						<TooltipTrigger as-child>
@@ -294,6 +323,7 @@ function onTourSkip() {
 						<TooltipContent>Change connection</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>
+				</ClientOnly>
 
 				<!-- Tour button -->
 				<TourButton />
@@ -373,7 +403,8 @@ function onTourSkip() {
 				</SheetDescription>
 			</SheetHeader>
 			<div class="mt-6">
-				<ConnectionDialog @connected="onConnectionChanged" />
+				<!-- The sheet is already the panel, so the dialog renders frameless. -->
+				<ConnectionDialog bare @connected="onConnectionChanged" />
 				<div v-if="connection.isConfigured.value" class="mt-4 flex justify-center">
 					<Button
 						variant="ghost"

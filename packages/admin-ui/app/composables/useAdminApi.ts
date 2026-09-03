@@ -1,9 +1,13 @@
 import type {
+	AddMembersResult,
 	AuditEntry,
 	BanEntry,
 	ClientDetails,
 	ClientInfo,
+	ClusterStatus,
 	MetricsSnapshot,
+	RoomDetail,
+	RoomSummary,
 	ServerStatus,
 } from "~/types";
 
@@ -91,6 +95,33 @@ export function useAdminApi() {
 		return fetchApi("/clients", { method: "DELETE" });
 	}
 
+	// Room, topic, and cluster endpoints
+	async function getRooms(): Promise<{ rooms: RoomSummary[]; total: number }> {
+		return fetchApi("/rooms");
+	}
+
+	async function getRoom(name: string): Promise<RoomDetail> {
+		return fetchApi(`/rooms/${encodeURIComponent(name)}`);
+	}
+
+	async function dissolveRoom(
+		name: string
+	): Promise<{ success: boolean; room: string; removed: number }> {
+		// POST rather than GET so the adapters' CSRF protection applies.
+		return fetchApi(`/rooms/${encodeURIComponent(name)}/dissolve`, { method: "POST" });
+	}
+
+	async function addRoomMembers(name: string, peerIds: string[]): Promise<AddMembersResult> {
+		return fetchApi(`/rooms/${encodeURIComponent(name)}/members`, {
+			method: "POST",
+			body: JSON.stringify({ peerIds }),
+		});
+	}
+
+	async function getClusterStatus(): Promise<ClusterStatus> {
+		return fetchApi("/cluster");
+	}
+
 	// Ban endpoints
 	async function getBans(): Promise<{ bans: BanEntry[]; total: number }> {
 		return fetchApi("/bans");
@@ -156,6 +187,11 @@ export function useAdminApi() {
 	}
 
 	return {
+		getRooms,
+		getRoom,
+		dissolveRoom,
+		addRoomMembers,
+		getClusterStatus,
 		isAuthenticated,
 		setApiKey,
 		loadApiKey,

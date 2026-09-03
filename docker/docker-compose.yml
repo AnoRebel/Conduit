@@ -117,6 +117,31 @@ services:
       - NODE_ENV=development
     command: bun run dev
 
+  # Redis backing the distributed realm. Required only for multi-instance
+  # deployments and for the cluster integration tests; a single-instance server
+  # uses the in-memory backend and needs nothing here.
+  redis:
+    image: redis:8-alpine
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:-conduit-dev-redis}
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-conduit-dev-redis}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    restart: unless-stopped
+    profiles:
+      - cluster
+
 volumes:
   conduit-data:
 

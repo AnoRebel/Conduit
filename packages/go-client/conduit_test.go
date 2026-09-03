@@ -51,8 +51,23 @@ func TestAllMessageTypes(t *testing.T) {
 	t.Parallel()
 
 	all := AllMessageTypes()
-	if len(all) != 13 {
-		t.Errorf("expected 13 message types, got %d", len(all))
+	if len(all) != 25 {
+		t.Errorf("expected 25 message types, got %d", len(all))
+	}
+
+	// Every listed type must also validate, or the two lists have drifted.
+	for _, mt := range all {
+		if !mt.IsValid() {
+			t.Errorf("AllMessageTypes contains %q but IsValid rejects it", mt)
+		}
+	}
+
+	seen := make(map[MessageType]bool, len(all))
+	for _, mt := range all {
+		if seen[mt] {
+			t.Errorf("duplicate message type %q", mt)
+		}
+		seen[mt] = true
 	}
 }
 

@@ -90,6 +90,8 @@ export {
 // ============================================================================
 
 export { ConduitError } from "./conduitError.js";
+export { Room, type RoomEvents, type RoomSend } from "./room.js";
+export { Topic, type TopicEvents, type TopicSend } from "./topic.js";
 
 // ============================================================================
 // Base connection types

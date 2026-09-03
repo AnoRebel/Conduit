@@ -148,7 +148,7 @@ describe("Express adapter (ExpressConduitServer)", () => {
 		middleware(req as never, res as never, next);
 
 		expect(res.send).toHaveBeenCalled();
-		expect(typeof res.send.mock.calls[0][0]).toBe("string");
+		expect(typeof res.send.mock.calls[0]?.[0]).toBe("string");
 		expect(next).not.toHaveBeenCalled();
 
 		(middleware as unknown as { close: () => void }).close();
@@ -600,7 +600,7 @@ describe("Bun adapter (createConduitServer)", () => {
 		const response = await opts.fetch(request, mockServer as never);
 
 		expect(response.status).toBe(403);
-		const body = await response.json();
+		const body = (await response.json()) as { error?: string };
 		expect(body.error).toBe("HTTPS required");
 	});
 

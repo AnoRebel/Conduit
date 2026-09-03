@@ -197,7 +197,9 @@ async function confirmBanClient() {
 }
 
 function formatTime(timestamp: number) {
-	return new Date(timestamp).toLocaleString();
+	// Shared formatter pins the viewer's timezone explicitly rather than
+	// inheriting whatever the runtime happens to be set to.
+	return formatMetricDate(timestamp);
 }
 
 function formatRelativeTime(timestamp: number) {
@@ -341,13 +343,14 @@ const statsCards = computed(() => [
 		</div>
 
 		<!-- Bans table -->
-		<Card
+		<div
 			v-motion
 			:initial="{ opacity: 0, y: 12 }"
 			:enter="{ opacity: 1, y: 0, transition: { duration: 350, delay: 150 } }"
 			data-tour-guide="bans-list"
+			class="space-y-3"
 		>
-			<div class="overflow-x-auto">
+			<div class="rounded-md border overflow-x-auto">
 				<Table>
 					<TableHeader>
 						<TableRow>
@@ -473,7 +476,7 @@ const statsCards = computed(() => [
 				v-motion
 				:initial="{ opacity: 0 }"
 				:enter="{ opacity: 1, transition: { duration: 300, delay: 200 } }"
-				class="flex flex-col sm:flex-row items-center justify-between border-t px-4 py-3 gap-3"
+				class="flex flex-col sm:flex-row items-center justify-between gap-3"
 			>
 				<p class="text-sm text-muted-foreground">
 					Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
@@ -494,7 +497,7 @@ const statsCards = computed(() => [
 					</PaginationContent>
 				</Pagination>
 			</div>
-		</Card>
+		</div>
 
 		<!-- Ban IP Dialog -->
 		<Dialog v-model:open="banIpDialogOpen">

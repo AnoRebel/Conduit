@@ -319,6 +319,34 @@ The SQLite store uses WAL mode for concurrent read/write performance, indexed qu
 | `DELETE` | `/clients` | Disconnect all clients |
 | `DELETE` | `/clients/:id/queue` | Clear client message queue |
 
+### Rooms and Cluster
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/rooms` | List active rooms with member counts |
+| `GET` | `/rooms/:name` | One room's full membership |
+| `POST` | `/rooms/:name/members` | Place peers into a room (body: `{ "peerIds": ["a", "b"] }`) |
+| `POST` | `/rooms/:name/dissolve` | Remove every member from a room |
+| `GET` | `/cluster` | Cluster participation and backend health |
+
+Rooms are derived from membership rather than stored in their own right, so
+there is no "create room" endpoint: a room comes into existence when its first
+peer is placed in it, and ceases to exist when the last one leaves. Adding
+members is per-peer best-effort — the response names which peers were added and
+which were skipped, so one disconnected peer does not fail the whole call:
+
+```json
+{
+  "success": true,
+  "room": "standup",
+  "added": ["alice", "bob"],
+  "skipped": [{ "peerId": "carol", "reason": "not-connected" }]
+}
+```
+
+Peers placed this way receive `ROOM_STATE` and the room's existing members
+receive `PEER_JOINED`, exactly as if the peer had sent `JOIN` itself.
+
 ### Bans
 
 | Method | Endpoint | Description |

@@ -248,3 +248,21 @@ export type {
 	ServerConnection,
 	ServerStatus,
 } from "./types.js";
+
+// ============================================================================
+// Rooms, topics, and cluster status
+// ============================================================================
+
+export type { ActionableCluster } from "./core/actions.js";
+export {
+	type AddMembersResult,
+	type ClusterNode,
+	type ClusterStatus,
+	createRoomAdmin,
+	type RoomAdmin,
+	type RoomAdminOptions,
+	type RoomDetail,
+	type RoomSummary,
+} from "./core/rooms.js";
+export { roomsRoutes } from "./routes/rooms.js";
+export type { GroupMetrics } from "./types.js";

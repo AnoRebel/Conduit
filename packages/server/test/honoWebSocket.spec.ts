@@ -12,7 +12,12 @@ import { MessageType } from "@conduit/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createConduitMiddleware, type HonoWSContext } from "../src/adapters/hono.js";
 
-/** Minimal stand-in for Hono's WSContext. */
+/**
+ * Minimal stand-in for Hono's WSContext.
+ *
+ * Only `send`, `close`, and `readyState` are exercised, so the mock implements
+ * those and casts at the boundary rather than claiming to be a full WSContext.
+ */
 function createMockWs(): HonoWSContext & {
 	send: ReturnType<typeof vi.fn>;
 	close: ReturnType<typeof vi.fn>;
@@ -21,6 +26,9 @@ function createMockWs(): HonoWSContext & {
 		send: vi.fn(),
 		close: vi.fn(),
 		readyState: 1,
+	} as unknown as HonoWSContext & {
+		send: ReturnType<typeof vi.fn>;
+		close: ReturnType<typeof vi.fn>;
 	};
 }
 

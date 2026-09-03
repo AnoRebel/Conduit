@@ -32,6 +32,34 @@ export enum MessageType {
 	// Server lifecycle messages
 	/** Server is shutting down gracefully */
 	GOAWAY = "GOAWAY",
+
+	// Room membership and presence
+	/** Join a named room */
+	JOIN = "JOIN",
+	/** Leave a named room. Distinct from LEAVE, which remains peer-to-peer. */
+	LEAVE_ROOM = "LEAVE_ROOM",
+	/** Current membership of a room, sent to a peer that just joined */
+	ROOM_STATE = "ROOM_STATE",
+	/** A peer joined a room this peer belongs to */
+	PEER_JOINED = "PEER_JOINED",
+	/** A peer left a room this peer belongs to */
+	PEER_LEFT = "PEER_LEFT",
+
+	// Topic subscription and multicast
+	/** Subscribe to a topic or topic prefix */
+	SUBSCRIBE = "SUBSCRIBE",
+	/** Unsubscribe from a topic or topic prefix */
+	UNSUBSCRIBE = "UNSUBSCRIBE",
+	/** Server confirms a subscription was recorded */
+	SUBSCRIBED = "SUBSCRIBED",
+	/** Server confirms a subscription was removed */
+	UNSUBSCRIBED = "UNSUBSCRIBED",
+	/** Publish a message to a topic */
+	PUBLISH = "PUBLISH",
+	/** A publication delivered to a matching subscriber */
+	TOPIC_MESSAGE = "TOPIC_MESSAGE",
+	/** Multicast a message to the members of a room */
+	ROOM_BROADCAST = "ROOM_BROADCAST",
 }
 
 /**

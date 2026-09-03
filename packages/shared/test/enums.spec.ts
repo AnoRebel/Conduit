@@ -32,9 +32,38 @@ describe("MessageType", () => {
 		expect(MessageType.GOAWAY).toBe("GOAWAY");
 	});
 
+	it("should have room membership and presence message types", () => {
+		expect(MessageType.JOIN).toBe("JOIN");
+		expect(MessageType.LEAVE_ROOM).toBe("LEAVE_ROOM");
+		expect(MessageType.ROOM_STATE).toBe("ROOM_STATE");
+		expect(MessageType.PEER_JOINED).toBe("PEER_JOINED");
+		expect(MessageType.PEER_LEFT).toBe("PEER_LEFT");
+	});
+
+	it("should have topic subscription and multicast message types", () => {
+		expect(MessageType.SUBSCRIBE).toBe("SUBSCRIBE");
+		expect(MessageType.UNSUBSCRIBE).toBe("UNSUBSCRIBE");
+		expect(MessageType.SUBSCRIBED).toBe("SUBSCRIBED");
+		expect(MessageType.UNSUBSCRIBED).toBe("UNSUBSCRIBED");
+		expect(MessageType.PUBLISH).toBe("PUBLISH");
+		expect(MessageType.TOPIC_MESSAGE).toBe("TOPIC_MESSAGE");
+		expect(MessageType.ROOM_BROADCAST).toBe("ROOM_BROADCAST");
+	});
+
+	it("should keep LEAVE distinct from LEAVE_ROOM", () => {
+		// LEAVE is peer-to-peer and predates rooms; overloading it would make an
+		// old client's LEAVE ambiguous to a new server.
+		expect(MessageType.LEAVE).not.toBe(MessageType.LEAVE_ROOM);
+	});
+
+	it("should have unique values for every message type", () => {
+		const types = Object.values(MessageType);
+		expect(new Set(types).size).toBe(types.length);
+	});
+
 	it("should have correct number of message types", () => {
 		const types = Object.values(MessageType);
-		expect(types).toHaveLength(13);
+		expect(types).toHaveLength(25);
 	});
 });
 

@@ -8,11 +8,20 @@
 
 import { MessageType } from "@conduit/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { WebSocket as WsWebSocket } from "ws";
 import { resolveClientAddress } from "../src/core/clientAddress.js";
 import { resolveCorsOrigin } from "../src/core/cors.js";
 import { type ConduitServerCore, createConduitServerCore } from "../src/core/index.js";
 import { Realm } from "../src/core/realm.js";
 
+/**
+ * Minimal stand-in for a `ws` WebSocket.
+ *
+ * The core only ever calls `send`, `close`, `on`, and reads `readyState`, so the
+ * mock implements exactly that. `asSocket` casts at the call boundary rather
+ * than typing the mock as a full WebSocket, which keeps the vi.fn() types
+ * available for assertions.
+ */
 function createMockSocket() {
 	return {
 		send: vi.fn(),
@@ -22,10 +31,18 @@ function createMockSocket() {
 	};
 }
 
-function lastErrorMessage(socket: ReturnType<typeof createMockSocket>): string | undefined {
+type MockSocket = ReturnType<typeof createMockSocket>;
+
+function asSocket(socket: MockSocket): WsWebSocket {
+	return socket as unknown as WsWebSocket;
+}
+
+function lastErrorMessage(socket: MockSocket): string | undefined {
 	const calls = socket.send.mock.calls;
 	for (let i = calls.length - 1; i >= 0; i--) {
-		const parsed = JSON.parse(calls[i][0] as string);
+		const call = calls[i];
+		if (!call) continue;
+		const parsed = JSON.parse(call[0] as string);
 		if (parsed.type === MessageType.ERROR) {
 			return parsed.payload?.msg;
 		}
@@ -45,7 +62,7 @@ describe("ban enforcement", () => {
 		});
 
 		const socket = createMockSocket();
-		const client = core.handleConnection(socket, "banned-peer", "token1", "test-key");
+		const client = core.handleConnection(asSocket(socket), "banned-peer", "token1", "test-key");
 
 		expect(client).toBeNull();
 		expect(socket.close).toHaveBeenCalled();
@@ -63,7 +80,13 @@ describe("ban enforcement", () => {
 		});
 
 		const socket = createMockSocket();
-		const client = core.handleConnection(socket, "any-peer", "token1", "test-key", "10.9.9.9");
+		const client = core.handleConnection(
+			asSocket(socket),
+			"any-peer",
+			"token1",
+			"test-key",
+			"10.9.9.9"
+		);
 
 		expect(client).toBeNull();
 		expect(core.realm.getClientIds()).not.toContain("any-peer");
@@ -82,7 +105,7 @@ describe("ban enforcement", () => {
 			.addMessage("banned-peer", { type: MessageType.OFFER, src: "peer1", dst: "banned-peer" });
 
 		const socket = createMockSocket();
-		core.handleConnection(socket, "banned-peer", "token1", "test-key");
+		core.handleConnection(asSocket(socket), "banned-peer", "token1", "test-key");
 
 		const sentTypes = socket.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
 		expect(sentTypes).not.toContain(MessageType.OFFER);
@@ -96,7 +119,7 @@ describe("ban enforcement", () => {
 		});
 
 		const socket = createMockSocket();
-		const client = core.handleConnection(socket, "peer1", "token1", "test-key");
+		const client = core.handleConnection(asSocket(socket), "peer1", "token1", "test-key");
 
 		expect(client).not.toBeNull();
 		expect(core.realm.getClientIds()).toContain("peer1");
@@ -112,7 +135,7 @@ describe("ban enforcement", () => {
 		});
 
 		const socket = createMockSocket();
-		core.handleConnection(socket, "peer1", "token1", "wrong-key");
+		core.handleConnection(asSocket(socket), "peer1", "token1", "wrong-key");
 
 		// An unauthenticated caller must not be able to probe the ban list.
 		expect(isBanned).not.toHaveBeenCalled();
@@ -140,7 +163,7 @@ describe("queued message delivery", () => {
 		core.realm.getMessageQueue().addMessage("callee", message);
 
 		const socket = createMockSocket();
-		core.handleConnection(socket, "callee", "callee-token", "test-key");
+		core.handleConnection(asSocket(socket), "callee", "callee-token", "test-key");
 
 		expect(socket.send).toHaveBeenCalledWith(JSON.stringify(message));
 
@@ -149,7 +172,7 @@ describe("queued message delivery", () => {
 
 	it("delivers messages queued while the original peer was away", () => {
 		const socket1 = createMockSocket();
-		core.handleConnection(socket1, "peer1", "token1", "test-key");
+		core.handleConnection(asSocket(socket1), "peer1", "token1", "test-key");
 
 		// Peer is reaped, then mail arrives for it.
 		core.realm.removeClient("peer1");
@@ -158,7 +181,7 @@ describe("queued message delivery", () => {
 
 		// The same peer returns with the same token.
 		const socket2 = createMockSocket();
-		core.handleConnection(socket2, "peer1", "token1", "test-key");
+		core.handleConnection(asSocket(socket2), "peer1", "token1", "test-key");
 
 		expect(socket2.send).toHaveBeenCalledWith(JSON.stringify(message));
 
@@ -167,7 +190,7 @@ describe("queued message delivery", () => {
 
 	it("withholds messages from a different party claiming a released ID", () => {
 		const socket1 = createMockSocket();
-		core.handleConnection(socket1, "peer1", "original-token", "test-key");
+		core.handleConnection(asSocket(socket1), "peer1", "original-token", "test-key");
 
 		core.realm.removeClient("peer1");
 		const message = { type: MessageType.OFFER, src: "caller", dst: "peer1" };
@@ -175,7 +198,7 @@ describe("queued message delivery", () => {
 
 		// A different party claims the released ID with its own token.
 		const socket2 = createMockSocket();
-		core.handleConnection(socket2, "peer1", "attacker-token", "test-key");
+		core.handleConnection(asSocket(socket2), "peer1", "attacker-token", "test-key");
 
 		expect(socket2.send).not.toHaveBeenCalledWith(JSON.stringify(message));
 
@@ -184,14 +207,14 @@ describe("queued message delivery", () => {
 
 	it("discards withheld messages rather than leaving them for the next claimant", () => {
 		const socket1 = createMockSocket();
-		core.handleConnection(socket1, "peer1", "original-token", "test-key");
+		core.handleConnection(asSocket(socket1), "peer1", "original-token", "test-key");
 		core.realm.removeClient("peer1");
 		core.realm
 			.getMessageQueue()
 			.addMessage("peer1", { type: MessageType.OFFER, src: "caller", dst: "peer1" });
 
 		const attacker = createMockSocket();
-		core.handleConnection(attacker, "peer1", "attacker-token", "test-key");
+		core.handleConnection(asSocket(attacker), "peer1", "attacker-token", "test-key");
 
 		expect(core.realm.getMessageQueue().getMessages("peer1")).toHaveLength(0);
 
@@ -236,7 +259,7 @@ describe("destination validation", () => {
 
 	it("rejects a malformed destination without queueing it", () => {
 		const socket = createMockSocket();
-		const client = core.handleConnection(socket, "peer1", "token1", "test-key");
+		const client = core.handleConnection(asSocket(socket), "peer1", "token1", "test-key");
 		expect(client).not.toBeNull();
 
 		const malformed = "../../etc/passwd";
@@ -253,7 +276,7 @@ describe("destination validation", () => {
 
 	it("queues a well-formed destination for an absent peer", () => {
 		const socket = createMockSocket();
-		const client = core.handleConnection(socket, "peer1", "token1", "test-key");
+		const client = core.handleConnection(asSocket(socket), "peer1", "token1", "test-key");
 
 		core.handleMessage(
 			client as NonNullable<typeof client>,

@@ -4,18 +4,52 @@ import type { RateLimitConfig } from "../types.js";
 import type { AuditLogger } from "./audit.js";
 import type { BanManager } from "./bans.js";
 
+/**
+ * Group and cluster state the admin surface reads.
+ *
+ * Structural rather than an import of the server's own types, matching how the
+ * rest of this interface is declared: admin is an optional dependency and must
+ * not pull the server package into its graph.
+ */
+export interface ActionableCluster {
+	readonly nodeId: string;
+	readonly distributed: boolean;
+	getRoomMembers(room: string): Promise<readonly { peerId: string; nodeId: string }[]>;
+	getPeerRooms(peerId: string): Promise<readonly string[]>;
+	/**
+	 * Add a peer to a room, refusing past `maxMembers`.
+	 *
+	 * Returns false when the room is full. The check and insert are one atomic
+	 * operation in the backend, so concurrent joins cannot race past the cap.
+	 */
+	joinRoom(room: string, peerId: string, maxMembers: number): Promise<boolean>;
+	leaveRoom(room: string, peerId: string): Promise<void>;
+	countRooms(): Promise<number>;
+	countTopics(): Promise<number>;
+	getPeerSubscriptions(peerId: string): Promise<readonly string[]>;
+	getNodes(): Promise<readonly { nodeId: string; peers: number }[]>;
+	health(): Promise<{ reachable: boolean; error?: string }>;
+}
+
 /** Server core interface extended with realm access for admin actions. */
 export interface ActionableServerCore extends InstrumentableServerCore {
 	readonly realm: {
 		getClientIds(): string[];
 		getClient(id: string): ActionableClient | undefined;
 		removeClient(id: string): boolean;
+		/** Present when the server exposes group state; absent on older cores. */
+		readonly cluster?: ActionableCluster;
 	};
 	readonly config: {
 		rateLimit?: {
 			enabled?: boolean;
 			maxTokens?: number;
 			refillRate?: number;
+		};
+		/** Present when the server supports rooms; absent on older cores. */
+		rooms?: {
+			enabled?: boolean;
+			maxMembersPerRoom?: number;
 		};
 	};
 }

@@ -18,6 +18,12 @@ export interface MetricsCollector {
 	// Gauges
 	readonly activeConnections: Gauge;
 	readonly queuedMessages: Gauge;
+	readonly activeRooms: Gauge;
+	readonly activeTopics: Gauge;
+	readonly subscriptions: Gauge;
+
+	/** Messages produced by multicast fan-out, read from the server core. */
+	readonly multicastDeliveries: Gauge;
 
 	// Time series
 	readonly throughput: CircularTimeSeries;
@@ -47,6 +53,11 @@ export function createMetricsCollector(config: MetricsConfig): MetricsCollector 
 	// Gauges
 	const activeConnections = new Gauge();
 	const queuedMessages = new Gauge();
+	const activeRooms = new Gauge();
+	const activeTopics = new Gauge();
+	const subscriptions = new Gauge();
+
+	const multicastDeliveries = new Gauge();
 
 	// Time series
 	const throughput = new CircularTimeSeries(config.maxSnapshots);
@@ -122,6 +133,12 @@ export function createMetricsCollector(config: MetricsConfig): MetricsCollector 
 			},
 			errors: getErrorMetrics(),
 			memory: getMemoryUsage(),
+			groups: {
+				activeRooms: activeRooms.value,
+				activeTopics: activeTopics.value,
+				subscriptions: subscriptions.value,
+				multicastDeliveries: multicastDeliveries.value,
+			},
 		};
 	}
 
@@ -143,6 +160,10 @@ export function createMetricsCollector(config: MetricsConfig): MetricsCollector 
 		errors.reset();
 		activeConnections.set(0);
 		queuedMessages.set(0);
+		activeRooms.set(0);
+		activeTopics.set(0);
+		subscriptions.set(0);
+		multicastDeliveries.set(0);
 		throughput.clear();
 		latency.clear();
 		snapshots.length = 0;
@@ -193,6 +214,10 @@ export function createMetricsCollector(config: MetricsConfig): MetricsCollector 
 		errors,
 		activeConnections,
 		queuedMessages,
+		activeRooms,
+		activeTopics,
+		subscriptions,
+		multicastDeliveries,
 		throughput,
 		latency,
 		getSnapshot,

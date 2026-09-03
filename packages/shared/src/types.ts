@@ -204,6 +204,86 @@ export interface IGoAwayPayload {
 	reconnectDelay?: number;
 }
 
+/**
+ * Join payload - request to join a named room
+ */
+export interface IJoinPayload {
+	room: string;
+}
+
+/**
+ * Leave-room payload - request to leave a named room
+ */
+export interface ILeaveRoomPayload {
+	room: string;
+}
+
+/**
+ * Room state payload - the room's membership at the moment a join took effect.
+ * Never includes the receiving peer itself.
+ */
+export interface IRoomStatePayload {
+	room: string;
+	members: readonly string[];
+}
+
+/**
+ * Peer-joined payload - a peer arrived in a room this peer belongs to
+ */
+export interface IPeerJoinedPayload {
+	room: string;
+	peerId: string;
+}
+
+/**
+ * Peer-left payload - a peer departed a room this peer belongs to
+ */
+export interface IPeerLeftPayload {
+	room: string;
+	peerId: string;
+}
+
+/**
+ * Subscribe payload - a topic name, or a prefix pattern ending in `.*`
+ */
+export interface ISubscribePayload {
+	topic: string;
+}
+
+/**
+ * Unsubscribe payload - the topic or pattern to stop receiving
+ */
+export interface IUnsubscribePayload {
+	topic: string;
+}
+
+/**
+ * Publish payload - a message addressed to a topic
+ */
+export interface IPublishPayload {
+	topic: string;
+	data: unknown;
+	/** Deliver back to the publisher when it also holds a matching subscription */
+	selfDeliver?: boolean;
+}
+
+/**
+ * Topic message payload - a publication delivered to a matching subscriber.
+ * `topic` is the published topic, not the pattern that matched it.
+ */
+export interface ITopicMessagePayload {
+	topic: string;
+	data: unknown;
+}
+
+/**
+ * Room broadcast payload - a message multicast to a room's other members
+ */
+export interface IRoomBroadcastPayload {
+	room: string;
+	data: unknown;
+}
+
 // ============================================================================
 // Discriminated Message Types
 // ============================================================================
@@ -339,6 +419,126 @@ export interface IGoAwayMessage {
 }
 
 /**
+ * Join message - request to join a named room
+ */
+export interface IJoinMessage {
+	readonly type: typeof MessageType.JOIN;
+	readonly src?: string;
+	readonly dst?: string;
+	readonly payload: IJoinPayload;
+}
+
+/**
+ * Leave-room message - request to leave a named room
+ */
+export interface ILeaveRoomMessage {
+	readonly type: typeof MessageType.LEAVE_ROOM;
+	readonly src?: string;
+	readonly dst?: string;
+	readonly payload: ILeaveRoomPayload;
+}
+
+/**
+ * Room state message - the room's membership, sent to a peer that just joined
+ */
+export interface IRoomStateMessage {
+	readonly type: typeof MessageType.ROOM_STATE;
+	readonly src?: string;
+	readonly dst: string;
+	readonly payload: IRoomStatePayload;
+}
+
+/**
+ * Peer-joined message - presence notification for an arrival
+ */
+export interface IPeerJoinedMessage {
+	readonly type: typeof MessageType.PEER_JOINED;
+	readonly src?: string;
+	readonly dst: string;
+	readonly payload: IPeerJoinedPayload;
+}
+
+/**
+ * Peer-left message - presence notification for a departure
+ */
+export interface IPeerLeftMessage {
+	readonly type: typeof MessageType.PEER_LEFT;
+	readonly src?: string;
+	readonly dst: string;
+	readonly payload: IPeerLeftPayload;
+}
+
+/**
+ * Subscribe message - request to subscribe to a topic or prefix pattern
+ */
+export interface ISubscribeMessage {
+	readonly type: typeof MessageType.SUBSCRIBE;
+	readonly src?: string;
+	readonly dst?: string;
+	readonly payload: ISubscribePayload;
+}
+
+/**
+ * Unsubscribe message - request to remove a subscription
+ */
+export interface IUnsubscribeMessage {
+	readonly type: typeof MessageType.UNSUBSCRIBE;
+	readonly src?: string;
+	readonly dst?: string;
+	readonly payload: IUnsubscribePayload;
+}
+
+/**
+ * Subscribed message - server confirmation of a recorded subscription
+ */
+export interface ISubscribedMessage {
+	readonly type: typeof MessageType.SUBSCRIBED;
+	readonly src?: string;
+	readonly dst: string;
+	readonly payload: ISubscribePayload;
+}
+
+/**
+ * Unsubscribed message - server confirmation of a removed subscription
+ */
+export interface IUnsubscribedMessage {
+	readonly type: typeof MessageType.UNSUBSCRIBED;
+	readonly src?: string;
+	readonly dst: string;
+	readonly payload: IUnsubscribePayload;
+}
+
+/**
+ * Publish message - a message addressed to a topic
+ */
+export interface IPublishMessage {
+	readonly type: typeof MessageType.PUBLISH;
+	readonly src?: string;
+	readonly dst?: string;
+	readonly payload: IPublishPayload;
+}
+
+/**
+ * Topic message - a publication delivered to a matching subscriber
+ */
+export interface ITopicMessage {
+	readonly type: typeof MessageType.TOPIC_MESSAGE;
+	readonly src: string;
+	readonly dst: string;
+	readonly payload: ITopicMessagePayload;
+}
+
+/**
+ * Room broadcast message - a multicast to a room's other members
+ */
+export interface IRoomBroadcastMessage {
+	readonly type: typeof MessageType.ROOM_BROADCAST;
+	readonly src?: string;
+	readonly dst?: string;
+	readonly payload: IRoomBroadcastPayload;
+}
+
+/**
  * Union of all typed messages
  */
 export type TypedMessage =
@@ -354,7 +554,19 @@ export type TypedMessage =
 	| IRelayMessage
 	| IRelayOpenMessage
 	| IRelayCloseMessage
-	| IGoAwayMessage;
+	| IGoAwayMessage
+	| IJoinMessage
+	| ILeaveRoomMessage
+	| IRoomStateMessage
+	| IPeerJoinedMessage
+	| IPeerLeftMessage
+	| ISubscribeMessage
+	| IUnsubscribeMessage
+	| ISubscribedMessage
+	| IUnsubscribedMessage
+	| IPublishMessage
+	| ITopicMessage
+	| IRoomBroadcastMessage;
 
 /**
  * Get message type from a typed message
@@ -364,23 +576,32 @@ export type MessageTypeOf<T extends TypedMessage> = T["type"];
 /**
  * Get payload type for a specific message type
  */
-export type PayloadOf<T extends MessageType> = T extends typeof MessageType.OFFER
-	? IOfferPayload
-	: T extends typeof MessageType.ANSWER
-		? IAnswerPayload
-		: T extends typeof MessageType.CANDIDATE
-			? ICandidatePayload
-			: T extends typeof MessageType.RELAY
-				? IRelayPayload
-				: T extends typeof MessageType.ERROR
-					? IErrorPayload
-					: T extends typeof MessageType.OPEN
-						? IOpenPayload | undefined
-						: T extends typeof MessageType.HEARTBEAT
-							? IHeartbeatPayload | undefined
-							: T extends typeof MessageType.GOAWAY
-								? IGoAwayPayload | undefined
-								: undefined;
+interface PayloadMap {
+	[MessageType.OFFER]: IOfferPayload;
+	[MessageType.ANSWER]: IAnswerPayload;
+	[MessageType.CANDIDATE]: ICandidatePayload;
+	[MessageType.RELAY]: IRelayPayload;
+	[MessageType.ERROR]: IErrorPayload;
+	[MessageType.OPEN]: IOpenPayload | undefined;
+	[MessageType.HEARTBEAT]: IHeartbeatPayload | undefined;
+	[MessageType.GOAWAY]: IGoAwayPayload | undefined;
+	[MessageType.JOIN]: IJoinPayload;
+	[MessageType.LEAVE_ROOM]: ILeaveRoomPayload;
+	[MessageType.ROOM_STATE]: IRoomStatePayload;
+	[MessageType.PEER_JOINED]: IPeerJoinedPayload;
+	[MessageType.PEER_LEFT]: IPeerLeftPayload;
+	[MessageType.SUBSCRIBE]: ISubscribePayload;
+	[MessageType.UNSUBSCRIBE]: IUnsubscribePayload;
+	[MessageType.SUBSCRIBED]: ISubscribePayload;
+	[MessageType.UNSUBSCRIBED]: IUnsubscribePayload;
+	[MessageType.PUBLISH]: IPublishPayload;
+	[MessageType.TOPIC_MESSAGE]: ITopicMessagePayload;
+	[MessageType.ROOM_BROADCAST]: IRoomBroadcastPayload;
+}
+
+export type PayloadOf<T extends MessageType> = T extends keyof PayloadMap
+	? PayloadMap[T]
+	: undefined;
 
 // ============================================================================
 // Client Information Types

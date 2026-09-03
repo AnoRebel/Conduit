@@ -10,11 +10,26 @@ export const MAX_KEY_LENGTH = 64;
 export const MAX_MESSAGE_SIZE = 64 * 1024;
 /** Maximum allowed nesting depth for message payloads. */
 export const MAX_PAYLOAD_DEPTH = 10;
+/** Maximum allowed room name length. */
+export const MAX_ROOM_NAME_LENGTH = 128;
+/** Maximum allowed topic name length. */
+export const MAX_TOPIC_NAME_LENGTH = 128;
+/** Maximum number of dot-delimited segments in a topic name. */
+export const MAX_TOPIC_SEGMENTS = 8;
 
 // Validation patterns
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const TOKEN_PATTERN = /^[A-Za-z0-9_=-]{1,64}$/;
 const KEY_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+/**
+ * Room names are opaque identifiers. The character set is deliberately an
+ * allowlist: an unguessable room name acts as a capability under the default
+ * open configuration, so the format must not admit anything that could be
+ * interpreted specially elsewhere (path separators, wildcards, whitespace).
+ */
+const ROOM_NAME_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
+/** A single topic segment. Excludes `.` so segments cannot be forged. */
+const TOPIC_SEGMENT_PATTERN = /^[A-Za-z0-9_:-]+$/;
 
 /** Result of a validation check — `valid: true` or `valid: false` with an error message. */
 export interface ValidationResult {
@@ -79,6 +94,117 @@ export function validateKey(key: unknown): ValidationResult {
 		return { valid: false, error: "Key contains invalid characters" };
 	}
 	return { valid: true };
+}
+
+/**
+ * Validate a room name.
+ *
+ * Rejects by allowlist rather than denylist so an unanticipated character
+ * cannot slip through.
+ */
+export function validateRoomName(room: unknown): ValidationResult {
+	if (typeof room !== "string") {
+		return { valid: false, error: "Room name must be a string" };
+	}
+	if (!room.trim()) {
+		return { valid: false, error: "Room name cannot be empty" };
+	}
+	if (room.length > MAX_ROOM_NAME_LENGTH) {
+		return {
+			valid: false,
+			error: `Room name exceeds maximum length of ${MAX_ROOM_NAME_LENGTH}`,
+		};
+	}
+	if (!ROOM_NAME_PATTERN.test(room)) {
+		return { valid: false, error: "Room name contains invalid characters" };
+	}
+	return { valid: true };
+}
+
+/**
+ * Shared checks for a topic name or pattern, applied to the literal part.
+ */
+function validateTopicSegments(literal: string, subject: string): ValidationResult {
+	if (literal === "") {
+		return { valid: false, error: `${subject} cannot be empty` };
+	}
+	const segments = literal.split(".");
+	if (segments.length > MAX_TOPIC_SEGMENTS) {
+		return {
+			valid: false,
+			error: `${subject} exceeds maximum of ${MAX_TOPIC_SEGMENTS} segments`,
+		};
+	}
+	for (const segment of segments) {
+		if (!TOPIC_SEGMENT_PATTERN.test(segment)) {
+			return { valid: false, error: `${subject} contains invalid characters` };
+		}
+	}
+	return { valid: true };
+}
+
+/**
+ * Validate a concrete topic name.
+ *
+ * A published topic is always literal: wildcards belong to subscriptions only,
+ * so accepting one here would let a publisher address a whole namespace.
+ */
+export function validateTopicName(topic: unknown): ValidationResult {
+	if (typeof topic !== "string") {
+		return { valid: false, error: "Topic name must be a string" };
+	}
+	if (!topic.trim()) {
+		return { valid: false, error: "Topic name cannot be empty" };
+	}
+	if (topic.length > MAX_TOPIC_NAME_LENGTH) {
+		return {
+			valid: false,
+			error: `Topic name exceeds maximum length of ${MAX_TOPIC_NAME_LENGTH}`,
+		};
+	}
+	if (topic.includes("*")) {
+		return { valid: false, error: "Topic name cannot contain a wildcard" };
+	}
+	return validateTopicSegments(topic, "Topic name");
+}
+
+/**
+ * Validate a topic subscription pattern.
+ *
+ * Accepts an exact name, or a namespace prefix ending in `.*`. No other
+ * wildcard form is supported: arbitrary glob matching would make subscriber
+ * resolution scale with the total number of subscriptions, which is itself a
+ * denial-of-service vector, and compiling user patterns to regex invites
+ * catastrophic backtracking.
+ */
+export function validateTopicPattern(pattern: unknown): ValidationResult {
+	if (typeof pattern !== "string") {
+		return { valid: false, error: "Topic pattern must be a string" };
+	}
+	if (!pattern.trim()) {
+		return { valid: false, error: "Topic pattern cannot be empty" };
+	}
+	if (pattern.length > MAX_TOPIC_NAME_LENGTH) {
+		return {
+			valid: false,
+			error: `Topic pattern exceeds maximum length of ${MAX_TOPIC_NAME_LENGTH}`,
+		};
+	}
+
+	const wildcards = (pattern.match(/\*/g) ?? []).length;
+	if (wildcards === 0) {
+		return validateTopicSegments(pattern, "Topic pattern");
+	}
+	if (wildcards > 1 || !pattern.endsWith(".*")) {
+		return {
+			valid: false,
+			error: "Topic pattern supports a single trailing '.*' wildcard only",
+		};
+	}
+
+	// Strip the trailing ".*" and validate the literal prefix that remains.
+	const literal = pattern.slice(0, -2);
+	return validateTopicSegments(literal, "Topic pattern");
 }
 
 /**

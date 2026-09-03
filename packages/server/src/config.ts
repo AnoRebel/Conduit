@@ -18,6 +18,93 @@ export interface LoggingConfig {
 	pretty: boolean;
 }
 
+/** Room membership and presence configuration. */
+export interface RoomsConfig {
+	/** Enable rooms and presence (default: true). Adds no fan-out amplification. */
+	enabled: boolean;
+	/** Maximum rooms a single peer may occupy simultaneously (default: 32). */
+	maxRoomsPerPeer: number;
+	/** Maximum members in a single room (default: 256). */
+	maxMembersPerRoom: number;
+	/** Maximum rooms in existence on this server (default: 10 000). */
+	maxRooms: number;
+}
+
+/** Topic subscription and multicast configuration. */
+export interface TopicsConfig {
+	/**
+	 * Enable topic publication and room broadcast (default: false).
+	 *
+	 * Off by default because multicast changes the server's bandwidth profile
+	 * from O(1) to O(recipients) per inbound message. Rooms and presence remain
+	 * available independently of this setting.
+	 */
+	enabled: boolean;
+	/** Maximum subscriptions a single peer may hold (default: 64). */
+	maxSubscriptionsPerPeer: number;
+	/** Maximum subscribers on a single topic (default: 1024). */
+	maxSubscribersPerTopic: number;
+	/** Maximum distinct topics on this server (default: 10 000). */
+	maxTopics: number;
+	/**
+	 * Hard ceiling on recipients for one inbound message (default: 256).
+	 *
+	 * Bounds worst-case amplification together with `maxMulticastMessageSize`.
+	 */
+	maxRecipientsPerMessage: number;
+	/**
+	 * Maximum multicast payload size in bytes (default: 16 KB).
+	 *
+	 * Deliberately independent of the 1:1 relay limit: a multicast payload is
+	 * duplicated per recipient, so it warrants a tighter bound.
+	 */
+	maxMulticastMessageSize: number;
+}
+
+/** Which distributed backend the realm uses. */
+export type ClusterBackendKind = "memory" | "redis";
+
+/** Redis connection settings for the distributed realm. */
+export interface RedisClusterConfig {
+	/** Redis URL, e.g. `redis://127.0.0.1:6379`. */
+	url: string;
+	/**
+	 * Redis password.
+	 *
+	 * Required when the backend is `redis`: inter-node traffic carries peer
+	 * identity assertions, so an unauthenticated channel would let anyone able
+	 * to publish to it impersonate any peer.
+	 */
+	password?: string;
+	/** Key prefix, allowing several clusters to share one Redis. */
+	keyPrefix: string;
+}
+
+/** Distributed realm configuration. */
+export interface ClusterConfig {
+	/**
+	 * Backend selection (default: "memory").
+	 *
+	 * `memory` keeps every deployment behaving exactly as it did before
+	 * distribution existed. `redis` shares peer routing, room membership, and
+	 * subscriptions across instances, which is also what makes cross-instance
+	 * 1:1 signaling work at all.
+	 */
+	backend: ClusterBackendKind;
+	/** This node's identifier. Generated per process when omitted. */
+	nodeId?: string;
+	/**
+	 * Seconds a peer registration survives without a heartbeat (default: 90).
+	 *
+	 * Bounds how long a failed node's peers remain unclaimable.
+	 */
+	peerTtlSeconds: number;
+	/** Milliseconds to wait for an inter-node forward (default: 2000). */
+	forwardTimeoutMs: number;
+	/** Redis settings, used when `backend` is "redis". */
+	redis: RedisClusterConfig;
+}
+
 /** Authentication mode configuration for client connections. */
 export interface ServerAuthConfig {
 	/** Authentication mode: "key" requires a signaling key, "none" allows unauthenticated access */
@@ -61,6 +148,12 @@ export interface ServerConfig {
 		/** Maximum relay message size in bytes (default: 65 536). */
 		maxMessageSize: number;
 	};
+	/** Distributed realm settings. */
+	cluster: ClusterConfig;
+	/** Room membership and presence settings. */
+	rooms: RoomsConfig;
+	/** Topic subscription and multicast settings. */
+	topics: TopicsConfig;
 	/** Per-client rate-limiting settings. */
 	rateLimit: RateLimitConfig;
 	/** Structured logging settings. */
@@ -122,6 +215,34 @@ export function assertSecureKey(
 	}
 }
 
+/**
+ * Throw unless a configured distributed backend is safe to use.
+ *
+ * Inter-node messages carry assertions about which peer a message is from. An
+ * unauthenticated Redis would let anyone able to publish to the channel forge
+ * those assertions, so the credential is mandatory rather than advisory —
+ * mirroring how {@link assertSecureKey} refuses the public default key rather
+ * than warning about it.
+ *
+ * @throws When the backend is `redis` and no password is configured.
+ */
+export function assertSecureClusterBackend(config: Pick<ServerConfig, "cluster">): void {
+	if (config.cluster.backend !== "redis") {
+		return;
+	}
+
+	const password = config.cluster.redis.password;
+	if (typeof password !== "string" || password.trim() === "") {
+		throw new Error(
+			"Refusing to start: the redis cluster backend requires a password." +
+				"\n\nInter-node messages assert which peer they originate from, so an" +
+				"\nunauthenticated backend would let anyone able to publish to it" +
+				"\nimpersonate any peer." +
+				"\n\nSet config.cluster.redis.password, or use the default in-memory backend."
+		);
+	}
+}
+
 /** Default server configuration values. */
 export const defaultConfig: ServerConfig = {
 	port: 9000,
@@ -147,6 +268,31 @@ export const defaultConfig: ServerConfig = {
 		enabled: true,
 		maxMessageSize: 65536, // 64KB
 	},
+	cluster: {
+		// Single-process by default: no external service, no new failure mode.
+		backend: "memory",
+		peerTtlSeconds: 90,
+		forwardTimeoutMs: 2000,
+		redis: {
+			url: "redis://127.0.0.1:6379",
+			keyPrefix: "conduit",
+		},
+	},
+	rooms: {
+		enabled: true,
+		maxRoomsPerPeer: 32,
+		maxMembersPerRoom: 256,
+		maxRooms: 10000,
+	},
+	topics: {
+		// Multicast is opt-in: see TopicsConfig.enabled.
+		enabled: false,
+		maxSubscriptionsPerPeer: 64,
+		maxSubscribersPerTopic: 1024,
+		maxTopics: 10000,
+		maxRecipientsPerMessage: 256,
+		maxMulticastMessageSize: 16384,
+	},
 	rateLimit: {
 		enabled: true,
 		maxTokens: 100, // Burst capacity
@@ -158,8 +304,28 @@ export const defaultConfig: ServerConfig = {
 	},
 };
 
+/**
+ * Overrides accepted by {@link createConfig}.
+ *
+ * Nested sections are themselves partial: `createConfig` deep-merges them, so
+ * an override may name a single field without restating the rest of its
+ * section. `Partial<ServerConfig>` alone would require each nested object to
+ * be complete, which does not match what the function actually does.
+ */
+export type ServerConfigOverrides = Partial<
+	Omit<ServerConfig, "auth" | "relay" | "cluster" | "rooms" | "topics" | "rateLimit" | "logging">
+> & {
+	auth?: Partial<ServerAuthConfig>;
+	relay?: Partial<ServerConfig["relay"]>;
+	cluster?: Partial<Omit<ClusterConfig, "redis">> & { redis?: Partial<RedisClusterConfig> };
+	rooms?: Partial<RoomsConfig>;
+	topics?: Partial<TopicsConfig>;
+	rateLimit?: Partial<RateLimitConfig>;
+	logging?: Partial<LoggingConfig>;
+};
+
 /** Create a full {@link ServerConfig} by merging partial overrides with {@link defaultConfig}. */
-export function createConfig(options: Partial<ServerConfig> = {}): ServerConfig {
+export function createConfig(options: ServerConfigOverrides = {}): ServerConfig {
 	return {
 		...defaultConfig,
 		...options,
@@ -170,6 +336,22 @@ export function createConfig(options: Partial<ServerConfig> = {}): ServerConfig 
 		relay: {
 			...defaultConfig.relay,
 			...options.relay,
+		},
+		cluster: {
+			...defaultConfig.cluster,
+			...options.cluster,
+			redis: {
+				...defaultConfig.cluster.redis,
+				...options.cluster?.redis,
+			},
+		},
+		rooms: {
+			...defaultConfig.rooms,
+			...options.rooms,
+		},
+		topics: {
+			...defaultConfig.topics,
+			...options.topics,
 		},
 		rateLimit: {
 			...defaultConfig.rateLimit,

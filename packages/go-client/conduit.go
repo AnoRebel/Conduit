@@ -58,6 +58,11 @@ type Client struct {
 	onMessage func(msg Message)
 	onClose   func()
 	onError   func(err error)
+
+	// Rooms joined and subscriptions held, guarded by mu like every other
+	// mutable field on Client.
+	rooms  map[string]*Room
+	topics map[string]*Topic
 }
 
 // New creates a new Conduit client for the given host (e.g., "localhost:9000").
@@ -379,6 +384,11 @@ func (c *Client) handleMessage(msg Message) {
 	case MessageTypeError:
 		var ep ErrorPayload
 		msg.ParsePayload(&ep)
+		// An error naming a room or topic belongs to that handle: a refused join
+		// is a failed request, not a fatal condition for the connection.
+		if c.routeGroupError(ep) {
+			return
+		}
 		c.emitError(fmt.Errorf("conduit: server error: %s", ep.Msg))
 
 	case MessageTypeIDTaken:
@@ -393,6 +403,80 @@ func (c *Client) handleMessage(msg Message) {
 
 	case MessageTypeExpire:
 		c.emitError(fmt.Errorf("conduit: offer from %s expired", msg.Src))
+
+	case MessageTypeRoomState:
+		var p RoomStatePayload
+		if err := msg.ParsePayload(&p); err == nil {
+			if room := c.room(p.Room); room != nil {
+				room.setMembers(p.Members)
+			}
+		}
+
+	case MessageTypePeerJoined:
+		var p PeerJoinedPayload
+		if err := msg.ParsePayload(&p); err == nil {
+			if room := c.room(p.Room); room != nil {
+				room.peerJoined(p.PeerID)
+			}
+		}
+
+	case MessageTypePeerLeft:
+		var p PeerLeftPayload
+		if err := msg.ParsePayload(&p); err == nil {
+			if room := c.room(p.Room); room != nil {
+				room.peerLeft(p.PeerID)
+			}
+		}
+
+	case MessageTypeLeaveRoom:
+		// The server's confirmation that this client has left.
+		var p LeaveRoomPayload
+		if err := msg.ParsePayload(&p); err == nil {
+			c.mu.Lock()
+			room := c.rooms[p.Room]
+			delete(c.rooms, p.Room)
+			c.mu.Unlock()
+			if room != nil {
+				room.close()
+			}
+		}
+
+	case MessageTypeRoomBroadcast:
+		var p RoomBroadcastPayload
+		if err := msg.ParsePayload(&p); err == nil {
+			if room := c.room(p.Room); room != nil {
+				room.message(p.Data, msg.Src)
+			}
+		}
+
+	case MessageTypeSubscribed:
+		var p SubscribePayload
+		if err := msg.ParsePayload(&p); err == nil {
+			if topic := c.topic(p.Topic); topic != nil {
+				topic.confirm()
+			}
+		}
+
+	case MessageTypeUnsubscribed:
+		var p SubscribePayload
+		if err := msg.ParsePayload(&p); err == nil {
+			c.mu.Lock()
+			topic := c.topics[p.Topic]
+			delete(c.topics, p.Topic)
+			c.mu.Unlock()
+			if topic != nil {
+				topic.close()
+			}
+		}
+
+	case MessageTypeTopicMessage:
+		var p TopicMessagePayload
+		if err := msg.ParsePayload(&p); err == nil {
+			// One server copy may match several of this client's subscriptions.
+			for _, t := range c.matchingTopics(p.Topic) {
+				t.message(p.Data, p.Topic, msg.Src)
+			}
+		}
 	}
 
 	// Deliver all messages to the general callback.
@@ -401,12 +485,212 @@ func (c *Client) handleMessage(msg Message) {
 	}
 }
 
+// Join requests membership of a named room.
+//
+// The returned handle is registered immediately; membership is confirmed
+// asynchronously when the server replies with ROOM_STATE, at which point
+// Room.Open reports true. A server that does not support rooms simply ignores
+// the message, so callers that need confirmation should wait on Room.Open or
+// set OnClose to observe a refusal.
+func (c *Client) Join(room string) (*Room, error) {
+	c.mu.Lock()
+	if c.rooms == nil {
+		c.rooms = make(map[string]*Room)
+	}
+	if existing, ok := c.rooms[room]; ok {
+		c.mu.Unlock()
+		return existing, nil
+	}
+	handle := newRoom(room, c)
+	c.rooms[room] = handle
+	c.mu.Unlock()
+
+	msg, err := NewMessage(MessageTypeJoin, "", JoinPayload{Room: room})
+	if err != nil {
+		c.mu.Lock()
+		delete(c.rooms, room)
+		c.mu.Unlock()
+		return nil, err
+	}
+	if err := c.Send(msg); err != nil {
+		c.mu.Lock()
+		delete(c.rooms, room)
+		c.mu.Unlock()
+		return nil, err
+	}
+	return handle, nil
+}
+
+// Rooms returns the rooms this client has joined.
+func (c *Client) Rooms() []*Room {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	rooms := make([]*Room, 0, len(c.rooms))
+	for _, r := range c.rooms {
+		rooms = append(rooms, r)
+	}
+	return rooms
+}
+
+// Subscribe registers interest in a topic name, or a namespace prefix ending
+// in ".*".
+func (c *Client) Subscribe(pattern string) (*Topic, error) {
+	c.mu.Lock()
+	if c.topics == nil {
+		c.topics = make(map[string]*Topic)
+	}
+	if existing, ok := c.topics[pattern]; ok {
+		c.mu.Unlock()
+		return existing, nil
+	}
+	handle := newTopic(pattern, c)
+	c.topics[pattern] = handle
+	c.mu.Unlock()
+
+	msg, err := NewMessage(MessageTypeSubscribe, "", SubscribePayload{Topic: pattern})
+	if err != nil {
+		c.mu.Lock()
+		delete(c.topics, pattern)
+		c.mu.Unlock()
+		return nil, err
+	}
+	if err := c.Send(msg); err != nil {
+		c.mu.Lock()
+		delete(c.topics, pattern)
+		c.mu.Unlock()
+		return nil, err
+	}
+	return handle, nil
+}
+
+// Publish sends a message to a topic.
+func (c *Client) Publish(topic string, data any) error {
+	msg, err := NewMessage(MessageTypePublish, "", PublishPayload{Topic: topic, Data: data})
+	if err != nil {
+		return err
+	}
+	return c.Send(msg)
+}
+
+// PublishSelf sends a message to a topic and asks for a copy back when this
+// client also holds a matching subscription.
+func (c *Client) PublishSelf(topic string, data any) error {
+	msg, err := NewMessage(MessageTypePublish, "", PublishPayload{
+		Topic:       topic,
+		Data:        data,
+		SelfDeliver: true,
+	})
+	if err != nil {
+		return err
+	}
+	return c.Send(msg)
+}
+
+// Topics returns the subscriptions this client holds.
+func (c *Client) Topics() []*Topic {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	topics := make([]*Topic, 0, len(c.topics))
+	for _, t := range c.topics {
+		topics = append(topics, t)
+	}
+	return topics
+}
+
+// releaseGroups closes every room and topic handle and clears the registries.
+//
+// Called on disconnect: group state is server-side and is not restored on
+// reconnect, so a stale handle would report a membership the server no longer
+// holds.
+func (c *Client) releaseGroups() {
+	c.mu.Lock()
+	rooms := make([]*Room, 0, len(c.rooms))
+	for _, r := range c.rooms {
+		rooms = append(rooms, r)
+	}
+	topics := make([]*Topic, 0, len(c.topics))
+	for _, t := range c.topics {
+		topics = append(topics, t)
+	}
+	c.rooms = make(map[string]*Room)
+	c.topics = make(map[string]*Topic)
+	c.mu.Unlock()
+
+	for _, r := range rooms {
+		r.close()
+	}
+	for _, t := range topics {
+		t.close()
+	}
+}
+
+// room returns a joined room by name, or nil.
+func (c *Client) room(name string) *Room {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.rooms[name]
+}
+
+// topic returns a held subscription by pattern, or nil.
+func (c *Client) topic(pattern string) *Topic {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.topics[pattern]
+}
+
+// matchingTopics returns every subscription matching a published topic.
+func (c *Client) matchingTopics(topic string) []*Topic {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	var matched []*Topic
+	for pattern, t := range c.topics {
+		if patternMatches(pattern, topic) {
+			matched = append(matched, t)
+		}
+	}
+	return matched
+}
+
+// routeGroupError delivers an error to the room or topic handle it names,
+// reporting whether it was handled. An error with no such context is left to
+// the connection-level error path.
+func (c *Client) routeGroupError(ep ErrorPayload) bool {
+	if ep.Room != "" {
+		c.mu.Lock()
+		room := c.rooms[ep.Room]
+		delete(c.rooms, ep.Room)
+		c.mu.Unlock()
+		if room != nil {
+			room.close()
+			return true
+		}
+	}
+	if ep.Topic != "" {
+		c.mu.Lock()
+		topic := c.topics[ep.Topic]
+		delete(c.topics, ep.Topic)
+		c.mu.Unlock()
+		if topic != nil {
+			topic.close()
+			return true
+		}
+	}
+	return false
+}
+
 // handleDisconnect marks the client as disconnected and fires the OnClose callback.
 func (c *Client) handleDisconnect() {
 	c.mu.Lock()
 	wasConnected := c.connected
 	c.connected = false
 	c.mu.Unlock()
+
+	// Group state lives on the server and is not restored on reconnect, so a
+	// retained handle would report a membership that no longer exists.
+	c.releaseGroups()
 
 	if wasConnected && c.onClose != nil {
 		c.onClose()

@@ -26,6 +26,17 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { AuthType } from "~/composables/useConnection";
 
+const props = defineProps<{
+	/**
+	 * Render without the surrounding card.
+	 *
+	 * The standalone connect screen needs a card to sit in, but inside the
+	 * connection sheet the sheet is already the panel — keeping the card there
+	 * drew a second bordered box inside the first.
+	 */
+	bare?: boolean;
+}>();
+
 const emit = defineEmits<{
 	connected: [];
 }>();
@@ -99,70 +110,110 @@ async function handleConnect() {
 </script>
 
 <template>
-	<div class="flex items-center justify-center min-h-[60vh]">
-		<Card
-			v-motion
-			:initial="{ opacity: 0, scale: 0.95, y: 20 }"
-			:enter="{ opacity: 1, scale: 1, y: 0, transition: { duration: 400, ease: 'easeOut' } }"
-			class="w-full max-w-lg"
-		>
-			<CardHeader class="text-center">
-				<div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-					<Cable class="h-6 w-6 text-primary" />
+	<component
+		:is="props.bare ? 'div' : Card"
+		v-motion
+		:initial="{ opacity: 0, scale: 0.95, y: 20 }"
+		:enter="{ opacity: 1, scale: 1, y: 0, transition: { duration: 400, ease: 'easeOut' } }"
+		:class="props.bare ? 'w-full' : 'w-full max-w-lg'"
+	>
+		<!--
+			Suppressed in bare mode: the connection sheet supplies its own title
+			and description, so repeating them here read as two stacked headings.
+		-->
+		<CardHeader v-if="!props.bare" class="text-center">
+			<div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+				<Cable class="h-6 w-6 text-primary" />
+			</div>
+			<CardTitle class="text-xl">Connect to Conduit</CardTitle>
+			<CardDescription>
+				Enter your server details and credentials to connect.
+			</CardDescription>
+		</CardHeader>
+		<CardContent :class="props.bare ? 'px-0' : undefined">
+			<form class="space-y-4" @submit.prevent="handleConnect">
+				<!-- Server URL -->
+				<div class="space-y-2">
+					<Label for="serverUrl">Server URL</Label>
+					<div class="relative">
+						<Server class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+						<Input
+							id="serverUrl"
+							v-model="serverUrl"
+							type="url"
+							inputmode="url"
+							autocomplete="url"
+							spellcheck="false"
+							:placeholder="defaultServerUrl || 'https://your-server.com/admin/v1'"
+							class="pl-9"
+						/>
+					</div>
+					<p v-if="defaultServerUrl && !serverUrl" class="text-xs text-muted-foreground">
+						Using default: {{ defaultServerUrl }}
+					</p>
 				</div>
-				<CardTitle class="text-xl">Connect to Conduit</CardTitle>
-				<CardDescription>
-					Enter your server details and credentials to connect.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<form class="space-y-4" @submit.prevent="handleConnect">
-					<!-- Server URL -->
+
+				<!-- Auth Type -->
+				<div class="space-y-2">
+					<Label>Authentication</Label>
+					<Select v-model="authType">
+						<SelectTrigger>
+							<SelectValue placeholder="Select auth type" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="apiKey">API Key</SelectItem>
+							<SelectItem value="basic">Basic Auth</SelectItem>
+							<SelectItem value="none">No Auth</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+
+				<!-- API Key field -->
+				<div v-if="authType === 'apiKey'" class="space-y-2">
+					<Label for="apiKey">API Key</Label>
+					<div class="relative">
+						<Key class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+						<Input
+							id="apiKey"
+							v-model="apiKey"
+							:type="showPassword ? 'text' : 'password'"
+							placeholder="Enter your API key"
+							class="pl-9 pr-9"
+						/>
+						<button
+							type="button"
+							class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+							@click="showPassword = !showPassword"
+						>
+							<EyeOff v-if="showPassword" class="h-4 w-4" />
+							<Eye v-else class="h-4 w-4" />
+						</button>
+					</div>
+				</div>
+
+				<!-- Basic Auth fields -->
+				<template v-if="authType === 'basic'">
 					<div class="space-y-2">
-						<Label for="serverUrl">Server URL</Label>
+						<Label for="username">Username</Label>
 						<div class="relative">
-							<Server class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+							<User class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 							<Input
-								id="serverUrl"
-								v-model="serverUrl"
-								type="url"
-								inputmode="url"
-								autocomplete="url"
-								spellcheck="false"
-								:placeholder="defaultServerUrl || 'https://your-server.com/admin/v1'"
+								id="username"
+								v-model="username"
+								placeholder="Username"
 								class="pl-9"
 							/>
 						</div>
-						<p v-if="defaultServerUrl && !serverUrl" class="text-xs text-muted-foreground">
-							Using default: {{ defaultServerUrl }}
-						</p>
 					</div>
-
-					<!-- Auth Type -->
 					<div class="space-y-2">
-						<Label>Authentication</Label>
-						<Select v-model="authType">
-							<SelectTrigger>
-								<SelectValue placeholder="Select auth type" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="apiKey">API Key</SelectItem>
-								<SelectItem value="basic">Basic Auth</SelectItem>
-								<SelectItem value="none">No Auth</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-
-					<!-- API Key field -->
-					<div v-if="authType === 'apiKey'" class="space-y-2">
-						<Label for="apiKey">API Key</Label>
+						<Label for="password">Password</Label>
 						<div class="relative">
 							<Key class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 							<Input
-								id="apiKey"
-								v-model="apiKey"
+								id="password"
+								v-model="password"
 								:type="showPassword ? 'text' : 'password'"
-								placeholder="Enter your API key"
+								placeholder="Password"
 								class="pl-9 pr-9"
 							/>
 							<button
@@ -175,42 +226,6 @@ async function handleConnect() {
 							</button>
 						</div>
 					</div>
-
-					<!-- Basic Auth fields -->
-					<template v-if="authType === 'basic'">
-						<div class="space-y-2">
-							<Label for="username">Username</Label>
-							<div class="relative">
-								<User class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-								<Input
-									id="username"
-									v-model="username"
-									placeholder="Username"
-									class="pl-9"
-								/>
-							</div>
-						</div>
-						<div class="space-y-2">
-							<Label for="password">Password</Label>
-							<div class="relative">
-								<Key class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-								<Input
-									id="password"
-									v-model="password"
-									:type="showPassword ? 'text' : 'password'"
-									placeholder="Password"
-									class="pl-9 pr-9"
-								/>
-								<button
-									type="button"
-									class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-									@click="showPassword = !showPassword"
-								>
-									<EyeOff v-if="showPassword" class="h-4 w-4" />
-									<Eye v-else class="h-4 w-4" />
-								</button>
-							</div>
-						</div>
 					</template>
 
 					<!-- Advanced options -->
@@ -267,6 +282,5 @@ async function handleConnect() {
 					</Button>
 				</form>
 			</CardContent>
-		</Card>
-	</div>
+	</component>
 </template>

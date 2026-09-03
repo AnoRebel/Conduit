@@ -65,9 +65,41 @@ function deriveWsUrl(serverUrl: string): string {
  * `useAdminApi`, whose `serverUrl` fell back to the build-time default and
  * sent the very next request to the wrong server.
  */
-const useConnectionSettings = createSharedComposable(() =>
-	useLocalStorage<ConnectionSettings>("conduit-connection", { ...DEFAULT_SETTINGS })
-);
+const useConnectionSettings = createSharedComposable(() => {
+	const settings = useLocalStorage<ConnectionSettings>(
+		"conduit-connection",
+		{ ...DEFAULT_SETTINGS },
+		{
+			// Settings written by an older build may lack fields added since, so
+			// merge rather than discarding the whole stored object.
+			mergeDefaults: true,
+		}
+	);
+
+	// On the server there is no localStorage, so the ref above initializes to
+	// the defaults. `createSharedComposable` then caches that instance, and the
+	// client reuses it — leaving a user with a saved connection looking at the
+	// connection dialog, while every page that fetched on mount sent its request
+	// to the build-time default URL instead of their server.
+	//
+	// Reading storage here, at first use on the client rather than on a
+	// component mount, means the settings are already correct by the time any
+	// page's onMounted runs. Deferring to onMounted (via `initOnMounted`) is not
+	// enough: page mount hooks run in the same tick and would still race it.
+	if (import.meta.client) {
+		try {
+			const raw = localStorage.getItem("conduit-connection");
+			if (raw) {
+				settings.value = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+			}
+		} catch {
+			// Corrupt or unreadable storage: keep the defaults and let the user
+			// re-enter their connection rather than failing to render at all.
+		}
+	}
+
+	return settings;
+});
 
 export function useConnection() {
 	const config = useRuntimeConfig();
@@ -80,12 +112,17 @@ export function useConnection() {
 		return stored.value.serverUrl || config.public.adminApiUrl || "";
 	});
 
-	// The effective WS URL — explicit override, or derived from server URL
+	// The effective WS URL — explicit override, or derived from the server URL.
+	//
+	// The build-time env fallback is consulted only when the user has not chosen
+	// a server. Preferring it over the connected server sent the realtime socket
+	// to the deployment's own host while the user was connected somewhere else
+	// entirely — and it carried their API key as a query parameter, so a key for
+	// one server was offered to another.
 	const wsUrl = computed(() => {
 		if (stored.value.wsUrl) return stored.value.wsUrl;
-		const envWs = config.public.adminWsUrl;
-		if (envWs) return envWs;
-		return deriveWsUrl(serverUrl.value);
+		if (stored.value.serverUrl) return deriveWsUrl(stored.value.serverUrl);
+		return config.public.adminWsUrl || deriveWsUrl(serverUrl.value);
 	});
 
 	// Auth type
