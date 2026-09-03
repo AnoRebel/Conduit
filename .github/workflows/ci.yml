@@ -165,3 +165,37 @@ jobs:
       - name: Go build check
         run: go build ./...
         working-directory: packages/go-client
+
+  build-docker:
+    name: Docker Images
+    runs-on: ubuntu-latest
+    # Every image is built, because the failures these catch are per-Dockerfile:
+    # each copies a different subset of package manifests, so a workspace change
+    # can break one image while the rest build fine.
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile:
+          - server
+          - server-admin
+          - admin-ui
+          - all-in-one
+          - dev
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build only; nothing is pushed. Three separate build failures reached
+      # production while every other CI job was green, because CI installs at
+      # the repository root where all workspaces exist, while the images copy
+      # only the manifests each one needs -- so `bun install` succeeded here and
+      # failed inside the image.
+      - name: Build ${{ matrix.dockerfile }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.dockerfile }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }}
