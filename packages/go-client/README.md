@@ -161,6 +161,86 @@ All message types from the Conduit protocol are available as constants:
 | `MessageTypeRelayOpen` | `RELAY_OPEN` | Relay channel opened |
 | `MessageTypeRelayClose` | `RELAY_CLOSE` | Relay channel closed |
 | `MessageTypeGoAway` | `GOAWAY` | Server shutting down |
+| `MessageTypeJoin` | `JOIN` | Join a named room |
+| `MessageTypeLeaveRoom` | `LEAVE_ROOM` | Leave a room (distinct from `LEAVE`) |
+| `MessageTypeRoomState` | `ROOM_STATE` | Room membership on join |
+| `MessageTypePeerJoined` | `PEER_JOINED` | A peer joined a shared room |
+| `MessageTypePeerLeft` | `PEER_LEFT` | A peer left a shared room |
+| `MessageTypeSubscribe` | `SUBSCRIBE` | Subscribe to a topic or prefix |
+| `MessageTypeUnsubscribe` | `UNSUBSCRIBE` | Remove a subscription |
+| `MessageTypeSubscribed` | `SUBSCRIBED` | Subscription confirmed |
+| `MessageTypeUnsubscribed` | `UNSUBSCRIBED` | Subscription removed |
+| `MessageTypePublish` | `PUBLISH` | Publish to a topic |
+| `MessageTypeTopicMessage` | `TOPIC_MESSAGE` | Publication delivered |
+| `MessageTypeRoomBroadcast` | `ROOM_BROADCAST` | Multicast to a room |
+
+## Rooms and Presence
+
+```go
+client, err := conduit.New("localhost:9000",
+    conduit.WithKey(os.Getenv("CONDUIT_KEY")),
+    conduit.WithID("go-peer"),
+)
+if err != nil {
+    log.Fatal(err)
+}
+defer client.Close()
+
+if err := client.Connect(context.Background()); err != nil {
+    log.Fatal(err)
+}
+
+room, err := client.Join("standup")
+if err != nil {
+    log.Fatal(err)
+}
+
+room.OnPeerJoined(func(peerID string) {
+    fmt.Println(peerID, "joined")
+})
+room.OnPeerLeft(func(peerID string) {
+    fmt.Println(peerID, "left")
+})
+room.OnMessage(func(data any, from string) {
+    fmt.Println(from, "broadcast:", data)
+})
+
+// Membership arrives asynchronously; Room.Open reports whether the server
+// has confirmed the join.
+fmt.Println("members:", room.Members())
+
+room.Leave()
+```
+
+## Topics
+
+```go
+topic, err := client.Subscribe("chat.*")
+if err != nil {
+    log.Fatal(err)
+}
+
+topic.OnMessage(func(data any, name string, from string) {
+    fmt.Printf("%s published to %s: %v\n", from, name, data)
+})
+
+client.Publish("chat.general", map[string]string{"text": "hello"})
+
+// Ask for a copy back when this client also holds a matching subscription.
+client.PublishSelf("chat.general", "mine")
+
+topic.Unsubscribe()
+```
+
+`chat.*` matches `chat.general` but not `chatter.general`: matching is by whole
+segment, mirroring the server rule exactly.
+
+Room and topic state is released on disconnect and is **not** restored on
+reconnect — a returning client joins and subscribes again explicitly, matching
+the TypeScript client.
+
+The Go client is signaling-only: it participates in rooms and topics, but has no
+built-in WebRTC transport.
 
 ## License
 

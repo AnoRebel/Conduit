@@ -32,6 +32,33 @@ const (
 	MessageTypeRelayClose MessageType = "RELAY_CLOSE"
 	// MessageTypeGoAway indicates the server is shutting down gracefully.
 	MessageTypeGoAway MessageType = "GOAWAY"
+
+	// MessageTypeJoin requests membership of a named room.
+	MessageTypeJoin MessageType = "JOIN"
+	// MessageTypeLeaveRoom requests departure from a named room. Distinct from
+	// MessageTypeLeave, which remains peer-to-peer.
+	MessageTypeLeaveRoom MessageType = "LEAVE_ROOM"
+	// MessageTypeRoomState carries a room's membership to a peer that just joined.
+	MessageTypeRoomState MessageType = "ROOM_STATE"
+	// MessageTypePeerJoined announces that a peer joined a shared room.
+	MessageTypePeerJoined MessageType = "PEER_JOINED"
+	// MessageTypePeerLeft announces that a peer left a shared room.
+	MessageTypePeerLeft MessageType = "PEER_LEFT"
+
+	// MessageTypeSubscribe requests a subscription to a topic or prefix pattern.
+	MessageTypeSubscribe MessageType = "SUBSCRIBE"
+	// MessageTypeUnsubscribe removes a subscription.
+	MessageTypeUnsubscribe MessageType = "UNSUBSCRIBE"
+	// MessageTypeSubscribed confirms a recorded subscription.
+	MessageTypeSubscribed MessageType = "SUBSCRIBED"
+	// MessageTypeUnsubscribed confirms a removed subscription.
+	MessageTypeUnsubscribed MessageType = "UNSUBSCRIBED"
+	// MessageTypePublish publishes a message to a topic.
+	MessageTypePublish MessageType = "PUBLISH"
+	// MessageTypeTopicMessage carries a publication to a matching subscriber.
+	MessageTypeTopicMessage MessageType = "TOPIC_MESSAGE"
+	// MessageTypeRoomBroadcast multicasts a message to a room's members.
+	MessageTypeRoomBroadcast MessageType = "ROOM_BROADCAST"
 )
 
 // AllMessageTypes returns all valid MessageType values.
@@ -50,6 +77,18 @@ func AllMessageTypes() []MessageType {
 		MessageTypeRelayOpen,
 		MessageTypeRelayClose,
 		MessageTypeGoAway,
+		MessageTypeJoin,
+		MessageTypeLeaveRoom,
+		MessageTypeRoomState,
+		MessageTypePeerJoined,
+		MessageTypePeerLeft,
+		MessageTypeSubscribe,
+		MessageTypeUnsubscribe,
+		MessageTypeSubscribed,
+		MessageTypeUnsubscribed,
+		MessageTypePublish,
+		MessageTypeTopicMessage,
+		MessageTypeRoomBroadcast,
 	}
 }
 
@@ -60,7 +99,12 @@ func (mt MessageType) IsValid() bool {
 		MessageTypeOffer, MessageTypeAnswer, MessageTypeExpire,
 		MessageTypeHeartbeat, MessageTypeIDTaken, MessageTypeError,
 		MessageTypeRelay, MessageTypeRelayOpen, MessageTypeRelayClose,
-		MessageTypeGoAway:
+		MessageTypeGoAway,
+		MessageTypeJoin, MessageTypeLeaveRoom, MessageTypeRoomState,
+		MessageTypePeerJoined, MessageTypePeerLeft,
+		MessageTypeSubscribe, MessageTypeUnsubscribe,
+		MessageTypeSubscribed, MessageTypeUnsubscribed,
+		MessageTypePublish, MessageTypeTopicMessage, MessageTypeRoomBroadcast:
 		return true
 	default:
 		return false
@@ -90,8 +134,14 @@ type OpenPayload struct {
 }
 
 // ErrorPayload is the payload for ERROR messages from the server.
+//
+// Room and Topic name the subject of the failure when the server knows it,
+// which lets a client attribute the error to one room or subscription rather
+// than treating every server error as fatal to the whole connection.
 type ErrorPayload struct {
-	Msg string `json:"msg,omitempty"`
+	Msg   string `json:"msg,omitempty"`
+	Room  string `json:"room,omitempty"`
+	Topic string `json:"topic,omitempty"`
 }
 
 // HeartbeatPayload is the payload for HEARTBEAT messages.
@@ -120,6 +170,64 @@ type RelayPayload struct {
 // RelayControlPayload is the payload for RELAY_OPEN and RELAY_CLOSE messages.
 type RelayControlPayload struct {
 	ConnectionID string `json:"connectionId"`
+}
+
+// JoinPayload is the payload for JOIN messages.
+type JoinPayload struct {
+	Room string `json:"room"`
+}
+
+// LeaveRoomPayload is the payload for LEAVE_ROOM messages.
+type LeaveRoomPayload struct {
+	Room string `json:"room"`
+}
+
+// RoomStatePayload is the payload for ROOM_STATE messages. Members never
+// includes the receiving peer.
+type RoomStatePayload struct {
+	Room    string   `json:"room"`
+	Members []string `json:"members"`
+}
+
+// PeerJoinedPayload is the payload for PEER_JOINED messages.
+type PeerJoinedPayload struct {
+	Room   string `json:"room"`
+	PeerID string `json:"peerId"`
+}
+
+// PeerLeftPayload is the payload for PEER_LEFT messages.
+type PeerLeftPayload struct {
+	Room   string `json:"room"`
+	PeerID string `json:"peerId"`
+}
+
+// SubscribePayload is the payload for SUBSCRIBE, UNSUBSCRIBE, SUBSCRIBED and
+// UNSUBSCRIBED messages. Topic is an exact name or a prefix pattern ending in
+// ".*".
+type SubscribePayload struct {
+	Topic string `json:"topic"`
+}
+
+// PublishPayload is the payload for PUBLISH messages.
+type PublishPayload struct {
+	Topic string `json:"topic"`
+	Data  any    `json:"data"`
+	// SelfDeliver requests a copy back when the publisher also holds a matching
+	// subscription.
+	SelfDeliver bool `json:"selfDeliver,omitempty"`
+}
+
+// TopicMessagePayload is the payload for TOPIC_MESSAGE messages. Topic is the
+// concrete published topic, not the pattern that matched it.
+type TopicMessagePayload struct {
+	Topic string `json:"topic"`
+	Data  any    `json:"data"`
+}
+
+// RoomBroadcastPayload is the payload for ROOM_BROADCAST messages.
+type RoomBroadcastPayload struct {
+	Room string `json:"room"`
+	Data any    `json:"data"`
 }
 
 // NewMessage creates a new Message with the given type, destination, and payload.
