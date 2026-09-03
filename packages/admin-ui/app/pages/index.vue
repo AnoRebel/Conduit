@@ -1,26 +1,16 @@
 <script setup lang="ts">
-import {
-	CategoryScale,
-	Chart as ChartJS,
-	Tooltip as ChartTooltip,
-	Filler,
-	Legend,
-	LinearScale,
-	LineElement,
-	PointElement,
-	Title,
-} from "chart.js";
+import { Chart } from "@tanstack/charts/vue";
 import {
 	AlertCircle,
 	Clock,
 	HardDrive,
 	MessageSquare,
+	Network,
 	RefreshCw,
 	Settings,
 	TrendingUp,
 	Users,
 } from "lucide-vue-next";
-import { Line } from "vue-chartjs";
 import { toast } from "vue-sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -29,22 +19,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-ChartJS.register(
-	CategoryScale,
-	LinearScale,
-	PointElement,
-	LineElement,
-	Title,
-	ChartTooltip,
-	Legend,
-	Filler
-);
-
 const store = useAdminStore();
 const connection = useConnection();
 const colorMode = useColorMode();
 
-// Initialize on mount if already configured
+// Initialize on mount if already configured. `useConnection` reads storage on
+// first use rather than on mount, so the settings are already hydrated here.
 onMounted(async () => {
 	if (connection.isConfigured.value) {
 		await store.initialize();
@@ -79,8 +59,13 @@ const memoryUsage = computed(() => {
 });
 
 const memoryPercent = computed(() => {
-	if (!store.metrics?.memory) return 0;
-	return ((store.metrics.memory.heapUsed / store.metrics.memory.heapTotal) * 100).toFixed(1);
+	const memory = store.metrics?.memory;
+	if (!memory?.heapTotal) return 0;
+	// Bun's process.memoryUsage() can report heapUsed at or above heapTotal
+	// (they are equal on a fresh process), which rendered as "118.0% of heap".
+	// Clamp so the card never shows an impossible percentage.
+	const percent = (memory.heapUsed / memory.heapTotal) * 100;
+	return Math.min(percent, 100).toFixed(1);
 });
 
 async function refreshClients() {
@@ -96,107 +81,37 @@ async function refreshMetrics() {
 // --- Theme-reactive mini chart ---
 const isDark = computed(() => colorMode.value === "dark");
 
-const miniChartData = computed(() => {
-	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
-	const throughput = store.metricsHistory.map(m => m.messages.throughputPerSecond);
-	const clients = store.metricsHistory.map(m => m.clients.connected);
+// Dashboard mini chart: throughput and connected clients on shared axes.
+const miniChartSeries = computed(() => [
+	{
+		label: "Messages/sec",
+		color: "rgb(59, 130, 246)",
+		points: store.metricsHistory.map(m => ({
+			at: new Date(m.timestamp),
+			value: m.messages.throughputPerSecond,
+		})),
+	},
+	{
+		label: "Connected Clients",
+		color: "rgb(34, 197, 94)",
+		points: store.metricsHistory.map(m => ({
+			at: new Date(m.timestamp),
+			value: m.clients.connected,
+		})),
+	},
+]);
 
-	return {
-		labels,
-		datasets: [
-			{
-				label: "Messages/sec",
-				data: throughput,
-				borderColor: "rgb(59, 130, 246)",
-				backgroundColor: "rgba(59, 130, 246, 0.08)",
-				fill: true,
-				tension: 0.4,
-				pointRadius: 0,
-				pointHitRadius: 10,
-				pointHoverRadius: 3,
-				borderWidth: 2,
-				yAxisID: "y",
-			},
-			{
-				label: "Connected Clients",
-				data: clients,
-				borderColor: "rgb(34, 197, 94)",
-				backgroundColor: "rgba(34, 197, 94, 0.08)",
-				fill: true,
-				tension: 0.4,
-				pointRadius: 0,
-				pointHitRadius: 10,
-				pointHoverRadius: 3,
-				borderWidth: 2,
-				yAxisID: "y1",
-			},
-		],
-	};
-});
+const miniChartDefinition = useMultiSeriesChart(miniChartSeries);
 
-const miniChartOptions = computed(() => {
-	const gridColor = isDark.value ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
-	const tickColor = isDark.value ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)";
-	const tooltipBg = isDark.value ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)";
-	const tooltipText = isDark.value ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.8)";
-
-	return {
-		responsive: true,
-		maintainAspectRatio: false,
-		interaction: { mode: "index" as const, intersect: false },
-		plugins: {
-			legend: {
-				display: true,
-				position: "top" as const,
-				labels: {
-					color: tickColor,
-					usePointStyle: true,
-					pointStyle: "circle",
-					padding: 16,
-					font: { size: 11 },
-				},
-			},
-			tooltip: {
-				backgroundColor: tooltipBg,
-				titleColor: tooltipText,
-				bodyColor: tooltipText,
-				borderColor: isDark.value ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-				borderWidth: 1,
-				cornerRadius: 8,
-				padding: 10,
-				boxPadding: 4,
-			},
-		},
-		scales: {
-			x: {
-				grid: { color: gridColor, drawBorder: false },
-				ticks: { color: tickColor, maxRotation: 0, autoSkipPadding: 30, font: { size: 10 } },
-				border: { display: false },
-			},
-			y: {
-				type: "linear" as const,
-				display: true,
-				position: "left" as const,
-				beginAtZero: true,
-				grid: { color: gridColor, drawBorder: false },
-				ticks: { color: tickColor, font: { size: 10 }, padding: 6 },
-				border: { display: false },
-				title: {
-					display: false,
-				},
-			},
-			y1: {
-				type: "linear" as const,
-				display: true,
-				position: "right" as const,
-				beginAtZero: true,
-				grid: { drawOnChartArea: false },
-				ticks: { color: tickColor, font: { size: 10 }, padding: 6 },
-				border: { display: false },
-			},
-		},
-	};
-});
+/**
+ * Recent average throughput, for the Messages Relayed card.
+ *
+ * The raw `throughputPerSecond` is a single instant of a spiky metric, so the
+ * card read "0 msg/s" on a steadily busy server whenever the latest snapshot
+ * happened to land on a quiet tick. Averaging the same series the mini chart
+ * draws keeps the number honest and the two in agreement.
+ */
+const averageThroughput = computed(() => averageOverWindow(miniChartSeries.value[0]?.points ?? []));
 
 // Fetch history for dashboard mini chart
 onMounted(async () => {
@@ -225,7 +140,7 @@ const statsCards = computed(() => [
 		iconBg: "bg-green-100 dark:bg-green-900/30",
 		iconColor: "text-green-600 dark:text-green-400",
 		value: store.metrics?.messages.relayed?.toLocaleString() ?? 0,
-		sub: `${store.metrics?.messages.throughputPerSecond ?? 0} msg/s`,
+		sub: `${averageThroughput.value} msg/s avg`,
 	},
 	{
 		key: "uptime",
@@ -252,14 +167,35 @@ const statsCards = computed(() => [
 
 <template>
 	<div>
+		<!--
+			Which branch renders depends on connection settings held in
+			localStorage, which the server cannot see: SSR therefore always
+			rendered the dialog, and hydration patched the dashboard into that
+			markup. The dialog's centering wrapper survived the patch and
+			collapsed every dashboard grid to its content width.
+
+			Rendering this client-side only removes the divergence at its source.
+			The keys additionally stop Vue reusing one branch's root <div> for the
+			other, which is what let the classes leak across in the first place.
+		-->
+		<ClientOnly>
+			<template #fallback>
+				<div class="flex items-center justify-center min-h-[60vh]">
+					<Skeleton class="h-64 w-full max-w-lg rounded-xl" />
+				</div>
+			</template>
+
 		<!-- Connection dialog when not configured -->
-		<ConnectionDialog
+		<div
 			v-if="!connection.isConfigured.value"
-			@connected="onConnected"
-		/>
+			key="connection-dialog"
+			class="flex items-center justify-center min-h-[60vh]"
+		>
+			<ConnectionDialog class="w-full max-w-lg" @connected="onConnected" />
+		</div>
 
 		<!-- Dashboard content -->
-		<div v-else>
+		<div v-else key="dashboard">
 			<div
 				v-motion
 				:initial="{ opacity: 0, y: -10 }"
@@ -335,6 +271,67 @@ const statsCards = computed(() => [
 				</div>
 
 				<!-- Quick Actions & Server Status -->
+				<!--
+					Cluster status. A single-process server reports one node and a
+					reachable backend, so this reads correctly whether or not a
+					distributed backend is configured.
+				-->
+				<Card v-if="store.cluster" class="mt-6" data-testid="cluster-status">
+					<CardHeader>
+						<CardTitle class="flex items-center gap-2">
+							<Network class="h-4 w-4" />
+							Cluster
+						</CardTitle>
+						<CardDescription>
+							{{
+								store.cluster.distributed
+									? "Peer routing and membership are shared across instances"
+									: "Single instance; no distributed backend configured"
+							}}
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div class="flex flex-wrap items-center gap-4 mb-4">
+							<div>
+								<p class="text-sm text-muted-foreground">Nodes</p>
+								<p class="text-2xl font-bold">{{ store.cluster.nodes.length }}</p>
+							</div>
+							<div>
+								<p class="text-sm text-muted-foreground">Backend</p>
+								<Badge :variant="store.cluster.backendReachable ? 'secondary' : 'destructive'">
+									{{ store.cluster.backendReachable ? "Reachable" : "Unreachable" }}
+								</Badge>
+							</div>
+						</div>
+
+						<Alert v-if="!store.cluster.backendReachable" variant="destructive" class="mb-4">
+							<AlertCircle class="h-4 w-4" />
+							<AlertTitle>Backend unreachable</AlertTitle>
+							<AlertDescription>
+								{{ store.cluster.backendError ?? "Peers on other instances cannot be reached." }}
+							</AlertDescription>
+						</Alert>
+
+						<div v-if="store.cluster.nodes.length" class="space-y-1">
+							<div
+								v-for="node in store.cluster.nodes"
+								:key="node.nodeId"
+								class="flex items-center justify-between text-sm"
+							>
+								<span class="font-mono truncate">
+									{{ node.nodeId }}
+									<Badge v-if="node.nodeId === store.cluster.nodeId" variant="outline" class="ml-1">
+										this node
+									</Badge>
+								</span>
+								<span class="text-muted-foreground">
+									{{ node.peers }} {{ node.peers === 1 ? "peer" : "peers" }}
+								</span>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-6">
 					<!-- Quick Actions -->
 					<Card
@@ -433,15 +430,17 @@ const statsCards = computed(() => [
 					</CardHeader>
 					<CardContent>
 						<div class="h-48 sm:h-56">
-							<Line
+							<Chart
 								:key="`dashboard-chart-${isDark}`"
-								:data="miniChartData"
-								:options="miniChartOptions"
+								:definition="miniChartDefinition"
+								aria-label="Message throughput and connected clients over time"
+								class="h-full w-full"
 							/>
 						</div>
 					</CardContent>
 				</Card>
 			</template>
 		</div>
+		</ClientOnly>
 	</div>
 </template>

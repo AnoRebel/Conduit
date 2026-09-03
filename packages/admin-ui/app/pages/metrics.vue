@@ -1,17 +1,6 @@
 <script setup lang="ts">
-import {
-	CategoryScale,
-	Chart as ChartJS,
-	Filler,
-	Legend,
-	LinearScale,
-	LineElement,
-	PointElement,
-	Title,
-	Tooltip,
-} from "chart.js";
+import { Chart } from "@tanstack/charts/vue";
 import { Copy, Download, RefreshCw } from "lucide-vue-next";
-import { Line } from "vue-chartjs";
 import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,17 +14,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-
-ChartJS.register(
-	CategoryScale,
-	LinearScale,
-	PointElement,
-	LineElement,
-	Title,
-	Tooltip,
-	Legend,
-	Filler
-);
 
 const store = useAdminStore();
 const colorMode = useColorMode();
@@ -68,6 +46,27 @@ watch(selectedDuration, async duration => {
 // --- Theme-reactive chart colors ---
 const isDark = computed(() => colorMode.value === "dark");
 
+/**
+ * Room, topic, and multicast totals.
+ *
+ * Absent on a server without group support, in which case the section is
+ * hidden rather than showing zeroes that would read as real measurements.
+ */
+const groupStats = computed(() => {
+	const groups = store.metrics?.groups;
+	if (!groups) return null;
+	return [
+		{ key: "rooms", label: "Active Rooms", value: groups.activeRooms },
+		{ key: "topics", label: "Active Topics", value: groups.activeTopics },
+		{ key: "subs", label: "Subscriptions", value: groups.subscriptions },
+		{
+			key: "fanout",
+			label: "Multicast Deliveries",
+			value: groups.multicastDeliveries,
+		},
+	];
+});
+
 const gridColor = computed(() =>
 	isDark.value ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"
 );
@@ -84,133 +83,77 @@ const tooltipBorder = computed(() =>
 	isDark.value ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
 );
 
-// --- Chart data ---
-const throughputData = computed(() => {
-	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
-	const data = store.metricsHistory.map(m => m.messages.throughputPerSecond);
+// --- Chart definitions ---
+// Marks consume the metrics history directly, so there is no parallel labels
+// array to drift out of step with the values.
 
-	return {
-		labels,
-		datasets: [
-			{
-				label: "Messages/sec",
-				data,
-				borderColor: "rgb(59, 130, 246)",
-				backgroundColor: "rgba(59, 130, 246, 0.1)",
-				fill: true,
-				tension: 0.4,
-				pointRadius: 0,
-				pointHitRadius: 10,
-				pointHoverRadius: 4,
-				borderWidth: 2,
-			},
-		],
-	};
+const throughputSeries = computed(() =>
+	store.metricsHistory.map(m => ({
+		at: new Date(m.timestamp),
+		value: m.messages.throughputPerSecond,
+	}))
+);
+
+const connectionsSeries = computed(() =>
+	store.metricsHistory.map(m => ({ at: new Date(m.timestamp), value: m.clients.connected }))
+);
+
+const memorySeries = computed(() =>
+	store.metricsHistory.map(m => ({
+		at: new Date(m.timestamp),
+		value: m.memory.heapUsed / 1024 / 1024,
+	}))
+);
+
+const multicastSeries = computed(() =>
+	store.metricsHistory.map(m => ({
+		at: new Date(m.timestamp),
+		value: m.groups?.multicastDeliveries ?? 0,
+	}))
+);
+
+const roomsSeries = computed(() =>
+	store.metricsHistory.map(m => ({ at: new Date(m.timestamp), value: m.groups?.activeRooms ?? 0 }))
+);
+
+const throughputChart = useTimeSeriesChart(throughputSeries, {
+	color: "rgb(59, 130, 246)",
+	label: "Messages/sec",
+});
+const connectionsChart = useTimeSeriesChart(connectionsSeries, {
+	color: "rgb(34, 197, 94)",
+	label: "Connected clients",
+});
+const memoryChart = useTimeSeriesChart(memorySeries, {
+	color: "rgb(249, 115, 22)",
+	label: "Heap used (MB)",
+});
+const multicastChart = useTimeSeriesChart(multicastSeries, {
+	color: "rgb(168, 85, 247)",
+	label: "Multicast deliveries",
+});
+const roomsChart = useTimeSeriesChart(roomsSeries, {
+	color: "rgb(14, 165, 233)",
+	label: "Active rooms",
 });
 
-const connectionsData = computed(() => {
-	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
-	const data = store.metricsHistory.map(m => m.clients.connected);
-
-	return {
-		labels,
-		datasets: [
-			{
-				label: "Connected Clients",
-				data,
-				borderColor: "rgb(34, 197, 94)",
-				backgroundColor: "rgba(34, 197, 94, 0.1)",
-				fill: true,
-				tension: 0.4,
-				pointRadius: 0,
-				pointHitRadius: 10,
-				pointHoverRadius: 4,
-				borderWidth: 2,
-			},
-		],
-	};
-});
-
-const memoryData = computed(() => {
-	const labels = store.metricsHistory.map(m => new Date(m.timestamp).toLocaleTimeString());
-	const data = store.metricsHistory.map(m => m.memory.heapUsed / 1024 / 1024);
-
-	return {
-		labels,
-		datasets: [
-			{
-				label: "Heap Used (MB)",
-				data,
-				borderColor: "rgb(249, 115, 22)",
-				backgroundColor: "rgba(249, 115, 22, 0.1)",
-				fill: true,
-				tension: 0.4,
-				pointRadius: 0,
-				pointHitRadius: 10,
-				pointHoverRadius: 4,
-				borderWidth: 2,
-			},
-		],
-	};
-});
-
-// Theme-reactive chart options — triggers re-render on dark/light switch
-const chartOptions = computed(() => ({
-	responsive: true,
-	maintainAspectRatio: false,
-	interaction: {
-		mode: "index" as const,
-		intersect: false,
-	},
-	plugins: {
-		legend: {
-			display: false,
-		},
-		tooltip: {
-			backgroundColor: tooltipBg.value,
-			titleColor: tooltipText.value,
-			bodyColor: tooltipText.value,
-			borderColor: tooltipBorder.value,
-			borderWidth: 1,
-			cornerRadius: 8,
-			padding: 10,
-			displayColors: true,
-			boxPadding: 4,
-		},
-	},
-	scales: {
-		x: {
-			grid: {
-				color: gridColor.value,
-				drawBorder: false,
-			},
-			ticks: {
-				color: tickColor.value,
-				maxRotation: 0,
-				autoSkipPadding: 20,
-				font: { size: 11 },
-			},
-			border: {
-				display: false,
-			},
-		},
-		y: {
-			beginAtZero: true,
-			grid: {
-				color: gridColor.value,
-				drawBorder: false,
-			},
-			ticks: {
-				color: tickColor.value,
-				font: { size: 11 },
-				padding: 8,
-			},
-			border: {
-				display: false,
-			},
-		},
-	},
-}));
+/** The chart definition for a card, by key. */
+function getChartDefinition(key: string) {
+	switch (key) {
+		case "throughput":
+			return throughputChart.value;
+		case "connections":
+			return connectionsChart.value;
+		case "memory":
+			return memoryChart.value;
+		case "multicast":
+			return multicastChart.value;
+		case "rooms":
+			return roomsChart.value;
+		default:
+			return throughputChart.value;
+	}
+}
 
 async function refresh() {
 	isLoading.value = true;
@@ -221,46 +164,51 @@ async function refresh() {
 
 const { copy } = useClipboard();
 
-function getChartDataByType(chartType: "throughput" | "connections" | "memory") {
-	switch (chartType) {
+/** The series behind a chart card, for copy and export. */
+function getSeriesForCard(key: string): readonly TimeSeriesPoint[] {
+	switch (key) {
 		case "throughput":
-			return throughputData.value;
+			return throughputSeries.value;
 		case "connections":
-			return connectionsData.value;
+			return connectionsSeries.value;
 		case "memory":
-			return memoryData.value;
+			return memorySeries.value;
+		case "multicast":
+			return multicastSeries.value;
+		case "rooms":
+			return roomsSeries.value;
+		default:
+			return [];
 	}
 }
 
-function copyChartData(chartType: "throughput" | "connections" | "memory") {
-	const chartData = getChartDataByType(chartType);
-	const dataset = chartData.datasets[0];
-	if (!dataset) return;
+/** The column heading for a chart card's value. */
+function getSeriesLabel(key: string): string {
+	const card = chartCards.value.find(c => c.key === key);
+	return card?.title ?? key;
+}
 
-	const data = {
-		labels: chartData.labels,
-		values: dataset.data as number[],
-	};
-
-	copy(JSON.stringify(data, null, 2));
+function copyChartData(chartType: string) {
+	const series = getSeriesForCard(chartType);
+	copy(
+		JSON.stringify(
+			series.map(p => ({ time: formatMetricDateTime(p.at), value: p.value })),
+			null,
+			2
+		)
+	);
 	toast.success("Chart data copied");
 }
 
-function exportChartAsCSV(chartType: "throughput" | "connections" | "memory") {
-	const chartData = getChartDataByType(chartType);
-	const dataset = chartData.datasets[0];
-	if (!dataset) return;
+function exportChartAsCSV(chartType: string) {
+	const series = getSeriesForCard(chartType);
+	if (series.length === 0) {
+		toast.error("No data to export");
+		return;
+	}
 
-	const labels = chartData.labels;
-	const values = dataset.data as number[];
-
-	const headers: Record<string, string> = {
-		throughput: "Time,Messages/sec",
-		connections: "Time,Connected Clients",
-		memory: "Time,Heap Used (MB)",
-	};
-
-	const csv = [headers[chartType], ...labels.map((label, i) => `${label},${values[i]}`)].join("\n");
+	const rows = series.map(p => `${formatMetricDateTime(p.at)},${p.value}`);
+	const csv = [`Time,${getSeriesLabel(chartType)}`, ...rows].join("\n");
 
 	const blob = new Blob([csv], { type: "text/csv" });
 	const url = URL.createObjectURL(blob);
@@ -286,34 +234,39 @@ function copyCurrentStats() {
 }
 
 // Chart card configs for staggered animation
-const chartCards = [
+const baseChartCards = [
 	{ key: "throughput", title: "Message Throughput", tourGuide: "throughput-chart" },
 	{ key: "connections", title: "Connected Clients", tourGuide: "connections-chart" },
 	{ key: "memory", title: "Memory Usage", tourGuide: undefined },
 ] as const;
+
+/**
+ * Group charts appear only when the server reports group metrics, so a server
+ * without rooms shows no empty panels.
+ */
+const chartCards = computed(() => {
+	const cards: { key: string; title: string; tourGuide?: string }[] = [...baseChartCards];
+	if (store.metrics?.groups) {
+		cards.push(
+			{ key: "rooms", title: "Active Rooms", tourGuide: undefined },
+			{ key: "multicast", title: "Multicast Deliveries", tourGuide: undefined }
+		);
+	}
+	return cards;
+});
 
 // Stats items for stagger
 const statsItems = computed(() => [
 	{ label: "Connected Clients", value: store.metrics?.clients.connected ?? 0 },
 	{ label: "Peak Clients", value: store.metrics?.clients.peak ?? 0 },
 	{ label: "Messages Relayed", value: store.metrics?.messages.relayed?.toLocaleString() ?? 0 },
-	{ label: "Throughput", value: `${store.metrics?.messages.throughputPerSecond ?? 0} msg/s` },
+	// Averaged for the same reason as the dashboard card: a single sample of a
+	// spiky per-second rate reads 0 on a busy server whenever it lands on a
+	// quiet tick. The chart beside this still shows every individual sample.
+	{ label: "Throughput", value: `${averageOverWindow(throughputSeries.value)} msg/s avg` },
 	{ label: "Rate Limit Rejections", value: store.metrics?.rateLimit.rejections ?? 0 },
 	{ label: "Total Errors", value: store.metrics?.errors.total ?? 0 },
 ]);
-
-function getChartDataForCard(key: string) {
-	switch (key) {
-		case "throughput":
-			return throughputData.value;
-		case "connections":
-			return connectionsData.value;
-		case "memory":
-			return memoryData.value;
-		default:
-			return throughputData.value;
-	}
-}
 </script>
 
 <template>
@@ -351,6 +304,18 @@ function getChartDataForCard(key: string) {
 			</div>
 		</div>
 
+		<!-- Room, topic, and multicast totals -->
+		<div
+			v-if="groupStats"
+			class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+			data-testid="group-metrics"
+		>
+			<Card v-for="stat in groupStats" :key="stat.key" class="p-4">
+				<p class="text-sm text-muted-foreground">{{ stat.label }}</p>
+				<p class="text-2xl font-bold text-foreground">{{ stat.value.toLocaleString() }}</p>
+			</Card>
+		</div>
+
 		<!-- Charts grid -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 			<!-- Chart cards with staggered animation -->
@@ -372,10 +337,11 @@ function getChartDataForCard(key: string) {
 									<Skeleton class="h-full w-full rounded-lg" />
 								</template>
 								<template v-else-if="store.metricsHistory.length > 0">
-									<Line
+									<Chart
 										:key="`${card.key}-${isDark}`"
-										:data="getChartDataForCard(card.key)"
-										:options="chartOptions"
+										:definition="getChartDefinition(card.key)"
+										:aria-label="`${card.title} over time`"
+										class="h-full w-full"
 									/>
 								</template>
 								<div
