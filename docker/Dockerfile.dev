@@ -17,7 +17,11 @@ COPY packages/admin-ui/package.json packages/admin-ui/
 # otherwise bun aborts with `Workspace not found "examples"`.
 RUN sed -i '/"examples"/d; s/"packages\/\*",/"packages\/*"/' package.json
 
-RUN bun install
+# --ignore-scripts because the root `prepare` script runs `lefthook install`,
+# which needs a .git directory the image does not have. The other half of that
+# script is `bun run build`, which this Dockerfile already runs explicitly
+# below, so nothing is lost.
+RUN bun install --ignore-scripts
 
 # Copy source files
 COPY . .
