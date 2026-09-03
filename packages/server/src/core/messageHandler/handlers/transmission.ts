@@ -1,7 +1,7 @@
 import { type IMessage, MessageType } from "@conduit/shared";
 import type { IClient } from "../../client.js";
+import { deliverAcrossCluster, ensureValidDestination } from "../../delivery.js";
 import type { IRealm } from "../../realm.js";
-import { validateId } from "../../validation.js";
 
 export interface TransmissionPayload {
 	type?: string;
@@ -21,45 +21,15 @@ export function handleTransmission(client: IClient, message: IMessage, realm: IR
 		return;
 	}
 
-	// A destination must satisfy the same format rules as a peer ID. Without this
-	// an arbitrary string becomes a message-queue key, letting a client grow the
-	// queue map without bound by transmitting to destinations that never exist.
-	if (!validateId(dst).valid) {
-		client.send({
-			type: MessageType.ERROR,
-			payload: { msg: "Invalid destination" },
-		});
+	if (!ensureValidDestination(client, dst)) {
 		return;
 	}
 
-	const destinationClient = realm.getClient(dst);
-
-	if (destinationClient) {
-		// Destination client is online, send directly
-		const transmitted: IMessage = {
-			type,
-			src: client.id,
-			dst,
-			payload,
-		};
-
-		const sent = destinationClient.send(transmitted);
-
-		if (!sent) {
-			// Failed to send, queue the message
-			realm.getMessageQueue().addMessage(dst, transmitted);
-		}
-	} else {
-		// Destination client is offline, queue the message
-		const transmitted: IMessage = {
-			type,
-			src: client.id,
-			dst,
-			payload,
-		};
-
-		realm.getMessageQueue().addMessage(dst, transmitted);
-	}
+	// Resolved across the cluster: a destination on another instance is
+	// forwarded to its owning node, and only a peer no node claims is queued.
+	// Local delivery never consults the backend, so the common case is
+	// unchanged. Fire-and-forget, matching how sends already behave.
+	void deliverAcrossCluster(realm, { type, src: client.id, dst, payload }, dst, client.id);
 }
 
 export function handleOffer(client: IClient, message: IMessage, realm: IRealm): void {
