@@ -81,6 +81,26 @@ export interface MetricsSnapshot {
 	rateLimit: RateLimitMetrics;
 	errors: ErrorMetrics;
 	memory: MemoryUsage;
+	/** Room, topic, and multicast activity. */
+	groups: GroupMetrics;
+}
+
+/**
+ * Room, topic, and multicast metrics.
+ *
+ * `multicastDeliveries` counts messages produced by fan-out, not messages
+ * accepted: it is the number that actually reflects egress, and the one an
+ * operator needs when sizing a deployment that has enabled multicast.
+ */
+export interface GroupMetrics {
+	/** Rooms currently in existence. */
+	activeRooms: number;
+	/** Distinct topics currently subscribed. */
+	activeTopics: number;
+	/** Total subscriptions held across all peers. */
+	subscriptions: number;
+	/** Messages produced by multicast fan-out. */
+	multicastDeliveries: number;
 }
 
 /** Aggregate client connection metrics. */
@@ -169,6 +189,8 @@ export type AuditAction =
 	| "reset_metrics"
 	| "clear_audit"
 	| "clear_bans"
+	| "dissolve_room"
+	| "add_room_members"
 	| "server_attached"
 	| "server_detached"
 	| "auth.login"

@@ -20,6 +20,14 @@ import type {
 import { type ActionableServerCore, type AdminActions, createAdminActions } from "./actions.js";
 import { type AuditLogger, createAuditLogger } from "./audit.js";
 import { type BanManager, createBanManager } from "./bans.js";
+import {
+	type AddMembersResult,
+	type ClusterStatus,
+	createRoomAdmin,
+	type RoomAdmin,
+	type RoomDetail,
+	type RoomSummary,
+} from "./rooms.js";
 
 /** Central admin panel controller — manages metrics, bans, audit, and server actions. */
 export interface AdminCore {
@@ -43,6 +51,17 @@ export interface AdminCore {
 
 	// Audit
 	getAuditLog(limit?: number): AuditEntry[];
+
+	// Rooms, topics, and cluster
+	listRooms(): Promise<RoomSummary[]>;
+	getRoom(name: string): Promise<RoomDetail | null>;
+	dissolveRoom(name: string, userId: string): Promise<number>;
+	addRoomMembers(
+		name: string,
+		peerIds: readonly string[],
+		userId: string
+	): Promise<AddMembersResult>;
+	getClusterStatus(): Promise<ClusterStatus>;
 
 	// Actions (require userId for audit)
 	disconnectClient(clientId: string, userId: string): boolean;
@@ -93,6 +112,7 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 	let serverCore: ActionableServerCore | null = null;
 	let uninstrument: (() => void) | null = null;
 	let actions: AdminActions | null = null;
+	let roomAdmin: RoomAdmin | null = null;
 
 	// Start time for uptime calculation
 	const startTime = Date.now();
@@ -188,7 +208,45 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		};
 	}
 
+	/**
+	 * Refresh the room and topic gauges from live cluster state.
+	 *
+	 * Counting rooms is asynchronous while `getSnapshot` is synchronous, so the
+	 * gauges are refreshed alongside each read rather than computed inside it.
+	 * A snapshot therefore reflects the counts as of the previous read, which is
+	 * accurate enough for a monitoring gauge and avoids making the whole metrics
+	 * surface async.
+	 */
+	function refreshGroupGauges(): void {
+		const cluster = serverCore?.realm?.cluster;
+		if (!cluster || !roomAdmin) {
+			return;
+		}
+
+		// Fan-out volume is counted where the recipient set is resolved, in the
+		// server's delivery path; admin reads it rather than trying to infer it
+		// from inbound messages, which would undercount every extra copy.
+		const readFanOut = (serverCore as unknown as { getMulticastDeliveryCount?: () => number })
+			.getMulticastDeliveryCount;
+		if (typeof readFanOut === "function") {
+			metrics.multicastDeliveries.set(readFanOut());
+		}
+
+		void (async () => {
+			const rooms = await roomAdmin.listRooms();
+			metrics.activeRooms.set(rooms.length);
+
+			const totals = await roomAdmin.getTopicTotals();
+			metrics.activeTopics.set(totals.topics);
+			metrics.subscriptions.set(totals.subscriptions);
+		})().catch(() => {
+			// A backend hiccup must not break the metrics endpoint; the gauges
+			// simply keep their previous values.
+		});
+	}
+
 	function getMetricsSnapshot(): MetricsSnapshot {
+		refreshGroupGauges();
 		return metrics.getSnapshot();
 	}
 
@@ -328,6 +386,7 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 			banManager: bans,
 			auditLogger: audit,
 		});
+		roomAdmin = createRoomAdmin({ serverCore, auditLogger: audit });
 
 		audit.log("server_attached", "system");
 	}
@@ -372,6 +431,33 @@ export function createAdminCore(options: CreateAdminCoreOptions): AdminCore {
 		isIPBanned,
 
 		getAuditLog,
+		listRooms: async () => (roomAdmin ? await roomAdmin.listRooms() : []),
+		getRoom: async name => (roomAdmin ? await roomAdmin.getRoom(name) : null),
+		dissolveRoom: async (name, userId) =>
+			roomAdmin ? await roomAdmin.dissolveRoom(name, userId) : 0,
+		addRoomMembers: async (name, peerIds, userId) =>
+			roomAdmin
+				? await roomAdmin.addRoomMembers(name, peerIds, userId)
+				: // Not attached to a server: nothing can be added, and every peer
+					// named is reported as unreachable rather than silently dropped.
+					{
+						added: [],
+						skipped: peerIds.map(peerId => ({
+							peerId,
+							reason: "not-connected" as const,
+						})),
+					},
+		getClusterStatus: async () =>
+			roomAdmin
+				? await roomAdmin.getClusterStatus()
+				: {
+						// Not attached to a server yet: report a single healthy node
+						// rather than an error, since nothing is wrong.
+						distributed: false,
+						nodeId: "local",
+						nodes: [],
+						backendReachable: true,
+					},
 
 		disconnectClient,
 		disconnectAllClients,
