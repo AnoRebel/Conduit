@@ -26,9 +26,19 @@ Connected peers with status, connection time, and per-client message counts.
 
 ![Clients](./docs/screenshots/clients.png)
 
+### Rooms
+
+Active rooms with member counts, searchable and sortable. Dissolving a room
+removes every member and notifies them; it is confirmed explicitly because the
+action is not reversible.
+
+![Rooms](./docs/screenshots/rooms.png)
+
 ### Metrics
 
-Theme-reactive charts for throughput, connections, and memory, with current statistics.
+Charts for throughput, connections, and memory, plus room, topic, and multicast
+totals. `Multicast Deliveries` counts messages produced by fan-out rather than
+messages accepted, which is the number that reflects egress.
 
 ![Metrics](./docs/screenshots/metrics.png)
 
@@ -53,11 +63,13 @@ Rate limiting and feature configuration.
 ## Features
 
 - **Real-time Dashboard** - Live metrics, mini activity charts, and status indicators
-- **Client Management** - DataTable with search, pagination, sorting, and context menus
+- **Rooms** - Inspect rooms, add peers to them, and dissolve them, with cluster status on the dashboard
+- **Client Management** - DataTable with search, pagination, sorting, and per-client disconnect and ban
 - **Ban Management** - Ban/unban clients and IPs with stats cards and type filters
-- **Metrics Visualization** - Theme-reactive Chart.js charts for throughput, latency, and connections
+- **Metrics Visualization** - Theme-reactive TanStack Charts for throughput, connections, memory, and group activity
 - **Audit Log** - Filterable DataTable with pagination and action type filters
 - **Socket.IO-style Connection** - Dynamic server connection dialog (URL, auth type, credentials)
+- **Instance Switching** - Point the dashboard at another server, or disconnect to clear credentials and cached data
 - **Dark/Light Theme** - System-aware theme with smooth transitions
 - **Floating Header & Footer** - Glass-morphism header and pill footer with scroll behavior
 - **Responsive Design** - Sidebar layout that works on desktop and mobile
@@ -119,8 +131,9 @@ docker compose --profile admin up -d
 | Route | Description |
 |-------|-------------|
 | `/` | Dashboard with overview metrics and quick actions |
-| `/clients` | Client list with search and filtering |
+| `/clients` | Client list with search, filtering, disconnect, and ban |
 | `/clients/:id` | Detailed view of a specific client |
+| `/rooms` | Active rooms, adding peers to a room, and dissolving rooms |
 | `/metrics` | Detailed metrics charts and historical data |
 | `/bans` | Ban management with stats, search, and type filters |
 | `/audit` | Audit log with filtering by action type |
@@ -135,7 +148,12 @@ On first visit, the connection dialog prompts for:
 - **Auth Type** — API Key, Basic, or None
 - **Credentials** — API key or username/password depending on auth type
 
-Connection settings are persisted in `localStorage` for subsequent visits. You can change the connection at any time from the header or sidebar.
+Connection settings are persisted in `localStorage` for subsequent visits. You can change the connection at any time from the header or sidebar, and **Disconnect** clears both the stored credentials and everything fetched from that server.
+
+> **On the default server.** The build ships with `conduit.anorebel.net` as a
+> fallback, used only when you do not enter a server of your own. It is a
+> best-effort demo instance with no uptime or retention guarantee — point the
+> dialog at your own server for real use.
 
 ## Theming
 

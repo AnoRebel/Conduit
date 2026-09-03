@@ -148,6 +148,60 @@ const conn = conduit.connect('peer-id', {
 });
 ```
 
+## Rooms and Presence
+
+Join a named room to discover peers instead of distributing IDs out of band.
+`join` resolves once the server confirms and reports the membership; it rejects
+on timeout, which is what an older server ignoring the message looks like.
+
+```typescript
+const room = await conduit.join('standup');
+
+console.log('already here:', room.members);
+
+room.on('peerJoined', (peerId) => {
+  const conn = conduit.connect(peerId);
+  conn.on('open', () => conn.send('hello'));
+});
+
+room.on('peerLeft', (peerId) => console.log(peerId, 'left'));
+room.on('message', (data, from) => console.log(from, 'broadcast', data));
+
+// Requires topics to be enabled on the server.
+room.broadcast({ text: 'to everyone here' });
+
+room.leave();
+```
+
+The member list is a convenience for discovering peers, never an authority: the
+server decides who may do what, and a client should not derive permission from
+it.
+
+## Topics
+
+```typescript
+// Exact name, or a namespace prefix ending in `.*`
+const topic = await conduit.subscribe('chat.*');
+
+topic.on('message', (data, name, from) => {
+  console.log(`${from} published to ${name}:`, data);
+});
+
+conduit.publish('chat.general', { text: 'hello' });
+
+// Ask for a copy back when you also hold a matching subscription
+conduit.publish('chat.general', { text: 'hi' }, { selfDeliver: true });
+
+topic.unsubscribe();
+```
+
+`chat.*` matches `chat.general` but **not** `chatter.general`: matching is by
+whole segment. Publications are never queued — a subscriber that is offline
+misses them rather than receiving a backlog on reconnect.
+
+Room and topic handles release their listeners when closed, and `conduit.destroy()`
+closes every handle it holds.
+
 ## API Reference
 
 ### Conduit
@@ -161,10 +215,15 @@ new Conduit(id: string, options?: ConduitOptions)
 
 #### Options
 
+> **On the default host.** When `host` is omitted the client talks to
+> `conduit.anorebel.net`, a best-effort demo instance run by the maintainer for
+> evaluation. It has no uptime or retention guarantee, is rate limited, and may
+> be withdrawn at any time. Pass your own `host` for anything you depend on.
+
 ```typescript
 interface ConduitOptions {
   key?: string;              // API key (must match the server's configured key)
-  host?: string;             // Server host (default: 'conduit.anorebel.net')
+  host?: string;             // Server host (default: 'conduit.anorebel.net' — see note below)
   port?: number;             // Server port (default: 443)
   path?: string;             // Server path (default: '/')
   secure?: boolean;          // Use HTTPS/WSS (default: true)

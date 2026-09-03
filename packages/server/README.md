@@ -323,10 +323,38 @@ interface ServerConfig {
     enabled: boolean;     // Enable WebSocket relay (default: true)
     maxMessageSize: number; // Max message size in bytes (default: 65536)
   };
+  rooms: {
+    enabled: boolean;     // Enable rooms and presence (default: true)
+    maxRoomsPerPeer: number;    // Rooms one peer may occupy (default: 32)
+    maxMembersPerRoom: number;  // Members in one room (default: 256)
+    maxRooms: number;           // Rooms in existence (default: 10000)
+  };
+  topics: {
+    enabled: boolean;     // Enable topics and room broadcast (default: FALSE).
+                          // Off by default because multicast turns one inbound
+                          // message into N outbound ones.
+    maxSubscriptionsPerPeer: number; // (default: 64)
+    maxSubscribersPerTopic: number;  // (default: 1024)
+    maxTopics: number;               // (default: 10000)
+    maxRecipientsPerMessage: number; // Hard per-message ceiling (default: 256)
+    maxMulticastMessageSize: number; // Bytes per multicast payload (default: 16384)
+  };
+  cluster: {
+    backend: 'memory' | 'redis'; // (default: 'memory' — single process)
+    nodeId?: string;      // This node's identifier (generated when omitted)
+    peerTtlSeconds: number;   // Peer registration lifetime (default: 90)
+    forwardTimeoutMs: number; // Inter-node forward timeout (default: 2000)
+    redis: {
+      url: string;        // (default: 'redis://127.0.0.1:6379')
+      password?: string;  // REQUIRED when backend is 'redis'
+      keyPrefix: string;  // (default: 'conduit')
+    };
+  };
   rateLimit: {
     enabled: boolean;     // Enable rate limiting (default: true)
-    maxTokens: number;    // Burst capacity (default: 100)
-    refillRate: number;   // Messages per second (default: 50)
+    maxTokens: number;    // Burst capacity (default: 100). Charged per
+                          // *delivery*, so a fan-out to N recipients costs N.
+    refillRate: number;   // Deliveries per second (default: 50)
   };
   logging: {
     level: LogLevel;      // Log level (default: 'info')
@@ -334,6 +362,113 @@ interface ServerConfig {
   };
 }
 ```
+
+## Room and Topic Authorization
+
+By default any authenticated peer may join any room and use any topic, matching
+the trust model where the signaling key is the only gate. A room name is an
+opaque string, so an unguessable one already acts as a capability.
+
+Deployments needing real tenancy supply a decision function, shaped exactly like
+the existing ban predicate — absent by default, consulted after authentication,
+and synchronous so it never puts an await in the message path:
+
+```typescript
+const server = createConduitServer({
+  config: { key: process.env.CONDUIT_KEY },
+
+  authorizeRoom: (peerId, room) => {
+    // e.g. only members of the owning tenant may join
+    return room.startsWith(`${tenantOf(peerId)}:`);
+  },
+
+  authorizeTopic: (peerId, topic, action) => {
+    // `action` is "subscribe" or "publish", so reads and writes can differ
+    return action === "subscribe" || canPublish(peerId, topic);
+  },
+});
+```
+
+A refused join returns the same error whether the room is full, private, or
+absent. That is deliberate: distinguishing them would turn the error into an
+oracle for whether a room exists.
+
+## Horizontal Scaling
+
+By default the server is single-process: peers, rooms, and subscriptions live in
+memory, and nothing is shared.
+
+> **Multi-instance deployments need a cluster backend.** Without one, two peers
+> connected to *different* instances cannot signal to each other at all — an
+> offer for a peer on another instance is queued for someone who will never read
+> it, then expires. There is no error; the connection simply never establishes.
+> This affects every multi-instance deployment prior to this feature.
+
+Configure Redis to share state across instances:
+
+```typescript
+import { createClusterBackend } from '@conduit/server';
+import { createConduitServer } from '@conduit/server/adapters/node';
+
+const config = {
+  key: process.env.CONDUIT_KEY,
+  cluster: {
+    backend: 'redis' as const,
+    redis: {
+      url: process.env.REDIS_URL,
+      // Required: inter-node messages assert which peer they come from, so an
+      // unauthenticated backend would let anyone able to publish impersonate
+      // any peer. The server refuses to start without it.
+      password: process.env.REDIS_PASSWORD,
+    },
+  },
+};
+
+const cluster = await createClusterBackend(config);
+const server = createConduitServer({ config, cluster });
+server.listen();
+```
+
+Start Redis for local development:
+
+```bash
+docker compose -f docker/docker-compose.yml --profile cluster up -d redis
+```
+
+### What distribution changes
+
+- **Cross-instance signaling works.** Offers, answers, candidates, and relay
+  messages reach a peer on any instance.
+- **Rooms and topics span instances.** Membership, presence, and multicast are
+  shared, and limits are enforced cluster-wide via an atomic check-and-insert
+  rather than a read-then-write that could race.
+- **Bans and queue ownership hold cluster-wide.** A banned peer is refused on
+  every instance; queued messages are not collectable by a different token on a
+  different node.
+
+### Known limits
+
+- **Rooms are ephemeral.** They do not survive a full-cluster restart; clients
+  must be prepared to rejoin.
+- **Rate limiting is per node.** Each instance keeps its own token bucket, so a
+  peer spreading traffic across N instances gets at most N budgets. Fan-out
+  amplification stays exactly bounded per node, which is the property that
+  matters; exploiting the margin requires holding N connections, which the
+  concurrent-connection limit constrains.
+- **Membership is eventually consistent.** Capacity-limited joins are atomic, so
+  caps cannot be raced past, but a departing node's peers remain registered
+  until their TTL lapses.
+
+### When the backend is unreachable
+
+- **At startup:** the server refuses to start, naming the backend. A server that
+  looks healthy while unable to route is worse than one that will not start.
+- **While running:** peers on the same instance keep working; operations needing
+  cluster state return an error rather than reporting a success that did not
+  happen. The connection is retried, and this node re-registers what it owns.
+
+See [`examples/cluster.ts`](../../examples/cluster.ts) for a runnable two-instance
+program; it skips cleanly when Redis is not running.
 
 ## API Endpoints
 

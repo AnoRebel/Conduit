@@ -4,7 +4,7 @@
 [![JSR @conduit/server](https://jsr.io/badges/@conduit/server)](https://jsr.io/@conduit/server)
 [![JSR @conduit/client](https://jsr.io/badges/@conduit/client)](https://jsr.io/@conduit/client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-603-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-888-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
 
 WebRTC peer-to-peer data, video, and audio connections made simple.
 
@@ -14,11 +14,14 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 
 - **Simple API** - Connect to peers with just a few lines of code
 - **Multiple Transports** - WebRTC DataChannels, WebSocket relay, or automatic fallback
+- **Rooms & Presence** - Peers join named rooms and are told when others arrive or leave
+- **Topics & Multicast** - Publish/subscribe with prefix patterns and room broadcast (opt-in)
+- **Horizontal Scaling** - Optional Redis backend shares peers, rooms, and topics across instances
 - **Media Streaming** - Video and audio calls with MediaStream support
 - **Multiple Serialization** - Binary, JSON, MessagePack, or raw data
 - **Framework Adapters** - Works with Node.js, Express, Fastify, Hono, and Bun
 - **TypeScript** - Full type definitions included
-- **Cloud Server** - Free cloud server at [`conduit.anorebel.net`](https://conduit.anorebel.net) or self-host
+- **Cloud Server** - Best-effort demo server at [`conduit.anorebel.net`](https://conduit.anorebel.net) (see [the note below](#about-the-hosted-demo-server)) or self-host
 - **Admin Dashboard** - Live monitoring UI at [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net)
 - **Security** - Timing-safe auth, rate limiting, body size limits, CSRF protection, input validation, HTTPS enforcement, origin validation
 
@@ -32,6 +35,106 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 | [`@conduit/admin`](./packages/admin) | Admin API and monitoring tools | [![JSR](https://jsr.io/badges/@conduit/admin)](https://jsr.io/@conduit/admin) |
 | [`@conduit/admin-ui`](./packages/admin-ui) | Vue 3/Nuxt 4 admin dashboard | — |
 | [`conduit-go`](./packages/go-client) | Go signaling client (no built-in WebRTC transport) | — |
+
+## About the Hosted Demo Server
+
+`conduit.anorebel.net` is a single small instance run by the maintainer so that
+the examples in this README work when you paste them, and so the dashboard has
+something to connect to. **It is a convenience for trying Conduit out, not a
+service to build on.**
+
+It is used only when you do not supply a host of your own. Concretely:
+
+- There is **no uptime guarantee**. It is restarted, redeployed, and occasionally
+  taken down without notice.
+- There is **no data retention guarantee**. Peers, rooms, and topics live in one
+  process; a restart clears them.
+- It is **rate limited and capacity limited**, and shared with everyone else
+  evaluating the project.
+- It may be **withdrawn entirely** at any time.
+
+Do not point a production application at it. Self-hosting is a single container
+(see [Docker Deployment](#docker-deployment)) and takes about a minute — pass
+your own `host` to the client and the default is never used:
+
+```javascript
+const conduit = new Conduit("my-peer-id", {
+  host: "signaling.example.com",
+  secure: true,
+});
+```
+
+## Possible Use Cases
+
+Conduit is a signaling server plus a client library. The server introduces peers
+to each other and carries the small control messages WebRTC needs; once a
+connection is established, media and data flow directly between peers. That
+shape suits some problems well and others badly, so this section is as much
+about the second group as the first.
+
+### Where it fits
+
+**Peer-to-peer file transfer.** A DataChannel moves bytes between two browsers
+without the file touching your servers. Conduit carries only the offer, answer,
+and ICE candidates — a few kilobytes regardless of whether the transfer is 2 MB
+or 2 GB. This is the case where the economics are most obviously in your favour.
+
+**Video and voice calls.** Rooms give you the membership and presence a call UI
+needs: who is here, who just joined, who dropped. Media never traverses the
+signaling server, so a four-person call costs the same server-side as an idle
+one.
+
+**Collaborative editing and shared cursors.** Peers in a room exchange CRDT
+updates or cursor positions over DataChannels. Latency is a direct hop rather
+than a round trip through your infrastructure, which is the difference between
+cursors that feel attached to the pointer and cursors that lag.
+
+**Local-first and offline-tolerant apps.** Two devices on the same network can
+keep talking over a direct connection. The signaling server is needed to
+introduce them, not to sustain them.
+
+**Multiplayer game state.** Topics with prefix patterns (`game.lobby.*`) let you
+segment traffic by concern, and room broadcast reaches every player in a match.
+Suits games where players tolerate peer-authoritative state — see the caveat
+below if yours does not.
+
+**Screen sharing and remote assistance.** The same media path as calls, with
+rooms scoping who can see whom.
+
+**IoT and device pairing.** The Go client speaks the same protocol, so a device
+and a browser can be introduced by the same server. Note that the Go client has
+no built-in WebRTC transport — it signals and relays, but does not establish
+DataChannels itself.
+
+### Where it does not fit
+
+Being direct about this saves you an architecture you would have to undo:
+
+- **Guaranteed delivery to offline peers.** Conduit introduces peers that are
+  both online. It is not a message queue, and it does not store messages for a
+  peer that is not connected. Reach for a queue or a database instead.
+- **Server-authoritative game state.** Peer-to-peer means peers can lie. If a
+  cheating player would ruin your game, you want an authoritative server, and
+  Conduit is not one.
+- **Large-scale broadcast (one to thousands).** Multicast fan-out is bounded on
+  purpose, and a peer's uplink is not a CDN. For one-to-many streaming at scale,
+  use an SFU or a media server.
+- **Anything requiring an audit trail of message content.** Direct connections
+  mean the server never sees the payload. That is a feature for privacy and a
+  problem for compliance — if you must log what users send each other, relay it
+  through your own service instead.
+- **Guaranteed peer-to-peer connectivity.** Symmetric NATs and restrictive
+  corporate firewalls defeat direct connections. Conduit falls back to WebSocket
+  relay, but relayed traffic does traverse your server and does cost bandwidth.
+  Budget for a TURN server if reliability matters.
+
+### Why not just use a WebSocket server?
+
+If every message must pass through your infrastructure anyway — because you need
+to validate, persist, or audit it — then a plain WebSocket server is simpler and
+you should use one. Conduit earns its place when you want the *server out of the
+data path*: lower latency, lower bandwidth cost, and payloads your infrastructure
+never sees.
 
 ## Quick Start
 
@@ -103,6 +206,98 @@ bunx @conduit/server start
 # or
 npx @conduit/server start
 ```
+
+## Rooms and Presence
+
+Peers join named rooms to discover each other, instead of distributing peer IDs
+out of band. Joining returns the current membership, and members are told when
+others arrive or leave.
+
+```typescript
+const room = await conduit.join('standup');
+
+console.log('already here:', room.members);
+
+room.on('peerJoined', (peerId) => {
+  // Connect to the new arrival; the room tells you who to call.
+  const conn = conduit.connect(peerId);
+  conn.on('open', () => conn.send('hello'));
+});
+
+room.on('peerLeft', (peerId) => console.log(peerId, 'left'));
+
+room.leave();
+```
+
+Rooms are enabled by default and add no fan-out amplification: the server sends
+one presence notification per member, exactly as it would for a direct message.
+A room ceases to exist when its last member leaves, and membership is never
+restored automatically on reconnect — a returning peer joins again explicitly.
+
+See [`examples/rooms.ts`](./examples/rooms.ts) for a complete runnable program;
+it is executed as part of `bun run test`, so it cannot drift from the API.
+
+## Topics and Multicast
+
+Topics deliver a message to every matching subscriber, and `broadcast` reaches
+a room's other members. **Both are disabled by default** — they turn one inbound
+message into N outbound ones, which changes the server's bandwidth profile from
+O(1) to O(recipients) per message.
+
+Enable them explicitly:
+
+```typescript
+const server = createConduitServer({
+  config: {
+    key: process.env.CONDUIT_KEY,
+    topics: { enabled: true },
+  },
+});
+```
+
+Then subscribe and publish:
+
+```typescript
+// Exact topic, or a namespace prefix ending in `.*`
+const topic = await conduit.subscribe('chat.*');
+
+topic.on('message', (data, name, from) => {
+  console.log(`${from} published to ${name}:`, data);
+});
+
+conduit.publish('chat.general', { text: 'hello' });
+```
+
+Prefix matching is by whole segment: `chat.*` matches `chat.general` but **not**
+`chatter.general`. Only a single trailing `.*` is supported — arbitrary glob
+matching would make resolving subscribers scale with the total number of
+subscriptions, which is itself a denial-of-service vector.
+
+### Limits that bound amplification
+
+Every limit has a finite default, so worst-case egress is computable rather than
+open-ended:
+
+| Setting | Default | What it bounds |
+|---------|---------|----------------|
+| `topics.enabled` | `false` | Multicast is opt-in entirely |
+| `topics.maxRecipientsPerMessage` | `256` | Recipients one message may reach |
+| `topics.maxMulticastMessageSize` | `16384` | Bytes per multicast payload |
+| `topics.maxSubscriptionsPerPeer` | `64` | Subscriptions one peer may hold |
+| `topics.maxSubscribersPerTopic` | `1024` | Subscribers on one topic |
+| `topics.maxTopics` | `10000` | Distinct topics on the server |
+| `rooms.maxMembersPerRoom` | `256` | Members in one room |
+| `rooms.maxRoomsPerPeer` | `32` | Rooms one peer may occupy |
+| `rooms.maxRooms` | `10000` | Rooms in existence |
+
+Worst case per message is `maxRecipientsPerMessage x maxMulticastMessageSize`
+(4 MiB by default). Sustained throughput is bounded separately: the rate limiter
+charges a sender **per delivery**, not per message, so addressing a 256-member
+room consumes a peer's budget 256x faster rather than granting 256x the
+throughput.
+
+See [`examples/topics.ts`](./examples/topics.ts) for a runnable program covering
+prefix matching, self-delivery, sender exclusion, and the size limit.
 
 ## Transport Types
 
@@ -348,6 +543,7 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 
 - **Real-time Monitoring** - Live metrics, throughput, latency, theme-reactive charts
 - **Client Management** - View, disconnect, and ban clients with DataTables
+- **Room Administration** - Inspect rooms, place peers into one (creating it), and dissolve rooms
 - **IP Banning** - Block abusive IP addresses with SQLite persistence
 - **Audit Logging** - Track all admin actions with permanent storage
 - **Multiple Auth Methods** - API Key, JWT, or Basic authentication
@@ -356,7 +552,7 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 - **SQLite Persistence** - Optional embedded database for bans, audit logs, and metrics (`bun:sqlite`)
 - **Optional Auth Mode** - Run signaling with or without key authentication (`--auth key|none`)
 - **Embedded Admin UI** - Serve the dashboard directly from the server process
-- **Socket.IO-style Connection** - Dynamic server connection dialog in the admin UI
+- **Socket.IO-style Connection** - Dynamic server connection dialog in the admin UI, with instance switching and a disconnect that clears cached data
 
 ## Security
 
@@ -386,6 +582,9 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 | **WebSocket Fallback** | Yes | No | N/A | N/A | No |
 | **Auto Fallback** | Yes | No | No | No | No |
 | **Built-in Signaling** | Yes | Yes | N/A | No | No |
+| **Rooms & Presence** | Yes | No | Yes | No | No |
+| **Pub/Sub Topics** | Yes | No | Yes | No | No |
+| **Horizontal Scaling** | Redis (optional) | No | Redis adapter | Manual | N/A |
 | **Binary Data** | Yes | Yes | Yes | Yes | Yes |
 | **TypeScript** | Full | Partial | Full | Full | Types pkg |
 | **Browser + Node** | Yes | Browser | Yes | Node | Yes |
@@ -398,6 +597,7 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 
 **Choose Conduit when you need:**
 - Direct peer-to-peer connections with automatic server fallback
+- Group calls or collaborative sessions, where rooms tell each peer who to connect to
 - Video/audio calls between browsers
 - A complete solution with signaling server, client, and admin tools
 - Framework flexibility (Express, Fastify, Hono, Bun)
@@ -409,10 +609,16 @@ The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https:
 - Minimal setup for prototypes
 
 **Choose Socket.IO when you need:**
-- Server-to-client broadcasting
-- Room-based messaging
+- A mature, general-purpose server-to-client messaging bus
+- Acknowledgements, binary streams, and its wider middleware ecosystem
 - Automatic reconnection with state sync
 - You don't need P2P connections
+
+Conduit now covers rooms, presence, and pub/sub topics, so those alone no longer
+decide between them. The distinction is what the two are for: Conduit is a
+signaling broker that also relays, and its multicast is deliberately bounded and
+off by default. Socket.IO is a message bus first, with a broader feature surface
+for that job.
 
 **Choose ws when you need:**
 - Raw WebSocket performance
