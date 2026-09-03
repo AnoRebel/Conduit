@@ -339,3 +339,31 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG" >> $GITHUB_STEP_SUMMARY
           fi
+
+  # These run because the release job is *called*, not because it published a
+  # release. A release created with the default GITHUB_TOKEN raises no
+  # workflow events -- GitHub suppresses them to prevent recursion -- so the
+  # `release: published` triggers on these workflows never fired, and JSR
+  # publishing was silently skipped on every automated release (Docker had not
+  # run since March for the same reason).
+  publish:
+    name: Publish to JSR
+    needs: [ prepare, release ]
+    if: ${{ !inputs.dry_run }}
+    uses: ./.github/workflows/publish.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}
+
+  docker:
+    name: Build Docker Images
+    needs: [ prepare, release ]
+    if: ${{ !inputs.dry_run }}
+    uses: ./.github/workflows/docker.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}

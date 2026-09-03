@@ -1,8 +1,19 @@
 name: Publish to JSR
 
 on:
+  # Kept so a release published by a human (rather than by a workflow) still
+  # publishes automatically. A release created with the default GITHUB_TOKEN
+  # does NOT fire this -- GitHub suppresses workflow events raised by that
+  # token to prevent recursion -- which is why versioned-release.yml calls this
+  # workflow directly instead of relying on the event.
   release:
     types: [ published ]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag (e.g., v1.0.0)"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -81,11 +92,20 @@ jobs:
       - name: Determine tag
         id: tag
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "TAG=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "TAG=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          # `inputs.tag` is set for both workflow_call and workflow_dispatch,
+          # and empty for the release event -- so prefer it and fall back to the
+          # release tag. Branching on event_name instead would silently produce
+          # an empty tag for workflow_call and check out the default branch.
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.event.release.tag_name }}"
           fi
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag to publish: neither inputs.tag nor a release tag was provided."
+            exit 1
+          fi
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "📦 Publishing tag: $TAG"
 
       - uses: actions/checkout@v7
         with:
