@@ -58,7 +58,7 @@
   "dependencies": {
     "@conduit/shared": "workspace:*",
     "jsonwebtoken": "^9.0.3",
-    "pino": "catalog:"
+    "pino": "^10.3.1"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
@@ -68,7 +68,7 @@
     "vitest": "catalog:"
   },
   "optionalDependencies": {
-    "ws": "catalog:"
+    "ws": "^8.21.3"
   },
   "peerDependencies": {
     "@conduit/server": "workspace:*"

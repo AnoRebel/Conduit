@@ -68,8 +68,8 @@
   "dependencies": {
     "@conduit/shared": "workspace:*",
     "commander": "^15.0.0",
-    "pino": "catalog:",
-    "ws": "catalog:"
+    "pino": "^10.3.1",
+    "ws": "^8.21.3"
   },
   "optionalDependencies": {
     "@conduit/admin": "workspace:*",
