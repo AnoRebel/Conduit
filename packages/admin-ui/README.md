@@ -244,7 +244,7 @@ docker compose --profile all-in-one up -d
 
 ## Requirements
 
-- Bun 1.3+ or Node.js 24+
+- Bun 1.4+ or Node.js 24+
 - Vue 3.5+
 - Modern browser with ES2022 support
 

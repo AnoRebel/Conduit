@@ -1,4 +1,8 @@
 # Development Dockerfile with all tools
+# imbios/bun-node ships no 1.4 tag -- its newest stable is 1.3.14 and even its
+# `latest` tag still contains Bun 1.3.14 (verified by running the image). The
+# builder needs Node alongside Bun, so it stays here until that image catches
+# up; the production stages below already track 1.4.
 FROM imbios/bun-node:1.3.14-24-debian
 
 WORKDIR /app

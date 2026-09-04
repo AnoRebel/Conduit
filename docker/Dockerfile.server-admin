@@ -1,4 +1,8 @@
 # Multi-stage build for Conduit server with Admin API enabled
+# imbios/bun-node ships no 1.4 tag -- its newest stable is 1.3.14 and even its
+# `latest` tag still contains Bun 1.3.14 (verified by running the image). The
+# builder needs Node alongside Bun, so it stays here until that image catches
+# up; the production stages below already track 1.4.
 FROM imbios/bun-node:1.3.14-24-debian AS builder
 
 WORKDIR /app
@@ -27,7 +31,9 @@ COPY packages/admin packages/admin
 RUN bun run build:shared && bun run build:server && bun run build:admin
 
 # Production stage — debian slim for glibc compatibility (bun+musl has networking issues)
-FROM oven/bun:1.3.14-slim AS production
+# Floating minor tag: picks up Bun 1.4 patch releases on rebuild without a
+# pin to bump by hand.
+FROM oven/bun:1.4-slim AS production
 
 WORKDIR /app
 

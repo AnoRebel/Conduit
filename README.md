@@ -834,8 +834,10 @@ docker compose --profile admin up -d
 
 Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for the builder stage and [`oven/bun`](https://hub.docker.com/r/oven/bun) for production:
 
-- **Builder stage**: `imbios/bun-node:1.3.14-24-debian`
-- **Production stage**: `oven/bun:1.3.14-slim`
+- **Builder stage**: `imbios/bun-node:1.3.14-24-debian` — pinned because that image
+  publishes no Bun 1.4 tag yet; the builder needs Node alongside Bun.
+- **Production stage**: `oven/bun:1.4-slim` — a floating minor tag, so rebuilds pick
+  up Bun 1.4 patch releases without a pin to bump.
 
 | Image | Description | Port |
 |-------|-------------|------|
