@@ -17,9 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # No bun-version: setup-bun installs the latest release by default, so
-      # CI tracks Bun rather than drifting behind a pin nobody remembers to bump.
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.1"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -36,9 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # No bun-version: setup-bun installs the latest release by default, so
-      # CI tracks Bun rather than drifting behind a pin nobody remembers to bump.
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.1"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -52,9 +52,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # No bun-version: setup-bun installs the latest release by default, so
-      # CI tracks Bun rather than drifting behind a pin nobody remembers to bump.
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.1"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -83,9 +83,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # No bun-version: setup-bun installs the latest release by default, so
-      # CI tracks Bun rather than drifting behind a pin nobody remembers to bump.
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.1"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -109,9 +109,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # No bun-version: setup-bun installs the latest release by default, so
-      # CI tracks Bun rather than drifting behind a pin nobody remembers to bump.
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.1"
 
       # The suite drives a system-installed browser and never downloads one.
       # ubuntu-latest ships Google Chrome, so no install step is needed; the

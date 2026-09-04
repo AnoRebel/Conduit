@@ -511,11 +511,11 @@ const server = createConduitServer({
 
 ## Docker
 
-Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for the builder stage and [`oven/bun`](https://hub.docker.com/r/oven/bun) for production:
+Docker images use [`oven/bun`](https://hub.docker.com/r/oven/bun) for both the builder and production stages:
 
 ```dockerfile
 # Builder stage
-FROM imbios/bun-node:1.3.14-24-debian AS builder
+FROM oven/bun:1.4.1-slim AS builder
 WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install --ignore-scripts
@@ -523,7 +523,7 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM oven/bun:1.4-slim AS production
+FROM oven/bun:1.4.1-slim AS production
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/bin ./bin

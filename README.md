@@ -832,12 +832,14 @@ docker compose --profile admin up -d
 
 ### Docker Images
 
-Docker images use [`imbios/bun-node`](https://hub.docker.com/r/imbios/bun-node) for the builder stage and [`oven/bun`](https://hub.docker.com/r/oven/bun) for production:
+Docker images use [`oven/bun`](https://hub.docker.com/r/oven/bun) for both stages:
 
-- **Builder stage**: `imbios/bun-node:1.3.14-24-debian` — pinned because that image
-  publishes no Bun 1.4 tag yet; the builder needs Node alongside Bun.
-- **Production stage**: `oven/bun:1.4-slim` — a floating minor tag, so rebuilds pick
-  up Bun 1.4 patch releases without a pin to bump.
+- **Builder stage**: `oven/bun:1.4.1-slim`
+- **Production stage**: `oven/bun:1.4.1-slim`
+
+Nothing in the build needs a Node runtime, so there is no separate Node-bearing
+builder image. Versions are pinned exactly rather than floating, so a Bun release
+cannot change a build without a commit that says so.
 
 | Image | Description | Port |
 |-------|-------------|------|
