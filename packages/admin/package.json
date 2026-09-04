@@ -1,6 +1,6 @@
 {
   "name": "@conduit/admin",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "description": "Admin API and monitoring tools for Conduit servers",
   "type": "module",
   "main": "./dist/index.js",
