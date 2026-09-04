@@ -41,7 +41,7 @@ export default defineNuxtConfig({
 			// Read from package.json so the footer cannot drift from the release,
 			// and so sync-version.ts needs no extra target.
 			version: pkg.version,
-			siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "https://conduit-ui.anorebel.net",
+			siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "https://conduit-admin.anorebel.net",
 			adminApiUrl: process.env.NUXT_PUBLIC_ADMIN_API_URL || "/admin/v1",
 			adminWsUrl: process.env.NUXT_PUBLIC_ADMIN_WS_URL || "",
 		},
@@ -70,7 +70,7 @@ export default defineNuxtConfig({
 
 	// Site configuration for SEO
 	site: {
-		url: "https://conduit-ui.anorebel.net",
+		url: "https://conduit-admin.anorebel.net",
 		name: "Conduit Admin",
 		description: "Conduit Server Administration Dashboard",
 		defaultLocale: "en",
@@ -79,7 +79,7 @@ export default defineNuxtConfig({
 	// Robots configuration
 	robots: {
 		allow: "/",
-		sitemap: ["https://conduit-ui.anorebel.net/sitemap.xml"],
+		sitemap: ["https://conduit-admin.anorebel.net/sitemap.xml"],
 	},
 
 	umami: {

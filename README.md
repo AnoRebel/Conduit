@@ -22,7 +22,7 @@ Conduit provides an easy-to-use API for creating peer-to-peer connections using 
 - **Framework Adapters** - Works with Node.js, Express, Fastify, Hono, and Bun
 - **TypeScript** - Full type definitions included
 - **Cloud Server** - Best-effort demo server at [`conduit.anorebel.net`](https://conduit.anorebel.net) (see [the note below](#about-the-hosted-demo-server)) or self-host
-- **Admin Dashboard** - Live monitoring UI at [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net)
+- **Admin Dashboard** - Live monitoring UI at [`conduit-admin.anorebel.net`](https://conduit-admin.anorebel.net)
 - **Security** - Timing-safe auth, rate limiting, body size limits, CSRF protection, input validation, HTTPS enforcement, origin validation
 
 ## Packages
@@ -537,7 +537,7 @@ NUXT_PUBLIC_ADMIN_API_URL=http://localhost:9000/admin
 NUXT_PUBLIC_ADMIN_WS_URL=ws://localhost:9000/admin/ws
 ```
 
-The production admin dashboard is deployed at [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net).
+The production admin dashboard is deployed at [`conduit-admin.anorebel.net`](https://conduit-admin.anorebel.net).
 
 ### Admin Features
 

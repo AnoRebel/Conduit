@@ -2,7 +2,7 @@
 
 Vue 3/Nuxt 4 admin dashboard for monitoring and managing Conduit servers.
 
-**Live instance**: [`conduit-ui.anorebel.net`](https://conduit-ui.anorebel.net)
+**Live instance**: [`conduit-admin.anorebel.net`](https://conduit-admin.anorebel.net)
 
 ## Screenshots
 
