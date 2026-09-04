@@ -15,7 +15,6 @@ export default defineNuxtConfig({
 		"@vueuse/nuxt",
 		"shadcn-nuxt",
 		"@nuxt/icon",
-		"@nuxt/image",
 		"@vueuse/motion/nuxt",
 		"@nuxt/scripts",
 		"nuxt-umami",
