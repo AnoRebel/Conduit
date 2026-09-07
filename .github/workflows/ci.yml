@@ -184,7 +184,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Build only; nothing is pushed. Three separate build failures reached
       # production while every other CI job was green, because CI installs at
@@ -192,7 +192,7 @@ jobs:
       # only the manifests each one needs -- so `bun install` succeeded here and
       # failed inside the image.
       - name: Build ${{ matrix.dockerfile }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.${{ matrix.dockerfile }}
