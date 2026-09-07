@@ -7,7 +7,7 @@
 # Bun alone, no Node: nothing in the build needs a real Node runtime, verified
 # by building and running every image on this base. Dropping imbios/bun-node
 # also removes a dependency that publishes no Bun 1.4 tag at all.
-FROM oven/bun:1.4.1-slim AS builder
+FROM oven/bun:1.4.2-slim AS builder
 
 WORKDIR /app
 
@@ -42,7 +42,7 @@ WORKDIR /app/packages/admin-ui
 RUN bun run generate
 
 # Production stage — debian slim for glibc compatibility
-FROM oven/bun:1.4.1-slim AS production
+FROM oven/bun:1.4.2-slim AS production
 
 WORKDIR /app
 
