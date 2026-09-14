@@ -19,7 +19,7 @@
     "@date-fns/tz": "^1.4.1",
     "@internationalized/date": "^3.12.3",
     "@tanstack/charts": "^0.16.0",
-    "@tanstack/vue-charts": "^0.16.0",
+    "@tanstack/vue-charts": "^0.18.0",
     "@tanstack/vue-form": "^1.33.5",
     "@tanstack/vue-table": "^9.2.4",
     "@vueuse/core": "^14.4.0",
