@@ -31,6 +31,13 @@ COPY packages/admin-ui packages/admin-ui
 # Build the Nuxt application
 WORKDIR /app/packages/admin-ui
 ENV NITRO_PRESET=bun
+# Analytics site ids are read at build time: nuxt-umami bakes its config into
+# the bundle and the Rybbit tag is part of the rendered head. Passed only as
+# runtime env they would leave both trackers off.
+ARG NUXT_UMAMI_SITE_ID=
+ARG NUXT_RYBBIT_SITE_ID=
+ENV NUXT_UMAMI_SITE_ID=${NUXT_UMAMI_SITE_ID}
+ENV NUXT_RYBBIT_SITE_ID=${NUXT_RYBBIT_SITE_ID}
 RUN bun run build
 
 # Production stage — debian slim for glibc compatibility (bun+musl has networking issues)
