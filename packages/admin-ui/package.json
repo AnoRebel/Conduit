@@ -54,7 +54,7 @@
     "bunwright": "^0.3.2",
     "nuxt": "^4.5.2",
     "nuxt-umami": "3.2.1",
-    "shadcn-nuxt": "2.8.2",
+    "shadcn-nuxt": "2.9.0",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:admin-ui",
     "vue": "catalog:",
