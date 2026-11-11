@@ -4,7 +4,7 @@ Thank you for your interest in contributing to Conduit! This guide will help you
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) 1.3+ (primary runtime and package manager)
+- [Bun](https://bun.sh/) 1.4+ (primary runtime and package manager)
 - [Node.js](https://nodejs.org/) 24+
 - Git
 
@@ -98,9 +98,22 @@ bun run format
 # Check formatting without writing
 bun run format:check
 
+# Check every dependency's license against the allowlist
+bun run licenses
+
 # Full validation (equivalent to what CI runs)
-bun run lint && bun run format:check && bun run typecheck && bun run build && bun run test
+bun run lint && bun run format:check && bun run licenses && bun run typecheck && bun run build && bun run test
 ```
+
+### Dependency Licenses
+
+`bun run licenses` (`scripts/check-licenses.ts`) checks every package in
+`bun.lock`, direct and transitive, against an allowlist of permissive licenses,
+and CI runs it on every push. Run it whenever you add or upgrade a dependency.
+If a package fails, pick an alternative, or add an `EXCEPTIONS` entry recording
+the license you reviewed and why it is acceptable for how we use it (for
+example, a build or test tool that is never shipped). Copyleft licenses (GPL,
+AGPL, SSPL) are not acceptable in anything we ship.
 
 ### Build Order
 
@@ -246,6 +259,7 @@ git commit -m "test(client): add transport fallback integration tests"
 - [ ] Formatting passes (`bun run format:check`)
 - [ ] Type checking passes (`bun run typecheck`)
 - [ ] Build succeeds (`bun run build`)
+- [ ] Dependency licenses pass (`bun run licenses`) if dependencies changed
 - [ ] Documentation updated if applicable
 
 ## CI/CD
@@ -270,4 +284,4 @@ Releases trigger additional workflows:
 
 ## License
 
-By contributing to Conduit, you agree that your contributions will be licensed under the MIT License.
+By contributing to Conduit, you agree that your contributions will be licensed under the Apache License 2.0.

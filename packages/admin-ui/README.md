@@ -250,4 +250,4 @@ docker compose --profile all-in-one up -d
 
 ## License
 
-MIT
+Apache-2.0

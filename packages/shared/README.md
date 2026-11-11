@@ -75,4 +75,4 @@ console.log(`Conduit v${VERSION}`);
 
 ## License
 
-MIT
+Apache-2.0

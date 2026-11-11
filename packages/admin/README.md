@@ -574,4 +574,4 @@ The admin API includes multiple layers of security:
 
 ## License
 
-MIT
+Apache-2.0
