@@ -6,6 +6,10 @@ import type { TurnConfig } from "../config.js";
  * Mint TURN REST API credentials for one peer: username `<expiry>:<peerId>`,
  * credential base64(HMAC-SHA1(secret, username)). coturn with
  * `use-auth-secret` accepts them until the expiry without any per-user state.
+ *
+ * SHA-1 is not a choice here: the TURN REST API scheme fixes HMAC-SHA1, and
+ * coturn rejects anything else. HMAC does not rely on SHA-1's broken collision
+ * resistance, and the hashed input is the public username, not a secret.
  */
 export function turnIceServers(
 	turn: TurnConfig,
