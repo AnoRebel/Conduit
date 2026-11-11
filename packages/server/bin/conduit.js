@@ -76,6 +76,27 @@ program
 			process.exit(1);
 		}
 
+		// TURN REST API credentials: both the URLs and the secret, or neither.
+		const turnUrls = env("CONDUIT_TURN_URLS");
+		const turnSecret = env("CONDUIT_TURN_SECRET");
+		const turnTtl = Number(env("CONDUIT_TURN_TTL") ?? 86400);
+		if (Boolean(turnUrls) !== Boolean(turnSecret) || !(turnTtl > 0)) {
+			console.error(
+				"Refusing to start: set both CONDUIT_TURN_URLS and CONDUIT_TURN_SECRET (or neither), and a positive CONDUIT_TURN_TTL."
+			);
+			process.exit(1);
+		}
+		const turn = turnUrls
+			? {
+					urls: turnUrls
+						.split(",")
+						.map(u => u.trim())
+						.filter(Boolean),
+					secret: turnSecret,
+					ttl: turnTtl,
+				}
+			: undefined;
+
 		if (authMode === "key" && !isKeyAcceptable(key)) {
 			console.warn(
 				"WARNING: running with an insecure signaling key. Do not use this in production."
@@ -129,6 +150,7 @@ program
 					enabled: relayEnabled,
 					maxMessageSize: 65536,
 				},
+				turn,
 			},
 			// The core enforces the key too, so the CLI's escape hatch has to reach
 			// it -- otherwise --allow-insecure-key would pass the check above and
@@ -306,6 +328,9 @@ program
 			console.log(`Server listening on ${host}:${port}`);
 			console.log(`Path: ${path}`);
 			console.log(`Key: ${maskKey(key)}`);
+			console.log(
+				`TURN: ${turn ? `${turn.urls.join(", ")} (credentials valid ${turn.ttl}s)` : "off"}`
+			);
 			console.log(`Auth: ${authMode}`);
 			console.log(`Discovery: ${allowDiscovery ? "enabled" : "disabled"}`);
 			console.log(`Relay: ${relayEnabled ? "enabled" : "disabled"}`);

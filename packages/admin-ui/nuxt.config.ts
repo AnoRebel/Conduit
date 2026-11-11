@@ -10,6 +10,14 @@ export default defineNuxtConfig({
 		compatibilityVersion: 5,
 	},
 
+	experimental: {
+		// Compat 5 turns Nitro auto-imports off, but nuxt-umami 3.2.1 (latest,
+		// unmaintained) imports `useRuntimeConfig` from `#imports` in its server
+		// proxy. Drop this once nuxt-umami is replaced (it also imports `h3`
+		// directly, so it will not survive Nuxt 5's h3 v2 either).
+		nitroAutoImports: true,
+	},
+
 	modules: [
 		"@pinia/nuxt",
 		"@vueuse/nuxt",

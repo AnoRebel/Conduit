@@ -69,6 +69,7 @@ export {
 	type ServerConfig,
 	type ServerConfigOverrides,
 	type TopicsConfig,
+	type TurnConfig,
 } from "./config.js";
 
 // ============================================================================

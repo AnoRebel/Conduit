@@ -3,7 +3,7 @@
 [![CI](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
 [![JSR @conduit/server](https://jsr.io/badges/@conduit/server)](https://jsr.io/@conduit/server)
 [![JSR @conduit/client](https://jsr.io/badges/@conduit/client)](https://jsr.io/@conduit/client)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Tests](https://img.shields.io/badge/tests-888-brightgreen)](https://github.com/AnoRebel/conduit/actions/workflows/ci.yml)
 
 WebRTC peer-to-peer data, video, and audio connections made simple.
@@ -126,7 +126,8 @@ Being direct about this saves you an architecture you would have to undo:
 - **Guaranteed peer-to-peer connectivity.** Symmetric NATs and restrictive
   corporate firewalls defeat direct connections. Conduit falls back to WebSocket
   relay, but relayed traffic does traverse your server and does cost bandwidth.
-  Budget for a TURN server if reliability matters.
+  Budget for a TURN server if reliability matters, and point the client at it
+  with `config.iceServers` ([STUN and TURN servers](./packages/client/README.md#stun-and-turn-servers)).
 
 ### Why not just use a WebSocket server?
 
@@ -834,8 +835,8 @@ docker compose --profile admin up -d
 
 Docker images use [`oven/bun`](https://hub.docker.com/r/oven/bun) for both stages:
 
-- **Builder stage**: `oven/bun:1.4.1-slim`
-- **Production stage**: `oven/bun:1.4.1-slim`
+- **Builder stage**: `oven/bun:1.4.4-slim`
+- **Production stage**: `oven/bun:1.4.4-slim`
 
 Nothing in the build needs a Node runtime, so there is no separate Node-bearing
 builder image. Versions are pinned exactly rather than floating, so a Bun release
@@ -984,4 +985,4 @@ Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTIN
 
 ## License
 
-MIT
+Apache-2.0

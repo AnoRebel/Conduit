@@ -31,7 +31,7 @@
     "signaling"
   ],
   "author": "Conduit Contributors",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/AnoRebel/conduit.git",
@@ -51,5 +51,5 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "packageManager": "bun@1.4.1"
+  "packageManager": "bun@1.4.4"
 }

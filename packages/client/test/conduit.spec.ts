@@ -259,6 +259,32 @@ describe("Conduit", () => {
 			expect(conduit.connections.has("other-peer")).toBe(true);
 		});
 	});
+
+	describe("rtcConfig", () => {
+		const turn = { urls: "turn:turn.example.com:3478", username: "1:p", credential: "c" };
+		const open = (conduit: Conduit) =>
+			(conduit as unknown as { _handleMessage(m: unknown): void })._handleMessage({
+				type: MessageType.OPEN,
+				payload: { iceServers: [turn] },
+			});
+
+		it("appends server-issued TURN servers to the default STUN servers", () => {
+			const conduit = new Conduit("test-conduit");
+			expect(conduit.rtcConfig).toBe(util.defaultConfig);
+			open(conduit);
+			expect(conduit.rtcConfig.iceServers).toEqual([
+				...(util.defaultConfig.iceServers ?? []),
+				turn,
+			]);
+		});
+
+		it("leaves explicit iceServers alone", () => {
+			const config = { iceServers: [{ urls: "stun:mine.example.com" }] };
+			const conduit = new Conduit("test-conduit", { config });
+			open(conduit);
+			expect(conduit.rtcConfig).toBe(config);
+		});
+	});
 });
 
 describe("ConduitError", () => {

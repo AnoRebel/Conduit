@@ -106,6 +106,20 @@ export interface ClusterConfig {
 }
 
 /** Authentication mode configuration for client connections. */
+/**
+ * TURN relay credentials, using the TURN REST API scheme (coturn
+ * `use-auth-secret`): each client gets a username of `<expiry>:<peerId>` and an
+ * HMAC-SHA1 of it under the shared secret, so the secret never leaves the server.
+ */
+export interface TurnConfig {
+	/** TURN URLs handed to clients, e.g. `turn:turn.example.com:3478?transport=udp`. */
+	urls: string[];
+	/** Shared secret configured on the TURN server. */
+	secret: string;
+	/** Credential lifetime in seconds. */
+	ttl: number;
+}
+
 export interface ServerAuthConfig {
 	/** Authentication mode: "key" requires a signaling key, "none" allows unauthenticated access */
 	mode: "key" | "none";
@@ -158,6 +172,8 @@ export interface ServerConfig {
 	rateLimit: RateLimitConfig;
 	/** Structured logging settings. */
 	logging: LoggingConfig;
+	/** TURN credentials sent to clients on connect. Off when unset. */
+	turn?: TurnConfig;
 }
 
 /**

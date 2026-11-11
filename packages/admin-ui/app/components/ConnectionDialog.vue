@@ -61,6 +61,9 @@ const errorMessage = ref("");
 // Fallback defaults from env
 const config = useRuntimeConfig();
 const defaultServerUrl = config.public.adminApiUrl || "";
+// Kept out of the template: vue-tsc >=3.3.12 misreads `//` inside template
+// expressions as a comment (vuejs/language-tools#6240).
+const serverUrlPlaceholder = defaultServerUrl || "https://your-server.com/admin/v1";
 
 // Use effective URL for display
 const displayServerUrl = computed(() => serverUrl.value || defaultServerUrl || "");
@@ -144,7 +147,7 @@ async function handleConnect() {
 							inputmode="url"
 							autocomplete="url"
 							spellcheck="false"
-							:placeholder="defaultServerUrl || 'https://your-server.com/admin/v1'"
+							:placeholder="serverUrlPlaceholder"
 							class="pl-9"
 						/>
 					</div>

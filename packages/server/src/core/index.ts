@@ -20,6 +20,7 @@ import { type RoomAuthorizer, RoomRegistry } from "./roomRegistry.js";
 import { CheckBrokenConnections } from "./services/checkBrokenConnections.js";
 import { MessagesExpire } from "./services/messagesExpire.js";
 import { type TopicAuthorizer, TopicRegistry } from "./topicRegistry.js";
+import { turnIceServers } from "./turn.js";
 import {
 	MAX_MESSAGE_SIZE,
 	safeJsonParse,
@@ -320,10 +321,11 @@ export function createConduitServerCore(
 			clientLogger.info("Client connected");
 		}
 
-		// Send OPEN message
+		// Send OPEN message, with TURN credentials when a TURN secret is configured
 		socket.send(
 			JSON.stringify({
 				type: MessageType.OPEN,
+				...(config.turn && { payload: { iceServers: turnIceServers(config.turn, id) } }),
 			})
 		);
 

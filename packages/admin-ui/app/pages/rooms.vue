@@ -51,9 +51,7 @@ function openAddToRoom(room: string) {
 
 const rooms = computed(() => store.rooms);
 const totalMembers = computed(() => rooms.value.reduce((sum, r) => sum + r.members, 0));
-const largestRoom = computed(() =>
-	rooms.value.reduce((max, r) => (r.members > max ? r.members : max), 0)
-);
+const largestRoom = computed(() => rooms.value.reduce((max, r) => Math.max(max, r.members), 0));
 
 const statsCards = computed(() => [
 	{ key: "rooms", label: "Active Rooms", value: rooms.value.length, icon: DoorOpen },

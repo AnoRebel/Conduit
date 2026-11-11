@@ -74,6 +74,7 @@ export type {
 	IGoAwayPayload,
 	IHeartbeatMessage,
 	IHeartbeatPayload,
+	IIceServer,
 	IIdTakenMessage,
 	IJoinMessage,
 	IJoinPayload,

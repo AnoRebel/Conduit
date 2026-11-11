@@ -12,10 +12,10 @@
     "@conduit/client": "workspace:*",
     "@conduit/server": "workspace:*",
     "@conduit/shared": "workspace:*",
-    "ws": "^8.21.3"
+    "ws": "^8.22.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.9",
+    "@types/bun": "^1.4.4",
     "@types/node": "catalog:",
     "@types/ws": "catalog:",
     "typescript": "catalog:"

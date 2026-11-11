@@ -125,6 +125,8 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 	private _disconnected = false;
 	/** Whether the signaling server connection is open. */
 	private _open = false;
+	/** TURN servers with short-lived credentials sent by the signaling server. */
+	private _serverIceServers: RTCIceServer[] | undefined;
 	/** Map of remote peer IDs to their active connections. */
 	private _connections: Map<
 		string,
@@ -196,6 +198,20 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 	/** Whether the connection to the signaling server is open. */
 	get open(): boolean {
 		return this._open;
+	}
+
+	/**
+	 * The `RTCConfiguration` used for new peer connections: `options.config`,
+	 * else the default STUN servers. TURN servers sent by the signaling server
+	 * are appended unless `options.config.iceServers` was given explicitly.
+	 */
+	get rtcConfig(): RTCConfiguration {
+		const config = this.options.config ?? util.defaultConfig;
+		if (!this._serverIceServers || this.options.config?.iceServers) return config;
+		return {
+			...config,
+			iceServers: [...(util.defaultConfig.iceServers ?? []), ...this._serverIceServers],
+		};
 	}
 
 	/** Whether this peer has been permanently destroyed. */
@@ -277,6 +293,9 @@ export class Conduit extends EventEmitter<ConduitEvents> {
 		switch (type) {
 			case MessageType.OPEN:
 				this._open = true;
+				this._serverIceServers = (
+					payload as { iceServers?: RTCIceServer[] } | undefined
+				)?.iceServers;
 				if (this._id) {
 					this.emit("open", this._id);
 				}

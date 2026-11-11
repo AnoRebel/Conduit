@@ -120,6 +120,9 @@ The CLI also reads these environment variables (env vars take precedence over CL
 | `ADMIN_DB_PATH` | SQLite database file path for persistence | - |
 | `ADMIN_UI_DIR` | Directory with admin UI static files | - |
 | `ADMIN_UI_PATH` | URL path to serve admin UI at | `/ui` |
+| `CONDUIT_TURN_URLS` | Comma-separated TURN URLs sent to clients (needs `CONDUIT_TURN_SECRET`) | - |
+| `CONDUIT_TURN_SECRET` | TURN shared secret (coturn `use-auth-secret`) | - |
+| `CONDUIT_TURN_TTL` | Lifetime of the issued TURN credentials, in seconds | `86400` |
 
 Example with environment variables:
 
@@ -360,8 +363,22 @@ interface ServerConfig {
     level: LogLevel;      // Log level (default: 'info')
     pretty: boolean;      // Pretty print logs (default: false)
   };
+  turn?: {                // TURN credentials for clients (default: off)
+    urls: string[];       // e.g. ['turn:turn.example.com:3478?transport=udp']
+    secret: string;       // Shared secret configured on the TURN server
+    ttl: number;          // Credential lifetime in seconds
+  };
 }
 ```
+
+### TURN credentials
+
+With `turn` set, every client gets short-lived TURN credentials in the `OPEN`
+message when it connects (TURN REST API scheme: username `<expiry>:<peerId>`,
+password `base64(HMAC-SHA1(secret, username))`). The secret stays on the
+server. On coturn, run with `use-auth-secret` and add the secret with
+`turnadmin -s <secret> -r <realm>`. Clients use the credentials automatically
+unless they pass their own `config.iceServers`.
 
 ## Room and Topic Authorization
 
@@ -515,7 +532,7 @@ Docker images use [`oven/bun`](https://hub.docker.com/r/oven/bun) for both the b
 
 ```dockerfile
 # Builder stage
-FROM oven/bun:1.4.1-slim AS builder
+FROM oven/bun:1.4.4-slim AS builder
 WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install --ignore-scripts
@@ -523,7 +540,7 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM oven/bun:1.4.1-slim AS production
+FROM oven/bun:1.4.4-slim AS production
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/bin ./bin
@@ -658,4 +675,4 @@ server.logger.child({ requestId: '123' }).debug('Scoped log');
 
 ## License
 
-MIT
+Apache-2.0
