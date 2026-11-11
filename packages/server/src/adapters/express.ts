@@ -16,12 +16,12 @@
  */
 
 import type { IncomingMessage, Server } from "node:http";
-import { parse as parseUrl } from "node:url";
 import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
 import { resolveCorsOrigin } from "../core/cors.js";
 import { type CreateConduitServerCoreOptions, createConduitServerCore } from "../core/index.js";
+import { parseRequestUrl } from "../core/requestUrl.js";
 
 // Express types (avoid importing express to keep it optional)
 interface Request {
@@ -83,7 +83,7 @@ export function ExpressConduitServer(
 
 	// WebSocket upgrade handler
 	server.on("upgrade", (request, socket, head) => {
-		const url = parseUrl(request.url || "", true);
+		const url = parseRequestUrl(request.url);
 		const pathname = url.pathname || "";
 
 		// Check if this is a Conduit WebSocket request
@@ -140,7 +140,7 @@ export function ExpressConduitServer(
 
 	// Express middleware
 	const middleware: ExpressMiddleware = (req, res, next) => {
-		const url = parseUrl(req.url || "", true);
+		const url = parseRequestUrl(req.url);
 		const pathname = url.pathname || "";
 
 		// HTTPS enforcement check

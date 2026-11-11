@@ -14,12 +14,12 @@
  */
 
 import type { IncomingMessage } from "node:http";
-import { parse as parseUrl } from "node:url";
 import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
 import { resolveCorsOrigin } from "../core/cors.js";
 import { type CreateConduitServerCoreOptions, createConduitServerCore } from "../core/index.js";
+import { parseRequestUrl } from "../core/requestUrl.js";
 
 // Fastify types (avoid importing fastify to keep it optional)
 interface FastifyInstance {
@@ -142,7 +142,7 @@ export async function fastifyConduitPlugin(
 
 	// WebSocket upgrade handler
 	fastify.server.on("upgrade", (request, socket, head) => {
-		const url = parseUrl(request.url || "", true);
+		const url = parseRequestUrl(request.url);
 		const pathname = url.pathname || "";
 
 		// Check if this is a Conduit WebSocket request

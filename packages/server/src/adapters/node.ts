@@ -14,7 +14,6 @@
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { parse as parseUrl } from "node:url";
 import { MessageType, VERSION } from "@conduit/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { ServerConfig } from "../config.js";
@@ -25,6 +24,7 @@ import {
 	type CreateConduitServerCoreOptions,
 	createConduitServerCore,
 } from "../core/index.js";
+import { parseRequestUrl } from "../core/requestUrl.js";
 import type { ILogger } from "../logger.js";
 
 /** Options for the Node.js HTTP adapter, extending the core options with an optional pre-existing HTTP server. */
@@ -78,7 +78,7 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 
 	// HTTP request handler
 	server.on("request", (req: IncomingMessage, res: ServerResponse) => {
-		const url = parseUrl(req.url || "", true);
+		const url = parseRequestUrl(req.url);
 		const pathname = url.pathname || "";
 
 		// HTTPS enforcement check
@@ -136,7 +136,7 @@ export function createConduitServer(options: NodeAdapterOptions = {}): ConduitSe
 
 	// WebSocket upgrade handler
 	server.on("upgrade", (request: IncomingMessage, socket, head) => {
-		const url = parseUrl(request.url || "", true);
+		const url = parseRequestUrl(request.url);
 		const pathname = url.pathname || "";
 
 		// Check if this is a Conduit WebSocket request
