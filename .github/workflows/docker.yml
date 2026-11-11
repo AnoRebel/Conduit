@@ -100,7 +100,7 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.server_tags }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Build and push server-admin
         uses: docker/build-push-action@v7
@@ -111,7 +111,7 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.server_admin_tags }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Build and push admin-ui
         uses: docker/build-push-action@v7
@@ -122,7 +122,7 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.admin_ui_tags }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Build and push all-in-one
         uses: docker/build-push-action@v7
@@ -133,7 +133,7 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.all_in_one_tags }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
       - name: Create docker summary
         run: |

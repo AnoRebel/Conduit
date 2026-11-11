@@ -204,4 +204,4 @@ jobs:
           file: docker/Dockerfile.${{ matrix.dockerfile }}
           push: false
           cache-from: type=gha,scope=${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }},ignore-error=true
