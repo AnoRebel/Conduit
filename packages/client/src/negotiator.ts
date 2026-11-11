@@ -1,7 +1,6 @@
 import { type ConnectionType, MessageType } from "@conduit/shared";
 import type { Conduit } from "./conduit.js";
 import { logger } from "./logger.js";
-import { util } from "./util.js";
 
 /**
  * Interface for connections that can be negotiated.
@@ -79,8 +78,7 @@ export class Negotiator {
 	private _createPeerConnection(): RTCPeerConnection {
 		logger.log("Creating RTCPeerConnection");
 
-		const config = this._conduit.options.config || util.defaultConfig;
-		const peerConnection = new RTCPeerConnection(config);
+		const peerConnection = new RTCPeerConnection(this._conduit.rtcConfig);
 
 		this._setupListeners(peerConnection);
 

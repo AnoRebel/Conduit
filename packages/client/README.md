@@ -235,6 +235,45 @@ interface ConduitOptions {
 }
 ```
 
+#### STUN and TURN servers
+
+By default the client uses public Google and Twilio STUN servers and no TURN
+server. Peers behind symmetric NATs or strict firewalls need a TURN relay. Pass
+your own servers through `config.iceServers`, which replaces the defaults:
+
+```typescript
+const conduit = new Conduit({
+  host: "signaling.example.com",
+  config: {
+    iceServers: [
+      { urls: "stun:turn.example.com:3478" },
+      {
+        urls: [
+          "turn:turn.example.com:3478?transport=udp",
+          "turn:turn.example.com:3478?transport=tcp",
+          "turns:turn.example.com:5349?transport=tcp",
+        ],
+        username: turnUsername,
+        credential: turnCredential,
+      },
+    ],
+    // iceTransportPolicy: "relay", // force TURN, handy for testing the relay
+  },
+});
+```
+
+The URL carries the host and port (`3478` for `turn:`, `5349` for `turns:` by
+convention). Load them from your own config or environment rather than
+hard-coding them.
+
+Anything shipped to a browser is public, including TURN credentials. If your
+TURN server is private, do not embed a long-lived username and password.
+Instead, let the signaling server issue them: when it is started with
+`CONDUIT_TURN_URLS` and `CONDUIT_TURN_SECRET` (coturn `use-auth-secret`), each
+peer receives short-lived TURN credentials on connect, and the client adds them
+to the default STUN servers on its own. Passing `config.iceServers` turns this
+off, so your list is used as given.
+
 #### Properties
 
 - `id: string | null` - The peer ID
@@ -326,4 +365,4 @@ Conduit works in all modern browsers that support WebRTC:
 
 ## License
 
-MIT
+Apache-2.0

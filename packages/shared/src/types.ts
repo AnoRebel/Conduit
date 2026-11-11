@@ -179,7 +179,19 @@ export interface IErrorPayload {
  * Open payload (sent when connection is established)
  */
 export interface IOpenPayload {
-	id: string;
+	id?: string;
+	/**
+	 * TURN servers with short-lived credentials minted for this connection,
+	 * present when the server is configured with a TURN shared secret.
+	 */
+	iceServers?: IIceServer[];
+}
+
+/** A TURN/STUN server entry, shaped like WebRTC's `RTCIceServer`. */
+export interface IIceServer {
+	urls: string | string[];
+	username?: string;
+	credential?: string;
 }
 
 /**
