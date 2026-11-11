@@ -28,6 +28,10 @@ jobs:
   build-and-push:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
+    # A healthy run builds all four multi-arch images in about 15 minutes. The
+    # emulated arm64 builds can stall, and without a limit a stall holds the
+    # runner for GitHub's 6-hour default (the 3.2.1 all-in-one build did).
+    timeout-minutes: 45
     steps:
       - name: Determine tag
         id: tag
