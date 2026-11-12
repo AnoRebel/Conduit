@@ -9,9 +9,18 @@
 # implement; with node on PATH, the `nuxt` bin's `#!/usr/bin/env node` shebang
 # runs it under Node, exactly as it does on a developer machine and in CI. Drop
 # the COPY once Bun ships findPackageJSON. Same Debian (trixie) as the Bun image.
-FROM oven/bun:1.4.4-slim AS builder
+#
+# The builder runs on the build host's own platform ($BUILDPLATFORM) for every
+# target: everything it produces (JS bundles, the CLI, the static admin site) is
+# architecture-independent, and the production stage installs its own deps for
+# the target. Building it under QEMU for arm64 made `nuxt generate` stall in
+# "Bundling app" for over 35 minutes on the 3.2.1 release.
+ARG BUILDPLATFORM
+FROM --platform=$BUILDPLATFORM node:26.13.0-trixie-slim AS node
 
-COPY --from=node:26.13.0-trixie-slim /usr/local/bin/node /usr/local/bin/node
+FROM --platform=$BUILDPLATFORM oven/bun:1.4.4-slim AS builder
+
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
 	&& rm -rf /var/lib/apt/lists/*
 

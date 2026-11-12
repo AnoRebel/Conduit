@@ -1,0 +1,10 @@
+# Every image installs and builds from source; host installs and build output
+# would only bloat the context (2GB+ locally) and leak into COPY layers.
+**/node_modules
+**/dist
+**/coverage
+**/.nuxt
+**/.output
+**/.data
+.git
+openspec
