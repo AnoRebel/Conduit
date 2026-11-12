@@ -16,7 +16,7 @@ function isKeyAcceptable(key) {
 	return typeof key === "string" && key.trim() !== "" && key !== DEFAULT_INSECURE_KEY;
 }
 
-program.name("conduit").description("Conduit Server - WebRTC signaling server").version("3.2.1");
+program.name("conduit").description("Conduit Server - WebRTC signaling server").version("3.2.2");
 
 program
 	.command("start")
