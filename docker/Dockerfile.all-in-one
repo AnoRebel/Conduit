@@ -18,7 +18,7 @@
 ARG BUILDPLATFORM
 FROM --platform=$BUILDPLATFORM node:26.13.0-trixie-slim AS node
 
-FROM --platform=$BUILDPLATFORM oven/bun:1.4.4-slim AS builder
+FROM --platform=$BUILDPLATFORM oven/bun:1.4.5-slim AS builder
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
@@ -57,7 +57,7 @@ WORKDIR /app/packages/admin-ui
 RUN bun run generate
 
 # Production stage — debian slim for glibc compatibility
-FROM oven/bun:1.4.4-slim AS production
+FROM oven/bun:1.4.5-slim AS production
 
 WORKDIR /app
 
