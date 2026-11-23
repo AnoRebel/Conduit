@@ -4,7 +4,7 @@
 # implement; with node on PATH, the `nuxt` bin's `#!/usr/bin/env node` shebang
 # runs it under Node, exactly as it does on a developer machine and in CI. Drop
 # the COPY once Bun ships findPackageJSON. Same Debian (trixie) as the Bun image.
-FROM oven/bun:1.4.4-slim AS builder
+FROM oven/bun:1.4.5-slim AS builder
 
 COPY --from=node:26.13.0-trixie-slim /usr/local/bin/node /usr/local/bin/node
 RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
@@ -47,7 +47,7 @@ ENV NUXT_RYBBIT_SITE_ID=${NUXT_RYBBIT_SITE_ID}
 RUN bun run build
 
 # Production stage — debian slim for glibc compatibility (bun+musl has networking issues)
-FROM oven/bun:1.4.4-slim AS production
+FROM oven/bun:1.4.5-slim AS production
 
 WORKDIR /app
 
